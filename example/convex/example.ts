@@ -1,15 +1,15 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import { components } from "./_generated/api";
-import { ShardedCounter } from "@convex-dev/sharded-counter";
+import { RAG } from "@convex-dev/rag";
 
-const shardedCounter = new ShardedCounter(components.shardedCounter, {});
+const rag = new RAG(components.rag, {});
 
 export const addOne = mutation({
   args: {},
   handler: async (ctx, _args) => {
-    await shardedCounter.add(ctx, "accomplishments");
+    await rag.add(ctx, "accomplishments");
   },
 });
 
 // Direct re-export of component's API.
-export const { add, count } = shardedCounter.api();
+export const { add, count } = rag.api();

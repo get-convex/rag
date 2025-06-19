@@ -6,11 +6,11 @@ import type { UseApi, RunMutationCtx, RunQueryCtx } from "./types";
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
 // issues where passing `components.foo` doesn't match the argument
-export type ShardedCounterComponent = UseApi<Mounts>;
+export type RAGComponent = UseApi<Mounts>;
 
-export class ShardedCounter<Shards extends Record<string, number>> {
+export class RAG<Shards extends Record<string, number>> {
   constructor(
-    public component: ShardedCounterComponent,
+    public component: RAGComponent,
     public options?: {
       shards?: Shards;
       defaultShards?: number;
@@ -40,7 +40,7 @@ export class ShardedCounter<Shards extends Record<string, number>> {
    * For easy re-exporting.
    * Apps can do
    * ```ts
-   * export const { add, count } = shardedCounter.api();
+   * export const { add, count } = rag.api();
    * ```
    */
   api() {

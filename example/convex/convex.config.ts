@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import shardedCounter from "@convex-dev/sharded-counter/convex.config";
+import rag from "@convex-dev/rag/convex.config";
 
 const app = defineApp();
-app.use(shardedCounter);
+app.use(rag);
 
 export default app;
