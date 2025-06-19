@@ -1,10 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import embeddingsTables from "./embeddings/tables.js";
+import { typedV } from "convex-helpers/validators";
 
-export default defineSchema({
-  counters: defineTable({
-    name: v.string(),
-    value: v.number(),
-    shard: v.number(),
-  }).index("name", ["name", "shard"]),
+const schema = defineSchema({
+  ...embeddingsTables,
 });
+
+export const vv = typedV(schema);
+export { vv as v };
+
+export default schema;
