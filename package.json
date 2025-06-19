@@ -1,11 +1,11 @@
 {
-  "name": "rag",
-  "description": "A file search component for Convex.",
-  "repository": "github:get-convex/file-search",
-  "homepage": "https://github.com/get-convex/file-search#readme",
+  "name": "document-search",
+  "description": "A document search component for Convex.",
+  "repository": "github:get-convex/document-search",
+  "homepage": "https://github.com/get-convex/document-search#readme",
   "bugs": {
     "email": "support@convex.dev",
-    "url": "https://github.com/get-convex/file-search/issues"
+    "url": "https://github.com/get-convex/document-search/issues"
   },
   "version": "0.1.0",
   "license": "Apache-2.0",

@@ -1,15 +1,15 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import { components } from "./_generated/api";
-import { FileSearch } from "@convex-dev/file-search";
+import { DocumentSearch } from "@convex-dev/document-search";
 
-const fileSearch = new FileSearch(components.fileSearch, {});
+const documentSearch = new DocumentSearch(components.documentSearch, {});
 
 export const addOne = mutation({
   args: {},
   handler: async (ctx, _args) => {
-    await fileSearch.add(ctx, "accomplishments");
+    await documentSearch.add(ctx, "accomplishments");
   },
 });
 
 // Direct re-export of component's API.
-export const { add, count } = fileSearch.api();
+export const { add, count } = documentSearch.api();

@@ -6,11 +6,36 @@ import type { UseApi, RunMutationCtx, RunQueryCtx } from "./types";
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
 // issues where passing `components.foo` doesn't match the argument
-export type FileSearchComponent = UseApi<Mounts>;
+export type DocumentSearchComponent = UseApi<Mounts>;
 
-export class FileSearch<Shards extends Record<string, number>> {
+// This is 0-1 with 1 being the most important and 0 being totally irrelevant.
+// Used for vector search weighting.
+type Importance = number;
+
+type MastraChunk = {
+  text: string;
+  metadata: Record<string, Value>;
+  embedding?: Array<number>;
+};
+
+type LangChainChunk = {
+  id?: string;
+  pageContent: string;
+  metadata: { loc: { lines: { from: number; to: number } } };
+  embedding?: Array<number>;
+};
+
+type ChunkMetadata = {
+  id?: string;
+  namespaces?: Array<Value>;
+  // importance?: Importance;
+  // keywords?: Array<string>;
+  // summary?: string;
+};
+
+export class DocumentSearch {
   constructor(
-    public component: FileSearchComponent,
+    public component: DocumentSearchComponent,
     public options?: {
       shards?: Shards;
       defaultShards?: number;

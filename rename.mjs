@@ -198,24 +198,24 @@ async function setup() {
   // Define all replacements
   const replacements = [
     // NPM package name
-    ["@convex-dev/sharded-counter", npmPackageName],
+    ["@convex-dev/document-search", npmPackageName],
 
     // Repository name
-    ["get-convex/sharded-counter", repoName],
+    ["get-convex/document-search", repoName],
 
     // Component name variations
-    ["ShardedCounter", cases.pascal],
-    ["shardedCounter", cases.camel],
-    ["sharded-counter", cases.kebab],
-    ["sharded_counter", cases.snake],
-    ["sharded counter", cases.space],
-    ["Sharded Counter", cases.title],
+    ["DocumentSearch", cases.pascal],
+    ["documentSearch", cases.camel],
+    ["document-search", cases.kebab],
+    ["document_search", cases.snake],
+    ["document search", cases.space],
+    ["Document Search", cases.title],
 
     // // Handle the component definition in convex.config.ts
-    // ['"shardedCounter"', `"${cases.camel}"`],
+    // ['"documentSearch"', `"${cases.camel}"`],
 
     // // Handle description (appears in package.json)
-    // ["A sharded counter component for Convex.", `A ${cases.space} component for Convex.`],
+    // ["A document search component for Convex.", `A ${cases.space} component for Convex.`],
   ];
 
   console.log("🔍 Finding files to update...");

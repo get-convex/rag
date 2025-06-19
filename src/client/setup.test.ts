@@ -8,7 +8,7 @@ import {
   type GenericSchema,
   type SchemaDefinition,
 } from "convex/server";
-import { type FileSearchComponent } from "./index.js";
+import { type DocumentSearchComponent } from "./index.js";
 import { componentsGeneric } from "convex/server";
 import componentSchema from "../component/schema.js";
 export { componentSchema };
@@ -18,11 +18,11 @@ export function initConvexTest<
   Schema extends SchemaDefinition<GenericSchema, boolean>,
 >(schema?: Schema) {
   const t = convexTest(schema ?? defineSchema({}), modules);
-  t.registerComponent("fileSearch", componentSchema, componentModules);
+  t.registerComponent("documentSearch", componentSchema, componentModules);
   return t;
 }
 export const components = componentsGeneric() as unknown as {
-  fileSearch: FileSearchComponent;
+  documentSearch: DocumentSearchComponent;
 };
 
 test("setup", () => {});

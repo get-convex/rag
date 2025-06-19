@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import fileSearch from "@convex-dev/file-search/convex.config";
+import documentSearch from "@convex-dev/document-search/convex.config";
 
 const app = defineApp();
-app.use(fileSearch);
+app.use(documentSearch);
 
 export default app;

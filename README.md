@@ -1,6 +1,6 @@
-# Convex File Search Component
+# Convex Document Search Component
 
-[![npm version](https://badge.fury.io/js/@convex-dev%2Ffile-search.svg)](https://badge.fury.io/js/@convex-dev%2Ffile-search)
+[![npm version](https://badge.fury.io/js/@convex-dev%2Fdocument-search.svg)](https://badge.fury.io/js/@convex-dev%2Fdocument-search)
 
 <!-- START: Include on https://convex.dev/components -->
 
@@ -8,7 +8,7 @@
 - [ ] Why should you use this component?
 - [ ] Links to Stack / other resources?
 
-Found a bug? Feature request? [File it here](https://github.com/get-convex/file-search/issues).
+Found a bug? Feature request? [File it here](https://github.com/get-convex/document-search/issues).
 
 ## Pre-requisite: Convex
 
@@ -23,7 +23,7 @@ Run `npm create convex` or follow any of the [quickstarts](https://docs.convex.d
 Install the component package:
 
 ```ts
-npm install @convex-dev/file-search
+npm install @convex-dev/document-search
 ```
 
 Create a `convex.config.ts` file in your app's `convex/` folder and install the component by calling `use`:
@@ -31,10 +31,10 @@ Create a `convex.config.ts` file in your app's `convex/` folder and install the 
 ```ts
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import fileSearch from "@convex-dev/file-search/convex.config";
+import documentSearch from "@convex-dev/document-search/convex.config";
 
 const app = defineApp();
-app.use(fileSearch);
+app.use(documentSearch);
 
 export default app;
 ```
@@ -43,9 +43,9 @@ export default app;
 
 ```ts
 import { components } from "./_generated/api";
-import { FileSearch } from "@convex-dev/file-search";
+import { DocumentSearch } from "@convex-dev/document-search";
 
-const fileSearch = new FileSearch(components.fileSearch, {
+const documentSearch = new DocumentSearch(components.documentSearch, {
   ...options,
 });
 ```

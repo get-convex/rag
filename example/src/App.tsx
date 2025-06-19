@@ -8,7 +8,7 @@ function App() {
 
   return (
     <>
-      <h1>Convex File Search Component Example</h1>
+      <h1>Convex Document Search Component Example</h1>
       <div className="card">
         <button onClick={() => addOne()}>count is {count}</button>
         <p>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { FileSearch } from "./index.js";
+import { DocumentSearch } from "./index.js";
 import type { DataModelFromSchemaDefinition } from "convex/server";
 import {
   anyApi,
@@ -25,7 +25,7 @@ const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
-const fileSearch = new FileSearch(components.fileSearch, {
+const documentSearch = new DocumentSearch(components.documentSearch, {
   shards: {
     beans: 1,
     friends: 2,
@@ -36,21 +36,21 @@ const fileSearch = new FileSearch(components.fileSearch, {
 export const testQuery = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    return await fileSearch.count(ctx, args.name);
+    return await documentSearch.count(ctx, args.name);
   },
 });
 
 export const testMutation = mutation({
   args: { name: v.string(), count: v.number() },
   handler: async (ctx, args) => {
-    return await fileSearch.add(ctx, args.name, args.count);
+    return await documentSearch.add(ctx, args.name, args.count);
   },
 });
 
 export const testAction = action({
   args: { name: v.string(), count: v.number() },
   handler: async (ctx, args) => {
-    return await fileSearch.add(ctx, args.name, args.count);
+    return await documentSearch.add(ctx, args.name, args.count);
   },
 });
 
@@ -63,9 +63,9 @@ const testApi: ApiFromModules<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["index.test"] as any;
 
-describe("FileSearch thick client", () => {
+describe("DocumentSearch thick client", () => {
   test("should make thick client", async () => {
-    const c = new FileSearch(components.fileSearch);
+    const c = new DocumentSearch(components.documentSearch);
     const t = initConvexTest(schema);
     await t.run(async (ctx) => {
       await c.add(ctx, "beans", 1);
