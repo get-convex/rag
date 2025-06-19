@@ -13,7 +13,7 @@
     "lint": "tsc -p convex && eslint convex"
   },
   "dependencies": {
-    "@convex-dev/sharded-counter": "file:..",
+    "@convex-dev/file-search": "file:..",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

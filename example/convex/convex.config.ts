@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import shardedCounter from "@convex-dev/sharded-counter/convex.config";
+import fileSearch from "@convex-dev/file-search/convex.config";
 
 const app = defineApp();
-app.use(shardedCounter);
+app.use(fileSearch);
 
 export default app;

@@ -5,10 +5,10 @@ import schema from "./schema.js";
 export const modules = import.meta.glob("./**/*.*s");
 
 // This is how users write tests that use your component.
-import componentSchema from "../node_modules/@convex-dev/sharded-counter/src/component/schema.js";
+import componentSchema from "../node_modules/@convex-dev/file-search/src/component/schema.js";
 export { componentSchema };
 export const componentModules = import.meta.glob(
-  "../node_modules/@convex-dev/sharded-counter/src/component/**/*.ts"
+  "../node_modules/@convex-dev/file-search/src/component/**/*.ts"
 );
 
 export function initConvexTest() {

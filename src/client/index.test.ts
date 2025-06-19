@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ShardedCounter } from "./index.js";
+import { FileSearch } from "./index.js";
 import type { DataModelFromSchemaDefinition } from "convex/server";
 import {
   anyApi,
@@ -25,7 +25,7 @@ const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
-const shardedCounter = new ShardedCounter(components.shardedCounter, {
+const fileSearch = new FileSearch(components.fileSearch, {
   shards: {
     beans: 1,
     friends: 2,
@@ -36,21 +36,21 @@ const shardedCounter = new ShardedCounter(components.shardedCounter, {
 export const testQuery = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    return await shardedCounter.count(ctx, args.name);
+    return await fileSearch.count(ctx, args.name);
   },
 });
 
 export const testMutation = mutation({
   args: { name: v.string(), count: v.number() },
   handler: async (ctx, args) => {
-    return await shardedCounter.add(ctx, args.name, args.count);
+    return await fileSearch.add(ctx, args.name, args.count);
   },
 });
 
 export const testAction = action({
   args: { name: v.string(), count: v.number() },
   handler: async (ctx, args) => {
-    return await shardedCounter.add(ctx, args.name, args.count);
+    return await fileSearch.add(ctx, args.name, args.count);
   },
 });
 
@@ -63,9 +63,9 @@ const testApi: ApiFromModules<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["index.test"] as any;
 
-describe("ShardedCounter thick client", () => {
+describe("FileSearch thick client", () => {
   test("should make thick client", async () => {
-    const c = new ShardedCounter(components.shardedCounter);
+    const c = new FileSearch(components.fileSearch);
     const t = initConvexTest(schema);
     await t.run(async (ctx) => {
       await c.add(ctx, "beans", 1);

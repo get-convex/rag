@@ -1,15 +1,15 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import { components } from "./_generated/api";
-import { ShardedCounter } from "@convex-dev/sharded-counter";
+import { FileSearch } from "@convex-dev/file-search";
 
-const shardedCounter = new ShardedCounter(components.shardedCounter, {});
+const fileSearch = new FileSearch(components.fileSearch, {});
 
 export const addOne = mutation({
   args: {},
   handler: async (ctx, _args) => {
-    await shardedCounter.add(ctx, "accomplishments");
+    await fileSearch.add(ctx, "accomplishments");
   },
 });
 
 // Direct re-export of component's API.
-export const { add, count } = shardedCounter.api();
+export const { add, count } = fileSearch.api();
