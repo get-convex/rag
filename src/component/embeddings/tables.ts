@@ -17,53 +17,68 @@ import {
 } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 
+const filter = v.object({
+  namespaceId: v.id("namespaces"),
+  filter: v.any(),
+});
+export type Filter = Infer<typeof filter>;
+
+export type Filters = { [K in (typeof filterNames)[number]]?: Filter };
+
+export const filterNames = [
+  "filter1" as const,
+  "filter2" as const,
+  "filter3" as const,
+  "filter4" as const,
+];
+
 // We only generate embeddings for non-tool, non-system messages
 const embeddings = {
-  model: v.string(),
-  // What table it's stored in. (usually messages or memories)
-  table: v.string(),
-  userId: v.optional(v.string()),
-  threadId: v.optional(v.string()),
-  // not set for private threads
-  model_table_userId: v.optional(v.array(v.string())),
-  model_table_threadId: v.optional(v.array(v.string())),
   vector: v.array(v.number()),
+  // [model, namespace, namespace version, document version]
+  namespace: v.id("namespaces"),
+  filter1: v.optional(filter),
+  filter2: v.optional(filter),
+  filter3: v.optional(filter),
+  filter4: v.optional(filter),
 };
 
-export const vEmbeddingsWithoutDenormalizedFields = v.object(
-  omit(embeddings, ["model_table_userId", "model_table_threadId"])
-);
-export type EmbeddingsWithoutDenormalizedFields = Infer<
-  typeof vEmbeddingsWithoutDenormalizedFields
->;
+const filterFields = ["namespace" as const, ...filterNames];
 
-function table<D extends number>(dimensions: D): Table<D> {
+export const vCreateEmbeddingArgs = v.object({
+  vector: v.array(v.number()),
+  namespace: v.id("namespaces"),
+  filters: v.array(v.any()),
+});
+export type CreateEmbeddingArgs = Infer<typeof vCreateEmbeddingArgs>;
+
+function table(dimensions: number): Table {
   return defineTable(embeddings)
     .vectorIndex("vector", {
       vectorField: "vector",
       dimensions,
-      filterFields: ["model_table_userId", "model_table_threadId"],
+      filterFields,
     })
-    .index("model_table_threadId", ["model", "table", "threadId"]);
+    .index("namespace", ["namespace"]);
 }
 
-type Table<D extends number> = TableDefinition<
+type Table = TableDefinition<
   VObject<ObjectType<typeof embeddings>, typeof embeddings>,
   { model_table_threadId: ["model", "table", "threadId", "_creationTime"] },
   GenericTableSearchIndexes,
-  VectorIndex<D>
+  VectorIndex
 >;
 
-type VectorIndex<D extends number> = {
+type VectorIndex = {
   vector: {
     vectorField: "vector";
-    dimensions: D;
-    filterFields: "model_table_userId" | "model_table_threadId";
+    dimensions: number;
+    filterFields: string;
   };
 };
 
 export type VectorSchema = SchemaDefinition<
-  { [key in VectorTableName]: Table<128> },
+  { [key in VectorTableName]: Table },
   true
 >;
 
@@ -110,17 +125,12 @@ export function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId) {
 
 const tables: {
   [K in keyof typeof VectorDimensions &
-    number as `embeddings_${(typeof VectorDimensions)[K]}`]: Table<
-    (typeof VectorDimensions)[K]
-  >;
+    number as `embeddings_${(typeof VectorDimensions)[K]}`]: Table;
 } = Object.fromEntries(
   VectorDimensions.map((dimensions) => [
     `embeddings_${dimensions}`,
     table(dimensions),
   ])
-) as Record<
-  `embeddings_${(typeof VectorDimensions)[number]}`,
-  Table<(typeof VectorDimensions)[number]>
->;
+) as Record<`embeddings_${(typeof VectorDimensions)[number]}`, Table>;
 
 export default tables;

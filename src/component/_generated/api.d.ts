@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as embeddings_index from "../embeddings/index.js";
+import type * as embeddings_tables from "../embeddings/tables.js";
 import type * as lib from "../lib.js";
 
 import type {
@@ -15,6 +17,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
 /**
  * A utility for referencing Convex functions in your app's API.
  *
@@ -24,17 +27,48 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "embeddings/index": typeof embeddings_index;
+  "embeddings/tables": typeof embeddings_tables;
   lib: typeof lib;
 }>;
 export type Mounts = {
-  lib: {
-    add: FunctionReference<
-      "mutation",
-      "public",
-      { count: number; name: string; shards?: number },
-      null
-    >;
-    count: FunctionReference<"query", "public", { name: string }, number>;
+  embeddings: {
+    index: {
+      insertBatch: FunctionReference<
+        "mutation",
+        "public",
+        {
+          vectorDimension:
+            | 128
+            | 256
+            | 512
+            | 768
+            | 1024
+            | 1408
+            | 1536
+            | 2048
+            | 3072
+            | 4096;
+          vectors: Array<{
+            filters: Array<any>;
+            namespace: string;
+            vector: Array<number>;
+          }>;
+        },
+        Array<
+          | string
+          | string
+          | string
+          | string
+          | string
+          | string
+          | string
+          | string
+          | string
+          | string
+        >
+      >;
+    };
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

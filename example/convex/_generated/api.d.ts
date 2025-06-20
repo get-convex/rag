@@ -40,14 +40,43 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   documentSearch: {
-    lib: {
-      add: FunctionReference<
-        "mutation",
-        "internal",
-        { count: number; name: string; shards?: number },
-        null
-      >;
-      count: FunctionReference<"query", "internal", { name: string }, number>;
+    embeddings: {
+      index: {
+        insertBatch: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            vectorDimension:
+              | 128
+              | 256
+              | 512
+              | 768
+              | 1024
+              | 1408
+              | 1536
+              | 2048
+              | 3072
+              | 4096;
+            vectors: Array<{
+              filters: Array<any>;
+              namespace: string;
+              vector: Array<number>;
+            }>;
+          },
+          Array<
+            | string
+            | string
+            | string
+            | string
+            | string
+            | string
+            | string
+            | string
+            | string
+            | string
+          >
+        >;
+      };
     };
   };
 };

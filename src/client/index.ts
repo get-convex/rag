@@ -1,7 +1,13 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
-import { v } from "convex/values";
+import { v, type Value } from "convex/values";
 import type { Mounts } from "../component/_generated/api";
-import type { UseApi, RunMutationCtx, RunQueryCtx } from "./types";
+import type {
+  UseApi,
+  RunMutationCtx,
+  RunQueryCtx,
+  RunActionCtx,
+} from "./types";
+import type { EmbeddingModelV1 } from "@ai-sdk/provider";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
@@ -21,67 +27,83 @@ type MastraChunk = {
 type LangChainChunk = {
   id?: string;
   pageContent: string;
-  metadata: { loc: { lines: { from: number; to: number } } };
+  metadata: Record<string, Value>; //{ loc: { lines: { from: number; to: number } } };
   embedding?: Array<number>;
 };
 
-type ChunkMetadata = {
-  id?: string;
-  namespaces?: Array<Value>;
-  // importance?: Importance;
-  // keywords?: Array<string>;
-  // summary?: string;
+type SearchOptions = {
+  /**
+   * The maximum number of messages to fetch. Default is 10.
+   */
+  limit: number;
+  /**
+   * What chunks around the search results to include.
+   * Default: { before: 0, after: 0 }
+   * Note, this is after the limit is applied.
+   * e.g. { before: 2, after: 1 } means 2 chunks before and 1 chunk after.
+   * This would result in up to (4 * limit) items returned.
+   */
+  chunkRange?: { before: number; after: number };
 };
 
-export class DocumentSearch {
+type Filter<FilterNames extends string = string, ValueType = Value> = {
+  name: FilterNames;
+  value: ValueType;
+};
+
+export class DocumentSearch<
+  FitlerNames extends string = string,
+> {
   constructor(
     public component: DocumentSearchComponent,
     public options?: {
-      shards?: Shards;
-      defaultShards?: number;
+      textEmbeddingModel: EmbeddingModelV1<string>;
+      filterNames: FitlerNames[];
       // Common parameters:
       // logLevel
     }
   ) {}
-  async add<Name extends string = keyof Shards & string>(
-    ctx: RunMutationCtx,
-    name: Name,
-    count: number = 1
+
+  async upsert(
+    ctx: RunActionCtx,
+    args: {
+      id: string;
+      namespace: string;
+      namespaceVersion?: number;
+      chunks:
+        | Iterable<MastraChunk | LangChainChunk>
+        | AsyncIterable<MastraChunk | LangChainChunk>;
+      mimeType: string;
+      metadata?: Record<string, Value>;
+      filterOptions?: Filter<FitlerNames>[];
+    }
+  ) {}
+
+  async search(
+    ctx: RunActionCtx,
+    args: {
+      query: string;
+      namespace: string;
+      namespaceVersion?: number;
+      filters?: Filter<FitlerNames>[];
+      searchOptions?: SearchOptions;
+    }
   ) {
-    const shards = this.options?.shards?.[name] ?? this.options?.defaultShards;
-    return ctx.runMutation(this.component.lib.add, {
-      name,
-      count,
-      shards,
+    const { query, namespace, namespaceVersion, filters } = args;
+    const namespaceId = await this.component.createNamespace(ctx, {
+      id: namespace,
+      version: namespaceVersion,
     });
   }
-  async count<Name extends string = keyof Shards & string>(
-    ctx: RunQueryCtx,
-    name: Name
-  ) {
-    return ctx.runQuery(this.component.lib.count, { name });
-  }
-  /**
-   * For easy re-exporting.
-   * Apps can do
-   * ```ts
-   * export const { add, count } = fileSearch.api();
-   * ```
-   */
-  api() {
-    return {
-      add: mutationGeneric({
-        args: { name: v.string() },
-        handler: async (ctx, args) => {
-          await this.add(ctx, args.name);
-        },
-      }),
-      count: queryGeneric({
-        args: { name: v.string() },
-        handler: async (ctx, args) => {
-          return await this.count(ctx, args.name);
-        },
-      }),
-    };
-  }
+
+  async delete(
+    ctx: RunMutationCtx,
+    args: {
+      namespace: string;
+      namespaceVersion?: number;
+      id: string;
+    }
+  ) {}
+
+  async deleteNamespaceAsync(
 }
