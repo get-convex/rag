@@ -11,37 +11,44 @@ import {
   type Infer,
   type ObjectType,
   v,
+  type Value,
+  type VAny,
+  type VArray,
   type VId,
   type VObject,
   type VUnion,
 } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import { vectorWithImportanceDimension } from "./importance";
+import type { Id } from "../_generated/dataModel";
 
-const filter = v.object({
-  namespaceId: v.id("namespaces"),
-  filter: v.any(),
-});
-export type Filter = Infer<typeof filter>;
-
-export type Filters = { [K in (typeof filterFieldNames)[number]]?: Filter };
+const filterField = v.array(v.any()) as unknown as VArray<
+  [Id<"namespaces">, Value],
+  VId<"namespaces"> | VAny
+>;
+export type FilterField = Infer<typeof filterField>;
 
 export const filterFieldNames = [
+  "filter0" as const,
   "filter1" as const,
   "filter2" as const,
   "filter3" as const,
-  "filter4" as const,
 ];
 
+export type NumberedFilter = Record<number, FilterField>;
+export type NamedFilterField = {
+  [K in (typeof filterFieldNames)[number]]?: FilterField;
+};
+
 // We only generate embeddings for non-tool, non-system messages
-const embeddings = {
+const embeddingsFields = {
   vector: v.array(v.number()),
   // [model, namespace, namespace version, document version]
   namespace: v.id("namespaces"),
-  filter1: v.optional(filter),
-  filter2: v.optional(filter),
-  filter3: v.optional(filter),
-  filter4: v.optional(filter),
+  filter0: v.optional(filterField),
+  filter1: v.optional(filterField),
+  filter2: v.optional(filterField),
+  filter3: v.optional(filterField),
 };
 
 const filterFields = ["namespace" as const, ...filterFieldNames];
@@ -55,7 +62,7 @@ export const vCreateEmbeddingArgs = v.object({
 export type CreateEmbeddingArgs = Infer<typeof vCreateEmbeddingArgs>;
 
 function table(dimensions: VectorDimension): Table {
-  return defineTable(embeddings)
+  return defineTable(embeddingsFields)
     .vectorIndex("vector", {
       vectorField: "vector",
       dimensions: vectorWithImportanceDimension(dimensions),
@@ -65,7 +72,7 @@ function table(dimensions: VectorDimension): Table {
 }
 
 type Table = TableDefinition<
-  VObject<ObjectType<typeof embeddings>, typeof embeddings>,
+  VObject<ObjectType<typeof embeddingsFields>, typeof embeddingsFields>,
   { model_table_threadId: ["model", "table", "threadId", "_creationTime"] },
   GenericTableSearchIndexes,
   VectorIndex

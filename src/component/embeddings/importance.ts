@@ -1,18 +1,28 @@
-export function searchVector(vector: number[]) {
-  if (vector.length === 4096) {
-    return [...vector.slice(0, 4095), 0];
+/**
+ * This file contains functions for modifying embeddings to include importance.
+ * Terminology is roughly: a "vector" is an "embedding" + importance.
+ * Users pass in embeddings, the tables and vector search deal with vectors.
+ */
+
+/**
+ * For a search, we need to add a 0 to the end of the embedding so we ignore
+ * the weight value.
+ */
+export function searchVector(embedding: number[]) {
+  if (embedding.length === 4096) {
+    return [...embedding.slice(0, 4095), 0];
   }
-  return [...vector, 0];
+  return [...embedding, 0];
 }
 /**
  * For an importance of x (0 to 1):
 
- * @param vector - The vector to modify with an importance weight.
+ * @param embedding - The vector to modify with an importance weight.
  * @param importance - 0 - 1, where 0 is no importance and 1 is full importance.
  * @returns The vector with the importance added.
  */
 
-export function vectorWithImportance(vector: number[], importance: number) {
+export function vectorWithImportance(embedding: number[], importance: number) {
   /*
    * Goal: add a weighting that reduces the magnitude of the target vector after
    * normalization.
@@ -27,7 +37,7 @@ export function vectorWithImportance(vector: number[], importance: number) {
   // We drop the final dimension if it'd make it larger than 4096.
   // Unfortunate current limitation of Convex vector search.
   const vectorToModify =
-    vector.length === 4096 ? vector.slice(0, 4095) : vector;
+    embedding.length === 4096 ? embedding.slice(0, 4095) : embedding;
   const normalized = normalizeVector(vectorToModify);
 
   const sqrtImportance = Math.sqrt(importance);
