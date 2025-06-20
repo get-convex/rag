@@ -34,7 +34,9 @@ export const insertBatch = mutation({
   returns: v.array(vVectorId),
   handler: async (ctx, args) => {
     return Promise.all(
-      args.vectors.map(async (v) => insertVector(ctx, args.vectorDimension, v))
+      args.vectors.map(async (v) =>
+        insertVector(ctx, v.vector, v.namespace, v.importance, v.filters)
+      )
     );
   },
 });
@@ -44,22 +46,22 @@ export async function insertVector(
   vector: number[],
   namespace: Id<"namespaces">,
   importance: number | undefined,
-  filters: Record<string, Value>,
-  // filterNames is the ordering of the filters in the vector.
-  filterNames: string[]
+  filters: Array<Value> | undefined
 ) {
   const filterFields: Filters = {};
-  for (const [name, filter] of Object.entries(filters)) {
-    if (!filter) continue;
-    const filterIndex = filterNames.indexOf(name);
-    if (filterIndex === -1) {
-      console.warn(`Unknown filter name: ${name}`);
-      continue;
+  if (filters) {
+    for (let i = 0; i < filters.length; i++) {
+      if (i >= filterFieldNames.length) {
+        console.warn(`Unknown filter name: ${i}`);
+        break;
+      }
+      const filter = filters[i];
+      if (!filter) continue;
+      filterFields[filterFieldNames[i]] = {
+        namespaceId: namespace,
+        filter,
+      };
     }
-    filterFields[filterFieldNames[filterIndex]] = {
-      namespaceId: namespace,
-      filter,
-    };
   }
   const dimension = validateVectorDimension(vector.length);
   return ctx.db.insert(getVectorTableName(dimension), {
