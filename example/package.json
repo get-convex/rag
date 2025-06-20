@@ -4,7 +4,7 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
-    "dev": "run-p dev:frontend dev:backend",
+    "dev": "run-p -r dev:frontend dev:backend",
     "dev:backend": "convex dev --live-component-sources --typecheck-components",
     "dev:frontend": "vite",
     "predev": "npx convex dev --until-success",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@convex-dev/document-search": "file:..",
+    "convex": "file:../node_modules/convex",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -23,6 +24,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "convex-test": "^0.0.37",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
