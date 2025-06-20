@@ -1,6 +1,6 @@
 import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
-import { v } from "convex/values";
+import { v, type Value } from "convex/values";
 import type { Id } from "../_generated/dataModel.js";
 import {
   type ActionCtx,
@@ -17,8 +17,10 @@ import {
   vVectorDimension,
   vVectorId,
   type Filters,
-  filterNames,
+  filterFieldNames,
+  validateVectorDimension,
 } from "./tables.js";
+import { vectorWithImportance } from "./importance.js";
 
 export const insertBatch = mutation({
   args: {
@@ -39,21 +41,31 @@ export const insertBatch = mutation({
 
 export async function insertVector(
   ctx: MutationCtx,
-  dimension: VectorDimension,
-  v: CreateEmbeddingArgs
+  vector: number[],
+  namespace: Id<"namespaces">,
+  importance: number | undefined,
+  filters: Record<string, Value>,
+  // filterNames is the ordering of the filters in the vector.
+  filterNames: string[]
 ) {
-  const filters: Filters = {};
-  for (const [i, filter] of v.filters.entries()) {
+  const filterFields: Filters = {};
+  for (const [name, filter] of Object.entries(filters)) {
     if (!filter) continue;
-    filters[filterNames[i]] = {
-      namespaceId: v.namespace,
+    const filterIndex = filterNames.indexOf(name);
+    if (filterIndex === -1) {
+      console.warn(`Unknown filter name: ${name}`);
+      continue;
+    }
+    filterFields[filterFieldNames[filterIndex]] = {
+      namespaceId: namespace,
       filter,
     };
   }
+  const dimension = validateVectorDimension(vector.length);
   return ctx.db.insert(getVectorTableName(dimension), {
-    namespace: v.namespace,
-    vector: v.vector,
-    ...filters,
+    namespace,
+    vector: vectorWithImportance(vector, importance ?? 1),
+    ...filterFields,
   });
 }
 
