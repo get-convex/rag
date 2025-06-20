@@ -16,6 +16,7 @@ import {
   type VUnion,
 } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
+import { vectorWithImportanceDimension } from "./importance";
 
 const filter = v.object({
   namespaceId: v.id("namespaces"),
@@ -23,9 +24,9 @@ const filter = v.object({
 });
 export type Filter = Infer<typeof filter>;
 
-export type Filters = { [K in (typeof filterNames)[number]]?: Filter };
+export type Filters = { [K in (typeof filterFieldNames)[number]]?: Filter };
 
-export const filterNames = [
+export const filterFieldNames = [
   "filter1" as const,
   "filter2" as const,
   "filter3" as const,
@@ -43,20 +44,21 @@ const embeddings = {
   filter4: v.optional(filter),
 };
 
-const filterFields = ["namespace" as const, ...filterNames];
+const filterFields = ["namespace" as const, ...filterFieldNames];
 
 export const vCreateEmbeddingArgs = v.object({
   vector: v.array(v.number()),
   namespace: v.id("namespaces"),
-  filters: v.array(v.any()),
+  importance: v.optional(v.number()),
+  filters: v.optional(v.array(v.any())),
 });
 export type CreateEmbeddingArgs = Infer<typeof vCreateEmbeddingArgs>;
 
-function table(dimensions: number): Table {
+function table(dimensions: VectorDimension): Table {
   return defineTable(embeddings)
     .vectorIndex("vector", {
       vectorField: "vector",
-      dimensions,
+      dimensions: vectorWithImportanceDimension(dimensions),
       filterFields,
     })
     .index("namespace", ["namespace"]);
@@ -85,7 +87,8 @@ export type VectorSchema = SchemaDefinition<
 export const VectorDimensions = [
   128, 256, 512, 768, 1024, 1408, 1536, 2048, 3072, 4096,
 ] as const;
-export function validateVectorDimension(
+
+export function assertVectorDimension(
   dimension: number
 ): asserts dimension is VectorDimension {
   if (!VectorDimensions.includes(dimension as VectorDimension)) {
@@ -93,6 +96,15 @@ export function validateVectorDimension(
       `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`
     );
   }
+}
+
+export function validateVectorDimension(dimension: number): VectorDimension {
+  if (!VectorDimensions.includes(dimension as VectorDimension)) {
+    throw new Error(
+      `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`
+    );
+  }
+  return dimension as VectorDimension;
 }
 export type VectorDimension = (typeof VectorDimensions)[number];
 export const VectorTableNames = VectorDimensions.map(

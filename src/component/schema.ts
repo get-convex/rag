@@ -18,7 +18,7 @@ const schema = defineSchema({
     id: v.string(),
     namespaceId: v.id("namespaces"),
     version: v.number(),
-    // importance: v.number(),
+    importance: v.number(),
     // conveneient metadata
     source: v.union(
       v.object({
