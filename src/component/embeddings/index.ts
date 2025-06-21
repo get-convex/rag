@@ -7,13 +7,9 @@
  * This file takes in numbered filters (0-3) to translate without knowing about
  * user names.
  */
-import { v, type Value } from "convex/values";
+import { type Value } from "convex/values";
 import type { Id } from "../_generated/dataModel.js";
-import {
-  type ActionCtx,
-  type MutationCtx,
-  action,
-} from "../_generated/server.js";
+import { type ActionCtx, type MutationCtx } from "../_generated/server.js";
 import {
   getVectorTableName,
   filterFieldNames,
