@@ -6,13 +6,13 @@ import { typedV } from "convex-helpers/validators";
 const schema = defineSchema({
   namespaces: defineTable({
     // user-specified id, eg. userId or "documentation"
-    id: v.string(),
+    namespace: v.string(),
     version: v.number(),
     modelId: v.string(),
     dimension: v.number(),
     filterNames: v.array(v.string()),
     status: v.union(v.literal("pending"), v.literal("ready")),
-  }).index("id", ["id", "version"]),
+  }).index("namespace_version", ["namespace", "version"]),
   documents: defineTable({
     // user-specified id, eg. storage ID or "myfile.txt". Used for upserting.
     id: v.string(),

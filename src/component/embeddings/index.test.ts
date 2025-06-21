@@ -36,7 +36,7 @@ describe("embeddings", () => {
     // Create a namespace first
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "test-namespace",
+        namespace: "test-namespace",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -76,7 +76,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "test-namespace-importance",
+        namespace: "test-namespace-importance",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -130,7 +130,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "importance-sort-test",
+        namespace: "importance-sort-test",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -169,7 +169,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "filter-test",
+        namespace: "filter-test",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -214,7 +214,7 @@ describe("embeddings", () => {
 
     const namespace1Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "namespace1",
+        namespace: "namespace1",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -225,7 +225,7 @@ describe("embeddings", () => {
 
     const namespace2Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "namespace2",
+        namespace: "namespace2",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -263,7 +263,7 @@ describe("embeddings", () => {
 
     const namespace1Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "namespace1",
+        namespace: "namespace1",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -274,7 +274,7 @@ describe("embeddings", () => {
 
     const namespace2Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "namespace2",
+        namespace: "namespace2",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -328,7 +328,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "filtered-search",
+        namespace: "filtered-search",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -383,7 +383,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "multi-filter-or",
+        namespace: "multi-filter-or",
         version: 1,
         modelId: "test-model",
         dimension: 128,
@@ -442,7 +442,7 @@ describe("embeddings", () => {
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
-        id: "search-test",
+        namespace: "search-test",
         version: 1,
         modelId: "test-model",
         dimension: 128,
