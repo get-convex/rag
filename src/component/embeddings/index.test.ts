@@ -2,11 +2,32 @@
 
 import { describe, expect, test } from "vitest";
 import { convexTest } from "convex-test";
-import schema from "../schema.js";
+import schema, { v } from "../schema.js";
 import { api } from "../_generated/api.js";
 import { modules } from "../setup.test.js";
-import { insertEmbedding } from "./index.js";
+import { insertEmbedding, searchEmbeddings } from "./index.js";
 import { vectorWithImportanceDimension } from "./importance.js";
+import { action } from "../_generated/server.js";
+import { anyApi, type ApiFromModules } from "convex/server";
+
+export const search = action({
+  args: {
+    embedding: v.array(v.number()),
+    namespace: v.id("namespaces"),
+    filters: v.array(v.any()),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return searchEmbeddings(ctx, args);
+  },
+});
+
+const testApi: ApiFromModules<{
+  fns: {
+    search: typeof search;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}>["fns"] = anyApi["embeddings"]["index.test"] as any;
 
 describe("embeddings", () => {
   test("insertEmbedding with no filters or importance works", async () => {
@@ -128,7 +149,7 @@ describe("embeddings", () => {
     });
 
     // Search for the vectors
-    const results = await t.action(api.embeddings.index.search, {
+    const results = await t.action(testApi.search, {
       embedding,
       namespace: namespaceId,
       filters: [],
@@ -272,7 +293,7 @@ describe("embeddings", () => {
     });
 
     // Search in namespace1 only
-    const results1 = await t.action(api.embeddings.index.search, {
+    const results1 = await t.action(testApi.search, {
       embedding,
       namespace: namespace1Id,
       filters: [],
@@ -280,7 +301,7 @@ describe("embeddings", () => {
     });
 
     // Search in namespace2 only
-    const results2 = await t.action(api.embeddings.index.search, {
+    const results2 = await t.action(testApi.search, {
       embedding,
       namespace: namespace2Id,
       filters: [],
@@ -337,7 +358,7 @@ describe("embeddings", () => {
     });
 
     // Search for articles only
-    const articlesResults = await t.action(api.embeddings.index.search, {
+    const articlesResults = await t.action(testApi.search, {
       embedding,
       namespace: namespaceId,
       filters: [{ 0: "articles" }],
@@ -347,7 +368,7 @@ describe("embeddings", () => {
     expect(articlesResults).toHaveLength(2); // Two vectors with category "articles"
 
     // Search for published status only
-    const publishedResults = await t.action(api.embeddings.index.search, {
+    const publishedResults = await t.action(testApi.search, {
       embedding,
       namespace: namespaceId,
       filters: [{ 1: "published" }],
@@ -391,7 +412,7 @@ describe("embeddings", () => {
     });
 
     // Search with OR filters: articles OR high priority
-    const orResults = await t.action(api.embeddings.index.search, {
+    const orResults = await t.action(testApi.search, {
       embedding,
       namespace: namespaceId,
       filters: [
@@ -444,7 +465,7 @@ describe("embeddings", () => {
     });
 
     // Search should return results ordered by similarity
-    const results = await t.action(api.embeddings.index.search, {
+    const results = await t.action(testApi.search, {
       embedding: searchEmbedding,
       namespace: namespaceId,
       filters: [],

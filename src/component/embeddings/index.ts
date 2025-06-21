@@ -57,19 +57,6 @@ export type NamedFilter = {
 //   },
 // });
 
-export const search = action({
-  args: {
-    embedding: v.array(v.number()),
-    namespace: v.id("namespaces"),
-    filters: v.array(v.any()),
-    limit: v.number(),
-  },
-  returns: v.array(v.any()),
-  handler: async (ctx, args) => {
-    return searchEmbeddings(ctx, args);
-  },
-});
-
 function filterFieldsFromNumbers(
   namespace: Id<"namespaces">,
   filters: NumberedFilter | undefined
