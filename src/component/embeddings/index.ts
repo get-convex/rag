@@ -73,14 +73,14 @@ function filterFieldsFromNumbers(
 export async function insertEmbedding(
   ctx: MutationCtx,
   embedding: number[],
-  namespace: Id<"namespaces">,
+  namespaceId: Id<"namespaces">,
   importance: number | undefined,
   filters: NumberedFilter | undefined
 ) {
-  const filterFields = filterFieldsFromNumbers(namespace, filters);
+  const filterFields = filterFieldsFromNumbers(namespaceId, filters);
   const dimension = validateVectorDimension(embedding.length);
   return ctx.db.insert(getVectorTableName(dimension), {
-    namespace,
+    namespaceId,
     vector: vectorWithImportance(embedding, importance ?? 1),
     ...filterFields,
   });
@@ -90,12 +90,12 @@ export async function searchEmbeddings(
   ctx: ActionCtx,
   {
     embedding,
-    namespace,
+    namespaceId,
     filters,
     limit,
   }: {
     embedding: number[];
-    namespace: Id<"namespaces">;
+    namespaceId: Id<"namespaces">;
     // list of ORs of filters in the form of
     // [{3: filter3}, {1: filter1}, {2: filter2}]
     // where null is a placeholder for a filter that is not used.
@@ -106,13 +106,13 @@ export async function searchEmbeddings(
   const dimension = validateVectorDimension(embedding.length);
   const tableName = getVectorTableName(dimension);
   const orFilters = filters.flatMap((filter) =>
-    filterFieldsFromNumbers(namespace, filter)
+    filterFieldsFromNumbers(namespaceId, filter)
   );
   return ctx.vectorSearch(tableName, "vector", {
     vector: searchVector(embedding),
     filter: (q) =>
       orFilters.length === 0
-        ? q.eq("namespace", namespace)
+        ? q.eq("namespaceId", namespaceId)
         : q.or(
             ...orFilters.flatMap((namedFilter) =>
               Object.entries(namedFilter).map(([filterField, filter]) =>

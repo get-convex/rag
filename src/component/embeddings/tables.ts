@@ -43,18 +43,18 @@ export type NamedFilterField = {
 const embeddingsFields = {
   vector: v.array(v.number()),
   // [model, namespace, namespace version, document version]
-  namespace: v.id("namespaces"),
+  namespaceId: v.id("namespaces"),
   filter0: v.optional(filterField),
   filter1: v.optional(filterField),
   filter2: v.optional(filterField),
   filter3: v.optional(filterField),
 };
 
-const filterFields = ["namespace" as const, ...filterFieldNames];
+const filterFields = ["namespaceId" as const, ...filterFieldNames];
 
 export const vCreateEmbeddingArgs = v.object({
   vector: v.array(v.number()),
-  namespace: v.id("namespaces"),
+  namespaceId: v.id("namespaces"),
   importance: v.optional(v.number()),
   filters: v.optional(v.array(v.any())),
 });
@@ -67,7 +67,7 @@ function table(dimensions: VectorDimension): Table {
       dimensions: vectorWithImportanceDimension(dimensions),
       filterFields,
     })
-    .index("namespace", ["namespace"]);
+    .index("namespaceId", ["namespaceId"]);
 }
 
 type Table = TableDefinition<

@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import embeddingsTables from "./embeddings/tables.js";
+import embeddingsTables, { vVectorId } from "./embeddings/tables.js";
 import { typedV } from "convex-helpers/validators";
 
 export const vNamedFilter = v.object({
@@ -58,7 +58,7 @@ const schema = defineSchema({
       }),
       v.object({
         kind: v.literal("ready"),
-        embeddingId: v.id("embeddings"),
+        embeddingId: vVectorId,
       })
       // We could store the deleted state in a soft delete way in the future.
       // v.object({

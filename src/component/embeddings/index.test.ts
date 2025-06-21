@@ -13,7 +13,7 @@ import { anyApi, type ApiFromModules } from "convex/server";
 export const search = action({
   args: {
     embedding: v.array(v.number()),
-    namespace: v.id("namespaces"),
+    namespaceId: v.id("namespaces"),
     filters: v.array(v.any()),
     limit: v.number(),
   },
@@ -61,7 +61,7 @@ describe("embeddings", () => {
     });
 
     expect(insertedVector).toBeDefined();
-    expect(insertedVector!.namespace).toBe(namespaceId);
+    expect(insertedVector!.namespaceId).toBe(namespaceId);
     expect(insertedVector!.vector).toHaveLength(
       vectorWithImportanceDimension(128)
     );
@@ -151,7 +151,7 @@ describe("embeddings", () => {
     // Search for the vectors
     const results = await t.action(testApi.search, {
       embedding,
-      namespace: namespaceId,
+      namespaceId,
       filters: [],
       limit: 10,
     });
@@ -295,7 +295,7 @@ describe("embeddings", () => {
     // Search in namespace1 only
     const results1 = await t.action(testApi.search, {
       embedding,
-      namespace: namespace1Id,
+      namespaceId: namespace1Id,
       filters: [],
       limit: 10,
     });
@@ -303,7 +303,7 @@ describe("embeddings", () => {
     // Search in namespace2 only
     const results2 = await t.action(testApi.search, {
       embedding,
-      namespace: namespace2Id,
+      namespaceId: namespace2Id,
       filters: [],
       limit: 10,
     });
@@ -314,12 +314,12 @@ describe("embeddings", () => {
     // All results should be from the correct namespace
     for (const result of results1) {
       const vector = await t.run(async (ctx) => ctx.db.get(result._id));
-      expect(vector!.namespace).toBe(namespace1Id);
+      expect(vector!.namespaceId).toBe(namespace1Id);
     }
 
     for (const result of results2) {
       const vector = await t.run(async (ctx) => ctx.db.get(result._id));
-      expect(vector!.namespace).toBe(namespace2Id);
+      expect(vector!.namespaceId).toBe(namespace2Id);
     }
   });
 
@@ -360,7 +360,7 @@ describe("embeddings", () => {
     // Search for articles only
     const articlesResults = await t.action(testApi.search, {
       embedding,
-      namespace: namespaceId,
+      namespaceId,
       filters: [{ 0: "articles" }],
       limit: 10,
     });
@@ -370,7 +370,7 @@ describe("embeddings", () => {
     // Search for published status only
     const publishedResults = await t.action(testApi.search, {
       embedding,
-      namespace: namespaceId,
+      namespaceId,
       filters: [{ 1: "published" }],
       limit: 10,
     });
@@ -414,7 +414,7 @@ describe("embeddings", () => {
     // Search with OR filters: articles OR high priority
     const orResults = await t.action(testApi.search, {
       embedding,
-      namespace: namespaceId,
+      namespaceId,
       filters: [
         { 0: "articles" }, // category = articles
         { 1: "high" }, // OR priority = high
@@ -467,7 +467,7 @@ describe("embeddings", () => {
     // Search should return results ordered by similarity
     const results = await t.action(testApi.search, {
       embedding: searchEmbedding,
-      namespace: namespaceId,
+      namespaceId,
       filters: [],
       limit: 10,
     });
