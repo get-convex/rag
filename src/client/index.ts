@@ -1,13 +1,14 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v, type Value } from "convex/values";
-import type { Mounts } from "../component/_generated/api";
+import type { Mounts } from "../component/_generated/api.js";
 import type {
   UseApi,
   RunMutationCtx,
   RunQueryCtx,
   RunActionCtx,
-} from "./types";
+} from "./types.js";
 import type { EmbeddingModelV1 } from "@ai-sdk/provider";
+import type { NumberedFilter } from "../component/embeddings/tables.js";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
