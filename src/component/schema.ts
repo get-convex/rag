@@ -15,7 +15,7 @@ const schema = defineSchema({
   }).index("namespace_version", ["namespace", "version"]),
   documents: defineTable({
     // user-specified id, eg. storage ID or "myfile.txt". Used for upserting.
-    id: v.string(),
+    key: v.string(),
     namespaceId: v.id("namespaces"),
     version: v.number(),
     importance: v.number(),
@@ -37,7 +37,7 @@ const schema = defineSchema({
     mimeType: v.string(),
     metadata: v.optional(v.record(v.string(), v.any())),
     status: v.union(v.literal("pending"), v.literal("ready")),
-  }).index("namespaceId_id_version", ["namespaceId", "id", "version"]),
+  }).index("namespaceId_key_version", ["namespaceId", "key", "version"]),
   chunks: defineTable({
     documentId: v.id("documents"),
     order: v.number(),
