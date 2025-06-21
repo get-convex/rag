@@ -7,24 +7,15 @@
  * This file takes in numbered filters (0-3) to translate without knowing about
  * user names.
  */
-import { paginator } from "convex-helpers/server/pagination";
-import { mergedStream, stream } from "convex-helpers/server/stream";
 import { v, type Value } from "convex/values";
 import type { Id } from "../_generated/dataModel.js";
 import {
   type ActionCtx,
-  mutation,
   type MutationCtx,
-  query,
+  action,
 } from "../_generated/server.js";
-import schema from "../schema.js";
 import {
-  type CreateEmbeddingArgs,
   getVectorTableName,
-  type VectorDimension,
-  vCreateEmbeddingArgs,
-  vVectorDimension,
-  vVectorId,
   filterFieldNames,
   validateVectorDimension,
   type NumberedFilter,
@@ -43,19 +34,41 @@ export type NamedFilter = {
 //     vectorDimension: vVectorDimension,
 //     vectors: v.array(
 //       v.object({
-//         ...vCreateEmbeddingArgs.fields,
+//         vector: v.array(v.number()),
+//         namespace: v.id("namespaces"),
+//         importance: v.optional(v.number()),
+//         filters: v.optional(v.any()),
 //       })
 //     ),
 //   },
 //   returns: v.array(vVectorId),
 //   handler: async (ctx, args) => {
 //     return Promise.all(
-//       args.vectors.map(async (v) =>
-//         insertVector(ctx, v.vector, v.namespace, v.importance, v.filters)
+//       args.vectors.map(async (vector) =>
+//         insertEmbedding(
+//           ctx,
+//           vector.vector,
+//           vector.namespace,
+//           vector.importance,
+//           vector.filters
+//         )
 //       )
 //     );
 //   },
 // });
+
+export const search = action({
+  args: {
+    embedding: v.array(v.number()),
+    namespace: v.id("namespaces"),
+    filters: v.array(v.any()),
+    limit: v.number(),
+  },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    return searchEmbeddings(ctx, args);
+  },
+});
 
 function filterFieldsFromNumbers(
   namespace: Id<"namespaces">,
@@ -115,13 +128,15 @@ export async function searchEmbeddings(
   return ctx.vectorSearch(tableName, "vector", {
     vector: searchVector(embedding),
     filter: (q) =>
-      q.or(
-        ...orFilters.flatMap((namedFilter) =>
-          Object.entries(namedFilter).map(([filterField, filter]) =>
-            q.eq(filterField as keyof (typeof orFilters)[number], filter)
-          )
-        )
-      ),
+      orFilters.length === 0
+        ? q.eq("namespace", namespace)
+        : q.or(
+            ...orFilters.flatMap((namedFilter) =>
+              Object.entries(namedFilter).map(([filterField, filter]) =>
+                q.eq(filterField as keyof (typeof orFilters)[number], filter)
+              )
+            )
+          ),
     limit,
   });
 }

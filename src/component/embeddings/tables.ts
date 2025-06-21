@@ -1,4 +1,3 @@
-import { omit } from "convex-helpers";
 import { literals } from "convex-helpers/validators";
 import {
   defineTable,
@@ -18,9 +17,9 @@ import {
   type VObject,
   type VUnion,
 } from "convex/values";
-import type { QueryCtx } from "../_generated/server";
-import { vectorWithImportanceDimension } from "./importance";
-import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server.js";
+import { vectorWithImportanceDimension } from "./importance.js";
+import type { Id } from "../_generated/dataModel.js";
 
 const filterField = v.array(v.any()) as unknown as VArray<
   [Id<"namespaces">, Value],
@@ -35,7 +34,7 @@ export const filterFieldNames = [
   "filter3" as const,
 ];
 
-export type NumberedFilter = Record<number, FilterField>;
+export type NumberedFilter = Record<number, Value>;
 export type NamedFilterField = {
   [K in (typeof filterFieldNames)[number]]?: FilterField;
 };
