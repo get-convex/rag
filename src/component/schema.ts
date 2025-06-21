@@ -19,6 +19,10 @@ const schema = defineSchema({
     namespaceId: v.id("namespaces"),
     version: v.number(),
     importance: v.number(),
+    // To avoid re-creating/ updating the same document
+    // This is a hash that should encompass the content AND chunking strategy.
+    // e.g. a hash of the list of chunk content hashes.
+    contentHash: v.string(),
     // conveneient metadata
     source: v.union(
       v.object({
