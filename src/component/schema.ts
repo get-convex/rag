@@ -3,6 +3,11 @@ import { v } from "convex/values";
 import embeddingsTables from "./embeddings/tables.js";
 import { typedV } from "convex-helpers/validators";
 
+export const vNamedFilter = v.object({
+  name: v.string(),
+  value: v.any(),
+});
+
 const schema = defineSchema({
   namespaces: defineTable({
     // user-specified id, eg. userId or "documentation"
@@ -20,7 +25,7 @@ const schema = defineSchema({
     version: v.number(),
     importance: v.number(),
     // To avoid re-creating/ updating the same document
-    // This is a hash that should encompass the content AND chunking strategy.
+    // This is a hash that ideally encompasses the content AND chunking strategy
     // e.g. a hash of the list of chunk content hashes.
     contentHash: v.string(),
     // conveneient metadata
@@ -45,12 +50,29 @@ const schema = defineSchema({
   chunks: defineTable({
     documentId: v.id("documents"),
     order: v.number(),
-    embeddingId: v.id("embeddings"),
+    state: v.union(
+      v.object({
+        kind: v.literal("pending"),
+        embedding: v.array(v.number()),
+        filters: v.array(vNamedFilter),
+      }),
+      v.object({
+        kind: v.literal("ready"),
+        embeddingId: v.id("embeddings"),
+      })
+      // We could store the deleted state in a soft delete way in the future.
+      // v.object({
+      //   kind: v.literal("deleted"),
+      //   embeddingId: v.id("embeddings"),
+      //   embedding: v.array(v.number()),
+      //   filters: v.array(vNamedFilter),
+      // })
+    ),
     contentId: v.id("content"),
     importance: v.number(),
   })
     .index("documentId_order", ["documentId", "order"])
-    .index("embeddingId", ["embeddingId"]),
+    .index("embeddingId", ["state.embeddingId"]),
   content: defineTable({
     text: v.string(),
     // convenient metadata
