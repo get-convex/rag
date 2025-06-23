@@ -1,7 +1,15 @@
-import { defineSchema } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+import { vDocumentId } from "@convex-dev/document-search";
 
-export default defineSchema(
-  {
-    // Any tables used by the example app go here.
-  },
-);
+export default defineSchema({
+  files: defineTable({
+    global: v.boolean(),
+    filename: v.string(),
+    storageId: v.id("_storage"),
+    documentId: vDocumentId,
+    uploadedBy: v.string(),
+    category: v.string(),
+  }).index("global_category", ["global", "category"]),
+  // Any tables used by the example app go here.
+});

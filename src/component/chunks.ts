@@ -32,7 +32,6 @@ export const vCreateChunkArgs = v.object({
     metadata: v.optional(v.record(v.string(), v.any())),
   }),
   embedding: v.array(v.number()),
-  importance: v.number(),
 });
 export type CreateChunkArgs = Infer<typeof vCreateChunkArgs>;
 
@@ -71,7 +70,7 @@ export async function insertChunks(
         state: {
           kind: "pending",
           embedding: chunk.embedding,
-          importance: chunk.importance,
+          importance: document.importance,
         },
         contentId,
       })

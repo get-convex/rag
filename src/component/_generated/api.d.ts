@@ -46,7 +46,6 @@ export type Mounts = {
         chunks: Array<{
           content: { metadata?: Record<string, any>; text: string };
           embedding: Array<number>;
-          importance: number;
         }>;
         documentId: string;
         startOrder: number;
@@ -165,7 +164,6 @@ export type Mounts = {
         allChunks?: Array<{
           content: { metadata?: Record<string, any>; text: string };
           embedding: Array<number>;
-          importance: number;
         }>;
         document: {
           contentHash?: string;
@@ -218,7 +216,16 @@ export type Mounts = {
       {
         continueCursor: string;
         isDone: boolean;
-        page: Array<{ namespace: string; status: "pending" | "ready" }>;
+        page: Array<{
+          createdAt: number;
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+          namespaceId: string;
+          status: "pending" | "ready";
+          version: number;
+        }>;
         pageStatus?: "SplitRecommended" | "SplitRequired" | null;
         splitCursor?: string | null;
       }

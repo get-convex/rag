@@ -48,7 +48,6 @@ export declare const components: {
           chunks: Array<{
             content: { metadata?: Record<string, any>; text: string };
             embedding: Array<number>;
-            importance: number;
           }>;
           documentId: string;
           startOrder: number;
@@ -167,7 +166,6 @@ export declare const components: {
           allChunks?: Array<{
             content: { metadata?: Record<string, any>; text: string };
             embedding: Array<number>;
-            importance: number;
           }>;
           document: {
             contentHash?: string;
@@ -220,7 +218,16 @@ export declare const components: {
         {
           continueCursor: string;
           isDone: boolean;
-          page: Array<{ namespace: string; status: "pending" | "ready" }>;
+          page: Array<{
+            createdAt: number;
+            dimension: number;
+            filterNames: Array<string>;
+            modelId: string;
+            namespace: string;
+            namespaceId: string;
+            status: "pending" | "ready";
+            version: number;
+          }>;
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
           splitCursor?: string | null;
         }

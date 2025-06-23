@@ -8,7 +8,63 @@ import type {
   StorageActionWriter,
   StorageReader,
 } from "convex/server";
-import type { GenericId } from "convex/values";
+import type { GenericId, Infer, Value } from "convex/values";
+import type { Mounts } from "../component/_generated/api.js";
+import { brandedString } from "convex-helpers/validators";
+import type { Source } from "../component/schema.js";
+
+// Branded types for IDs, as components don't expose the internal ID types.
+export const vNamespaceId = brandedString("NamespaceId");
+export const vDocumentId = brandedString("DocumentId");
+export type NamespaceId = Infer<typeof vNamespaceId>;
+export type DocumentId = Infer<typeof vDocumentId>;
+
+// UseApi<typeof api> is an alternative that has jump-to-definition but is
+// less stable and reliant on types within the component files, which can cause
+// issues where passing `components.foo` doesn't match the argument
+export type DocumentSearchComponent = UseApi<Mounts>;
+
+export type OnCompleteNamespace = FunctionReference<
+  "mutation",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    previousNamespaceId: NamespaceId | null;
+    success: boolean;
+  },
+  null,
+  string
+>;
+
+export type OnCompleteDocument = FunctionReference<
+  "mutation",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    key: string;
+    documentId: DocumentId;
+    previousDocumentId: DocumentId | null;
+    success: boolean;
+  },
+  null,
+  string
+>;
+
+export type ChunkerAction = FunctionReference<
+  "action",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    key: string;
+    documentId: DocumentId;
+    source: Source;
+  },
+  null,
+  string
+>;
 
 // Type utils follow
 
