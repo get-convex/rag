@@ -8,9 +8,13 @@
  * @module
  */
 
+import type * as chunks from "../chunks.js";
+import type * as documents from "../documents.js";
+import type * as embeddings_importance from "../embeddings/importance.js";
 import type * as embeddings_index from "../embeddings/index.js";
 import type * as embeddings_tables from "../embeddings/tables.js";
 import type * as lib from "../lib.js";
+import type * as namespaces from "../namespaces.js";
 
 import type {
   ApiFromModules,
@@ -27,35 +31,63 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  chunks: typeof chunks;
+  documents: typeof documents;
+  "embeddings/importance": typeof embeddings_importance;
   "embeddings/index": typeof embeddings_index;
   "embeddings/tables": typeof embeddings_tables;
   lib: typeof lib;
+  namespaces: typeof namespaces;
 }>;
 export type Mounts = {
-  embeddings: {
-    index: {
-      insertBatch: FunctionReference<
-        "mutation",
-        "public",
-        {
-          vectorDimension:
-            | 128
-            | 256
-            | 512
-            | 768
-            | 1024
-            | 1408
-            | 1536
-            | 2048
-            | 3072
-            | 4096;
-          vectors: Array<{
-            filters: Array<any>;
-            namespace: string;
-            vector: Array<number>;
-          }>;
-        },
-        Array<
+  chunks: {
+    insert: FunctionReference<
+      "mutation",
+      "public",
+      {
+        chunks: Array<{
+          content: { metadata?: Record<string, any>; text: string };
+          embedding: Array<number>;
+          importance: number;
+        }>;
+        documentId: string;
+        startOrder: number;
+      },
+      any
+    >;
+    list: FunctionReference<
+      "query",
+      "public",
+      {
+        documentId: string;
+        paginationOpts: {
+          cursor: string | null;
+          endCursor?: string | null;
+          id?: number;
+          maximumBytesRead?: number;
+          maximumRowsRead?: number;
+          numItems: number;
+        };
+      },
+      {
+        continueCursor: string;
+        isDone: boolean;
+        page: Array<{
+          metadata?: Record<string, any>;
+          order: number;
+          state: "pending" | "ready" | "deleted";
+          text: string;
+        }>;
+        pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+        splitCursor?: string | null;
+      }
+    >;
+    replaceChunksAsync: FunctionReference<
+      "mutation",
+      "public",
+      {
+        documentId: string;
+        embeddingIds: Array<
           | string
           | string
           | string
@@ -66,9 +98,112 @@ export type Mounts = {
           | string
           | string
           | string
-        >
-      >;
-    };
+        >;
+        startOrder: number;
+      },
+      any
+    >;
+  };
+  documents: {
+    deleteDocumentAsync: FunctionReference<
+      "mutation",
+      "public",
+      { documentId: string; startOrder: number },
+      any
+    >;
+    get: FunctionReference<
+      "query",
+      "public",
+      { documentId: string },
+      {
+        contentHash?: string;
+        documentId: string;
+        filterValues: Array<{ name: string; value: any }>;
+        importance: number;
+        key: string;
+        source:
+          | { kind: "_storage"; storageId: string }
+          | { kind: "url"; url: string };
+        status: "pending" | "ready";
+      } | null
+    >;
+    list: FunctionReference<
+      "query",
+      "public",
+      {
+        key?: string;
+        namespaceId: string;
+        paginationOpts: {
+          cursor: string | null;
+          endCursor?: string | null;
+          id?: number;
+          maximumBytesRead?: number;
+          maximumRowsRead?: number;
+          numItems: number;
+        };
+      },
+      {
+        continueCursor: string;
+        isDone: boolean;
+        page: Array<{
+          contentHash?: string;
+          documentId: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          source:
+            | { kind: "_storage"; storageId: string }
+            | { kind: "url"; url: string };
+          status: "pending" | "ready";
+        }>;
+        pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+        splitCursor?: string | null;
+      }
+    >;
+    upsert: FunctionReference<
+      "mutation",
+      "public",
+      {
+        allChunks?: Array<{
+          content: { metadata?: Record<string, any>; text: string };
+          embedding: Array<number>;
+          importance: number;
+        }>;
+        document: {
+          contentHash?: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          namespaceId: string;
+          source:
+            | { kind: "_storage"; storageId: string }
+            | { kind: "url"; url: string };
+        };
+        onComplete?: string;
+        splitAndEmbed?: string;
+      },
+      { chunkIds: Array<string> | null; documentId: string }
+    >;
+  };
+  namespaces: {
+    get: FunctionReference<
+      "query",
+      "public",
+      { namespaceId: string },
+      { namespace: string; status: "pending" | "ready" }
+    >;
+    getOrCreate: FunctionReference<
+      "mutation",
+      "public",
+      {
+        dimension: number;
+        filterNames: Array<string>;
+        modelId: string;
+        namespace: string;
+        status: { kind: "pending"; onComplete?: string } | { kind: "ready" };
+      },
+      { namespaceId: string; status: "pending" | "ready" }
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

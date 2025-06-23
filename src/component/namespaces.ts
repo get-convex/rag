@@ -9,13 +9,32 @@ import {
   query,
   type QueryCtx,
 } from "./_generated/server.js";
-import { v } from "./schema.js";
+import {
+  v,
+  vStatusWithOnComplete,
+  type StatusWithOnComplete,
+} from "./schema.js";
+import { vStatus } from "../shared.js";
 
-async function getNamespace(
-  ctx: QueryCtx,
-  namespace: string,
-  namespaceVersion?: number
-) {}
+export const get = query({
+  args: {
+    namespaceId: v.id("namespaces"),
+  },
+  returns: v.object({
+    namespace: v.string(),
+    status: vStatus,
+  }),
+  handler: async (ctx, args) => {
+    const namespace = await ctx.db.get(args.namespaceId);
+    if (!namespace) {
+      throw new Error(`Namespace ${args.namespaceId} not found`);
+    }
+    return {
+      namespace: namespace.namespace,
+      status: namespace.status.kind,
+    };
+  },
+});
 
 function namespaceIsCompatible(
   existing: Doc<"namespaces">,

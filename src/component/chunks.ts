@@ -17,6 +17,9 @@ import { vVectorId } from "./embeddings/tables.js";
 import schema, { vNamedFilter } from "./schema.js";
 import { insertEmbedding } from "./embeddings/index.js";
 import { assert } from "convex-helpers";
+import { paginationOptsValidator } from "convex/server";
+import { paginator } from "convex-helpers/server/pagination";
+import { vChunk, vPaginationResult } from "../shared.js";
 
 const KB = 1_024;
 const MB = 1_024 * KB;
@@ -224,37 +227,66 @@ export const replaceChunksAsync = mutation({
   },
 });
 
-export const deleteDocumentAsync = mutation({
+export const list = query({
   args: v.object({
     documentId: v.id("documents"),
-    startOrder: v.number(),
-    embeddingIds: v.array(v.id("embeddings")),
+    paginationOpts: paginationOptsValidator,
   }),
+  returns: vPaginationResult(vChunk),
   handler: async (ctx, args) => {
-    const { documentId, startOrder, embeddingIds } = args;
-    const document = await ctx.db.get(documentId);
-    if (!document) {
-      throw new Error(`Document ${documentId} not found`);
-    }
-    const chunkStream = ctx.db
+    const { documentId, paginationOpts } = args;
+    const chunks = await paginator(ctx.db, schema)
       .query("chunks")
-      .withIndex("documentId_order", (q) =>
-        q.eq("documentId", documentId).gte("order", startOrder)
-      );
-    let dataUsedSoFar = 0;
-    for await (const chunk of chunkStream) {
-      dataUsedSoFar += await estimateChunkSize(chunk);
-      await ctx.db.delete(chunk._id);
-      dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
-      await ctx.db.delete(chunk.contentId);
-      if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
-        // TODO: schedule follow-up - workpool?
-        return;
-      }
-    }
-    await ctx.db.delete(documentId);
+      .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+      .order("asc")
+      .paginate(paginationOpts);
+    return {
+      ...chunks,
+      page: await Promise.all(
+        chunks.page.map(async (chunk) => {
+          const content = await ctx.db.get(chunk.contentId);
+          assert(content, `Content ${chunk.contentId} not found`);
+          return publicChunk(chunk, content);
+        })
+      ),
+    };
   },
 });
+
+async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
+  return {
+    order: chunk.order,
+    state: chunk.state.kind,
+    text: content.text,
+    metadata: content.metadata,
+  };
+}
+
+export async function deleteChunksPage(
+  ctx: MutationCtx,
+  {
+    documentId,
+    startOrder,
+  }: { documentId: Id<"documents">; startOrder: number }
+) {
+  const chunkStream = ctx.db
+    .query("chunks")
+    .withIndex("documentId_order", (q) =>
+      q.eq("documentId", documentId).gte("order", startOrder)
+    );
+  let dataUsedSoFar = 0;
+  for await (const chunk of chunkStream) {
+    dataUsedSoFar += await estimateChunkSize(chunk);
+    await ctx.db.delete(chunk._id);
+    dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
+    await ctx.db.delete(chunk.contentId);
+    if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
+      // TODO: schedule follow-up - workpool?
+      return { isDone: false, nextStartOrder: chunk.order };
+    }
+  }
+  return { isDone: true, nextStartOrder: -1 };
+}
 
 async function estimateChunkSize(chunk: Doc<"chunks">) {
   let dataUsedSoFar = 100; // constant metadata - roughly

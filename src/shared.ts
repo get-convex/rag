@@ -3,6 +3,7 @@ import type { Infer, Validator, Value } from "convex/values";
 import { vNamedFilter, vSource, type Source } from "./component/schema.js";
 import { vDocumentId, type DocumentId } from "./client/index.js";
 import type { NamedFilter } from "./component/embeddings/index.js";
+import { vVectorId } from "./component/embeddings/tables.js";
 
 export const vStatus = v.union(v.literal("pending"), v.literal("ready"));
 export type Status = Infer<typeof vStatus>;
@@ -40,6 +41,19 @@ export type Document = {
   // Whether this document's contents have all been inserted and indexed.
   status: Status;
 };
+
+export const vChunk = v.object({
+  order: v.number(),
+  state: v.union(
+    v.literal("pending"),
+    v.literal("ready"),
+    v.literal("deleted")
+  ),
+  text: v.string(),
+  metadata: v.optional(v.record(v.string(), v.any())),
+});
+
+export type Chunk = Infer<typeof vChunk>;
 
 export function vPaginationResult<
   T extends Validator<Value, "required", string>,

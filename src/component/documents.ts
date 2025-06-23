@@ -1,13 +1,14 @@
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { omit } from "convex-helpers";
 import schema, { type Source } from "./schema.js";
-import { insertChunks, vCreateChunkArgs } from "./chunks.js";
+import { deleteChunksPage, insertChunks, vCreateChunkArgs } from "./chunks.js";
 import { vDocument, vPaginationResult, type Document } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { DocumentId } from "../client/index.js";
+import { api } from "./_generated/api.js";
 
 export const upsert = mutation({
   args: {
@@ -15,6 +16,7 @@ export const upsert = mutation({
       ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
     }),
     onComplete: v.optional(v.string()),
+    splitAndEmbed: v.optional(v.string()),
     // If we can commit all chunks at the same time, the status is "ready"
     allChunks: v.optional(v.array(vCreateChunkArgs)),
   },
@@ -44,7 +46,7 @@ export const upsert = mutation({
       // Check if the content is the same
       if (documentIsSame(existing, args.document)) {
         if (args.onComplete) {
-          await enqueueOnComplete(ctx, args.onComplete);
+          await enqueueOnComplete(ctx, args.onComplete, existing._id);
         }
         return {
           documentId: existing._id,
@@ -66,13 +68,22 @@ export const upsert = mutation({
         startOrder: 0,
         chunks: args.allChunks,
       });
+      if (args.onComplete) {
+        await enqueueOnComplete(ctx, args.onComplete, documentId);
+      }
       return { documentId, chunkIds };
+    } else if (args.splitAndEmbed) {
+      // TODO: enqueue a job to split and embed
     }
     return { documentId, chunkIds: null };
   },
 });
 
-async function enqueueOnComplete(ctx: MutationCtx, onComplete: string) {
+async function enqueueOnComplete(
+  ctx: MutationCtx,
+  onComplete: string,
+  documentId: Id<"documents">
+) {
   throw new Error("Not implemented");
 }
 
@@ -121,8 +132,6 @@ function documentIsSame(
 
 function sourceMatches(existing: Source, newSource: Source) {
   switch (existing.kind) {
-    case "custom":
-      return newSource.kind === "custom" && existing.text === newSource.text;
     case "url":
       return newSource.kind === "url" && existing.url === newSource.url;
     case "_storage":
@@ -134,3 +143,80 @@ function sourceMatches(existing: Source, newSource: Source) {
       throw new Error(`Unknown source kind: ${existing}`);
   }
 }
+
+export const list = query({
+  args: {
+    namespaceId: v.id("namespaces"),
+    key: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: vPaginationResult(vDocument),
+  handler: async (ctx, args) => {
+    const results = await paginator(ctx.db, schema)
+      .query("documents")
+      .withIndex("namespaceId_key_version", (q) =>
+        args.key === undefined
+          ? q.eq("namespaceId", args.namespaceId)
+          : q.eq("namespaceId", args.namespaceId).eq("key", args.key)
+      )
+      .order("desc")
+      .paginate(args.paginationOpts);
+    return {
+      ...results,
+      page: results.page.map(publicDocument),
+    };
+  },
+});
+
+export const get = query({
+  args: {
+    documentId: v.id("documents"),
+  },
+  returns: v.union(vDocument, v.null()),
+  handler: async (ctx, args) => {
+    const document = await ctx.db.get(args.documentId);
+    if (!document) {
+      console.warn(`Document ${args.documentId} not found`);
+      return null;
+    }
+    return publicDocument(document);
+  },
+});
+
+function publicDocument(document: Doc<"documents">): Document {
+  const { key, importance, filterValues, contentHash, source } = document;
+
+  return {
+    documentId: document._id as unknown as DocumentId,
+    key,
+    importance,
+    filterValues,
+    contentHash,
+    source,
+    status: document.status.kind,
+  };
+}
+
+export const deleteDocumentAsync = mutation({
+  args: v.object({
+    documentId: v.id("documents"),
+    startOrder: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const { documentId, startOrder } = args;
+    const document = await ctx.db.get(documentId);
+    if (!document) {
+      throw new Error(`Document ${documentId} not found`);
+    }
+    const status = await deleteChunksPage(ctx, { documentId, startOrder });
+    if (status.isDone) {
+      await ctx.db.delete(documentId);
+    } else {
+      // TODO: schedule follow-up - workpool?
+      await ctx.scheduler.runAfter(0, api.documents.deleteDocumentAsync, {
+        documentId,
+        startOrder: status.nextStartOrder,
+      });
+    }
+  },
+});

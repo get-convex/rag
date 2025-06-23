@@ -75,7 +75,7 @@ export const schema = defineSchema({
       }),
       v.object({
         kind: v.literal("deleted"),
-        embeddingId: v.id("embeddings"),
+        embeddingId: vVectorId,
         // We could store enough to re-create the embedding in the future.
         //   embedding: v.array(v.number()),
         //   filters: v.array(vNamedFilter),
