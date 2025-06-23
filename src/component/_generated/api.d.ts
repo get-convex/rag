@@ -13,7 +13,6 @@ import type * as documents from "../documents.js";
 import type * as embeddings_importance from "../embeddings/importance.js";
 import type * as embeddings_index from "../embeddings/index.js";
 import type * as embeddings_tables from "../embeddings/tables.js";
-import type * as lib from "../lib.js";
 import type * as namespaces from "../namespaces.js";
 
 import type {
@@ -36,7 +35,6 @@ declare const fullApi: ApiFromModules<{
   "embeddings/importance": typeof embeddings_importance;
   "embeddings/index": typeof embeddings_index;
   "embeddings/tables": typeof embeddings_tables;
-  lib: typeof lib;
   namespaces: typeof namespaces;
 }>;
 export type Mounts = {
