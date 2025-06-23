@@ -19,21 +19,15 @@ import { insertEmbedding } from "./embeddings/index.js";
 import { assert } from "convex-helpers";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
-import { vChunk, vPaginationResult } from "../shared.js";
-
-const KB = 1_024;
-const MB = 1_024 * KB;
-const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
-const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
-
-export const vCreateChunkArgs = v.object({
-  content: v.object({
-    text: v.string(),
-    metadata: v.optional(v.record(v.string(), v.any())),
-  }),
-  embedding: v.array(v.number()),
-});
-export type CreateChunkArgs = Infer<typeof vCreateChunkArgs>;
+import {
+  BANDWIDTH_PER_TRANSACTION_HARD_LIMIT,
+  BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
+  KB,
+  vChunk,
+  vCreateChunkArgs,
+  vPaginationResult,
+  type Chunk,
+} from "../shared.js";
 
 export const vInsertChunksArgs = v.object({
   documentId: v.id("documents"),
@@ -252,6 +246,23 @@ export const list = query({
   },
 });
 
+export async function findLastChunk(
+  ctx: MutationCtx,
+  documentId: Id<"documents">
+): Promise<Chunk | null> {
+  const chunk = await ctx.db
+    .query("chunks")
+    .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+    .order("desc")
+    .first();
+  if (!chunk) {
+    return null;
+  }
+  const content = await ctx.db.get(chunk.contentId);
+  assert(content, `Content for chunk ${chunk._id} not found`);
+  return publicChunk(chunk, content);
+}
+
 async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
   return {
     order: chunk.order,
@@ -290,7 +301,7 @@ export async function deleteChunksPage(
 async function estimateChunkSize(chunk: Doc<"chunks">) {
   let dataUsedSoFar = 100; // constant metadata - roughly
   if (chunk.state.kind === "pending") {
-    dataUsedSoFar += chunk.state.embedding.length * 4;
+    dataUsedSoFar += chunk.state.embedding.length * 8;
   }
   return dataUsedSoFar;
 }

@@ -1,6 +1,6 @@
 import {
   v,
-  type Infer,
+  type GenericId,
   type Validator,
   type Value,
   type VString,
@@ -21,22 +21,22 @@ import {
 } from "./types.js";
 import type { EmbeddingModelV1 } from "@ai-sdk/provider";
 import { embed } from "ai";
-import type { NumberedFilter } from "../component/embeddings/tables.js";
 import { vSource, type Source } from "../component/schema.js";
-import type { Chunk, Status } from "../shared.js";
-import { brandedString } from "convex-helpers/validators";
-import type { Id } from "../component/_generated/dataModel.js";
+import {
+  BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
+  estimateCreateChunkSize,
+  type Chunk,
+  type Status,
+} from "../shared.js";
 import {
   createFunctionHandle,
+  internalActionGeneric,
   type FunctionArgs,
   type FunctionHandle,
-  type FunctionReference,
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import { internalAction } from "../component/_generated/server.js";
-import type { CreateChunkArgs } from "../component/chunks.js";
-import { assert } from "convex-helpers";
+import type { CreateChunkArgs } from "../shared.js";
 
 export { vNamespaceId, vDocumentId } from "./types.js";
 
@@ -126,19 +126,13 @@ export class DocumentSearch<
       filterValues?: NamedFilter<FilterNames>[];
       importance?: number;
       contentHash?: string;
-      onComplete?: OnCompleteDocument;
-    } & (
-      | {
-          allChunks?: InputChunk[];
-          splitAndEmbedAction?: undefined;
-        }
-      | {
-          allChunks?: undefined;
-          splitAndEmbedAction: ChunkerAction;
-        }
-    ) &
-      ({ namespace: string } | { namespaceId: NamespaceId }) &
-      ({ storageId: Id<"_storage"> } | { url: string })
+      chunks: InputChunk[];
+      splitAndEmbedAction?: undefined;
+    } & ({ namespace: string } | { namespaceId: NamespaceId }) &
+      (
+        | { source: { storageId: GenericId<"_storage"> } }
+        | { source: { url: string } }
+      )
   ) {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -151,17 +145,114 @@ export class DocumentSearch<
       namespaceId = namespace.namespaceId;
     }
     let source: Source;
-    if ("storageId" in args) {
-      source = { kind: "_storage", storageId: args.storageId };
+    if ("storageId" in args.source) {
+      source = { kind: "_storage", storageId: args.source.storageId };
     } else {
-      source = { kind: "url", url: args.url };
+      source = { kind: "url", url: args.source.url };
+    }
+    // break chunks up into batches, respecting soft limit
+    const batches: CreateChunkArgs[][] = []; //chunk(args.chunks, this.component.chunks.insert.softLimit);
+    let batchBytes = 0;
+    let batch: CreateChunkArgs[] = [];
+    for (const chunk of args.chunks ?? []) {
+      const createChunkArgs = await this._chunkToCreateChunkArgs(chunk);
+      batch.push(createChunkArgs);
+      const size = estimateCreateChunkSize(createChunkArgs);
+      batchBytes += size;
+      if (batchBytes > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
+        batches.push(batch);
+        batch = [];
+        batchBytes = 0;
+      }
+    }
+    if (batch.length > 0) {
+      batches.push(batch);
+    }
+
+    const { documentId, lastChunk } = await ctx.runMutation(
+      this.component.documents.upsert,
+      {
+        document: {
+          key: args.key,
+          namespaceId,
+          source,
+          filterValues: args.filterValues ?? [],
+          importance: args.importance ?? 1,
+          contentHash: args.contentHash,
+        },
+        allChunks: batches.length === 1 ? batches[0] : undefined,
+      }
+    );
+    if (batches.length > 1) {
+      let startOrder = (lastChunk?.order ?? -1) + 1;
+      for (const batch of batches) {
+        await ctx.runMutation(this.component.chunks.insert, {
+          documentId,
+          startOrder,
+          chunks: batch,
+        });
+        startOrder += batch.length;
+      }
+      await ctx.runMutation(this.component.documents.updateStatus, {
+        documentId,
+        status: "ready",
+      });
+    }
+    return documentId;
+  }
+
+  async upsertDocumentAsync(
+    ctx: RunActionCtx,
+    args: {
+      key: string;
+      // mimeType: string;
+      // metadata?: Record<string, Value>;
+      filterValues?: NamedFilter<FilterNames>[];
+      importance?: number;
+      contentHash?: string;
+      onComplete?: OnCompleteDocument;
+      /**
+       * A function that splits the document into chunks and embeds them.
+       * This should be passed as internal.foo.myChunkerAction
+       * e.g.
+       * ```ts
+       * export const myChunkerAction = documentSearch.defineChunkerAction();
+       *
+       * // in your mutation
+       *   const documentId = await documentSearch.upsertDocumentAsync(ctx, {
+       *     key: "myfile.txt",
+       *     namespace: "my-namespace",
+       *     source: { url: "https://my-url.com" },
+       *     chunker: internal.foo.myChunkerAction,
+       *   });
+       */
+      chunkerAction: ChunkerAction;
+    } & ({ namespace: string } | { namespaceId: NamespaceId }) &
+      (
+        | { source: { storageId: GenericId<"_storage"> } }
+        | { source: { url: string } }
+      )
+  ) {
+    let namespaceId: NamespaceId;
+    if ("namespaceId" in args) {
+      namespaceId = args.namespaceId;
+    } else {
+      const namespace = await this.getOrCreateNamespace(ctx, {
+        namespace: args.namespace,
+        status: "ready",
+      });
+      namespaceId = namespace.namespaceId;
+    }
+    let source: Source;
+    if ("storageId" in args.source) {
+      source = { kind: "_storage", storageId: args.source.storageId };
+    } else {
+      source = { kind: "url", url: args.source.url };
     }
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
       : undefined;
-    const splitAndEmbed = args.splitAndEmbedAction
-      ? await createFunctionHandle(args.splitAndEmbedAction)
-      : undefined;
+    const splitAndEmbed = await createFunctionHandle(args.chunkerAction);
 
     return await ctx.runMutation(this.component.documents.upsert, {
       document: {
@@ -174,9 +265,6 @@ export class DocumentSearch<
       },
       onComplete,
       splitAndEmbed,
-      allChunks: args.allChunks
-        ? await Promise.all(args.allChunks.map(this._chunkToCreateChunkArgs))
-        : undefined,
     });
   }
 
@@ -200,7 +288,7 @@ export class DocumentSearch<
   }
 
   async getOrCreateNamespace(
-    ctx: RunActionCtx,
+    ctx: RunMutationCtx,
     args: {
       namespace: string;
       status?: Status;
@@ -297,7 +385,7 @@ export class DocumentSearch<
       }
     ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
   ) {
-    return internalAction({
+    return internalActionGeneric({
       args: v.object({
         namespace: v.string(),
         namespaceId: vNamespaceId,

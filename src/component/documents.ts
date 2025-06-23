@@ -2,13 +2,97 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { omit } from "convex-helpers";
-import schema, { type Source } from "./schema.js";
-import { deleteChunksPage, insertChunks, vCreateChunkArgs } from "./chunks.js";
-import { vDocument, vPaginationResult, type Document } from "../shared.js";
+import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
+import { deleteChunksPage, findLastChunk, insertChunks } from "./chunks.js";
+import {
+  vChunk,
+  vDocument,
+  vPaginationResult,
+  vStatus,
+  type Document,
+  vCreateChunkArgs,
+} from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { DocumentId } from "../client/index.js";
 import { api } from "./_generated/api.js";
+import { assert } from "convex-helpers";
+import { nullable } from "convex-helpers/validators";
+
+export const upsertAsync = mutation({
+  args: {
+    document: v.object({
+      ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
+    }),
+    onComplete: v.optional(v.string()),
+    chunker: v.string(),
+  },
+  returns: v.object({
+    documentId: v.id("documents"),
+    status: vStatus,
+  }),
+  handler: async (ctx, args) => {
+    const { namespaceId, key } = args.document;
+    const namespace = await ctx.db.get(namespaceId);
+    assert(namespace, `Namespace ${namespaceId} not found`);
+    // iterate through the latest versions of the document
+    const existing = await findExistingDocument(ctx, namespaceId, key);
+    if (
+      existing?.status.kind === "ready" &&
+      documentIsSame(existing, args.document)
+    ) {
+      if (args.onComplete) {
+        await enqueueOnComplete(ctx, args.onComplete, existing._id);
+      }
+      return { documentId: existing._id, status: existing.status.kind };
+    }
+    const version = existing ? existing.version + 1 : 0;
+    const status: StatusWithOnComplete = {
+      kind: "pending",
+      onComplete: args.onComplete,
+    };
+    const documentId = await ctx.db.insert("documents", {
+      ...args.document,
+      version,
+      status,
+    });
+    await enqueueUpsert(ctx, {
+      documentId,
+      chunker: args.chunker,
+    });
+    return { documentId, status: status.kind };
+  },
+});
+
+async function enqueueUpsert(
+  ctx: MutationCtx,
+  args: {
+    documentId: Id<"documents">;
+    chunker: string;
+  }
+) {
+  // TODO: enqueue into workpool
+}
+
+type UpsertDocumentArgs = Pick<
+  Doc<"documents">,
+  "key" | "contentHash" | "importance" | "source" | "filterValues"
+>;
+
+async function findExistingDocument(
+  ctx: MutationCtx,
+  namespaceId: Id<"namespaces">,
+  key: string
+) {
+  const existing = await ctx.db
+    .query("documents")
+    .withIndex("namespaceId_key_version", (q) =>
+      q.eq("namespaceId", namespaceId).eq("key", key)
+    )
+    .order("desc")
+    .first();
+  return existing;
+}
 
 export const upsert = mutation({
   args: {
@@ -22,37 +106,23 @@ export const upsert = mutation({
   },
   returns: v.object({
     documentId: v.id("documents"),
-    chunkIds: v.union(v.array(v.id("chunks")), v.null()),
+    lastChunk: nullable(vChunk),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.document;
     const namespace = await ctx.db.get(namespaceId);
-    if (!namespace) {
-      throw new Error(`Namespace ${namespaceId} not found`);
-    }
+    assert(namespace, `Namespace ${namespaceId} not found`);
     // iterate through the latest versions of the document
-    const existing = await ctx.db
-      .query("documents")
-      .withIndex("namespaceId_key_version", (q) =>
-        q.eq("namespaceId", namespaceId).eq("key", key)
-      )
-      .order("desc")
-      .first();
-    if (existing && existing.status.kind === "pending") {
-      console.warn(
-        `Existing document ${key} version ${existing.version} is still pending. Skipping...`
-      );
-    } else if (existing && existing.status.kind === "ready") {
-      // Check if the content is the same
-      if (documentIsSame(existing, args.document)) {
-        if (args.onComplete) {
-          await enqueueOnComplete(ctx, args.onComplete, existing._id);
-        }
-        return {
-          documentId: existing._id,
-          chunkIds: null,
-        };
+    const existing = await findExistingDocument(ctx, namespaceId, key);
+    if (
+      existing?.status.kind === "ready" &&
+      documentIsSame(existing, args.document)
+    ) {
+      if (args.onComplete) {
+        await enqueueOnComplete(ctx, args.onComplete, existing._id);
       }
+      const lastChunk = await findLastChunk(ctx, existing._id);
+      return { documentId: existing._id, lastChunk };
     }
     const version = existing ? existing.version + 1 : 0;
     const documentId = await ctx.db.insert("documents", {
@@ -71,11 +141,10 @@ export const upsert = mutation({
       if (args.onComplete) {
         await enqueueOnComplete(ctx, args.onComplete, documentId);
       }
-      return { documentId, chunkIds };
-    } else if (args.splitAndEmbed) {
-      // TODO: enqueue a job to split and embed
+      const lastChunk = await findLastChunk(ctx, documentId);
+      return { documentId, lastChunk };
     }
-    return { documentId, chunkIds: null };
+    return { documentId, lastChunk: null };
   },
 });
 
@@ -89,10 +158,7 @@ async function enqueueOnComplete(
 
 function documentIsSame(
   existing: Doc<"documents">,
-  newDocument: Pick<
-    Doc<"documents">,
-    "key" | "contentHash" | "importance" | "source" | "filterValues"
-  >
+  newDocument: UpsertDocumentArgs
 ) {
   if (existing.contentHash !== newDocument.contentHash) {
     return false;
@@ -180,6 +246,18 @@ export const get = query({
       return null;
     }
     return publicDocument(document);
+  },
+});
+
+export const updateStatus = mutation({
+  args: v.object({
+    documentId: v.id("documents"),
+    status: vStatus,
+  }),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.documentId, {
+      status: { kind: args.status },
+    });
   },
 });
 

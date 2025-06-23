@@ -3,7 +3,11 @@ import type { Infer, Validator, Value } from "convex/values";
 import { vNamedFilter, vSource, type Source } from "./component/schema.js";
 import { vDocumentId, type DocumentId } from "./client/index.js";
 import type { NamedFilter } from "./component/embeddings/index.js";
-import { vVectorId } from "./component/embeddings/tables.js";
+
+export const KB = 1_024;
+export const MB = 1_024 * KB;
+export const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
+export const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
 
 export const vStatus = v.union(v.literal("pending"), v.literal("ready"));
 export type Status = Infer<typeof vStatus>;
@@ -67,6 +71,22 @@ export const vChunk = v.object({
 });
 
 export type Chunk = Infer<typeof vChunk>;
+
+export const vCreateChunkArgs = v.object({
+  content: v.object({
+    text: v.string(),
+    metadata: v.optional(v.record(v.string(), v.any())),
+  }),
+  embedding: v.array(v.number()),
+});
+export type CreateChunkArgs = Infer<typeof vCreateChunkArgs>;
+
+export function estimateCreateChunkSize(chunk: CreateChunkArgs) {
+  const embeddingDataSize = chunk.embedding.length * 8;
+  const textDataSize = chunk.content.text.length;
+  const metadataDataSize = JSON.stringify(chunk.content.metadata).length;
+  return embeddingDataSize + textDataSize + metadataDataSize;
+}
 
 export function vPaginationResult<
   T extends Validator<Value, "required", string>,

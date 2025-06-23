@@ -159,6 +159,12 @@ export declare const components: {
           splitCursor?: string | null;
         }
       >;
+      updateStatus: FunctionReference<
+        "mutation",
+        "internal",
+        { documentId: string; status: "pending" | "ready" },
+        any
+      >;
       upsert: FunctionReference<
         "mutation",
         "internal",
@@ -180,7 +186,34 @@ export declare const components: {
           onComplete?: string;
           splitAndEmbed?: string;
         },
-        { chunkIds: Array<string> | null; documentId: string }
+        {
+          documentId: string;
+          lastChunk: null | {
+            metadata?: Record<string, any>;
+            order: number;
+            state: "pending" | "ready" | "deleted";
+            text: string;
+          };
+        }
+      >;
+      upsertAsync: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          chunker: string;
+          document: {
+            contentHash?: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            namespaceId: string;
+            source:
+              | { kind: "_storage"; storageId: string }
+              | { kind: "url"; url: string };
+          };
+          onComplete?: string;
+        },
+        { documentId: string; status: "pending" | "ready" }
       >;
     };
     namespaces: {

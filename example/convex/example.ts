@@ -7,7 +7,7 @@ import {
   MutationCtx,
   ActionCtx,
 } from "./_generated/server";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import {
   DocumentSearch,
   InputChunk,
@@ -23,7 +23,7 @@ const documentSearch = new DocumentSearch(components.documentSearch, {
   embeddingDimension: 1536,
 });
 
-export const splitter = documentSearch.defineChunkerAction(
+export const chunkerAction = documentSearch.defineChunkerAction(
   async (ctx, args) => {
     const chunks: InputChunk[] = [];
     return { chunks };
@@ -47,15 +47,16 @@ export const uploadFile = action({
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
-    const documentId = await documentSearch.upsertDocument(ctx, {
+    const documentId = await documentSearch.upsertDocumentAsync(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       key: args.filename,
-      storageId,
+      source: { storageId },
       filterValues: [
         { name: "documentKey", value: args.filename },
         { name: "documentMimeType", value: args.mimeType },
         { name: "category", value: args.category },
       ],
+      chunkerAction: internal.example.chunkerAction,
     });
     // await ctx.runMutation(internal.example.recordUploadMetadata, {
     //   filename,

@@ -62,8 +62,7 @@ export type ChunkerAction = FunctionReference<
     documentId: DocumentId;
     source: Source;
   },
-  null,
-  string
+  null
 >;
 
 // Type utils follow
