@@ -52,22 +52,12 @@ const embeddingsFields = {
 
 const filterFields = ["namespaceId" as const, ...filterFieldNames];
 
-export const vCreateEmbeddingArgs = v.object({
-  vector: v.array(v.number()),
-  namespaceId: v.id("namespaces"),
-  importance: v.optional(v.number()),
-  filters: v.optional(v.array(v.any())),
-});
-export type CreateEmbeddingArgs = Infer<typeof vCreateEmbeddingArgs>;
-
 function table(dimensions: VectorDimension): Table {
-  return defineTable(embeddingsFields)
-    .vectorIndex("vector", {
-      vectorField: "vector",
-      dimensions: vectorWithImportanceDimension(dimensions),
-      filterFields,
-    })
-    .index("namespaceId", ["namespaceId"]);
+  return defineTable(embeddingsFields).vectorIndex("vector", {
+    vectorField: "vector",
+    dimensions: vectorWithImportanceDimension(dimensions),
+    filterFields,
+  });
 }
 
 type Table = TableDefinition<
@@ -131,15 +121,15 @@ export const vVectorId = v.union(
 export function getVectorTableName(dimension: VectorDimension) {
   return `embeddings_${dimension}` as VectorTableName;
 }
-export function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId) {
-  for (const dimension of VectorDimensions) {
-    const tableName = getVectorTableName(dimension);
-    if (ctx.db.normalizeId(tableName, id)) {
-      return { tableName, dimension };
-    }
-  }
-  throw new Error(`Unknown vector table id: ${id}`);
-}
+// export function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId) {
+//   for (const dimension of VectorDimensions) {
+//     const tableName = getVectorTableName(dimension);
+//     if (ctx.db.normalizeId(tableName, id)) {
+//       return { tableName, dimension };
+//     }
+//   }
+//   throw new Error(`Unknown vector table id: ${id}`);
+// }
 
 const tables: {
   [K in keyof typeof VectorDimensions &

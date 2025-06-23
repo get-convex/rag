@@ -1,5 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import embeddingsTables, { vVectorId } from "./embeddings/tables.js";
 import { typedV } from "convex-helpers/validators";
 
@@ -7,6 +7,18 @@ export const vNamedFilter = v.object({
   name: v.string(),
   value: v.any(),
 });
+
+export const vSource = v.union(
+  v.object({
+    kind: v.literal("_storage"),
+    storageId: v.string(),
+  }),
+  v.object({
+    kind: v.literal("url"),
+    url: v.string(),
+  })
+);
+export type Source = Infer<typeof vSource>;
 
 const schema = defineSchema({
   namespaces: defineTable({
@@ -29,20 +41,7 @@ const schema = defineSchema({
     // e.g. a hash of the list of chunk content hashes.
     contentHash: v.string(),
     // conveneient metadata
-    source: v.union(
-      v.object({
-        kind: v.literal("_storage"),
-        storageId: v.string(),
-      }),
-      v.object({
-        kind: v.literal("inline"),
-        // We get the contents from the content table
-      }),
-      v.object({
-        kind: v.literal("url"),
-        url: v.string(),
-      })
-    ),
+    source: vSource,
     mimeType: v.string(),
     metadata: v.optional(v.record(v.string(), v.any())),
     status: v.union(v.literal("pending"), v.literal("ready")),
@@ -55,6 +54,7 @@ const schema = defineSchema({
         kind: v.literal("pending"),
         embedding: v.array(v.number()),
         filters: v.array(vNamedFilter),
+        importance: v.number(),
       }),
       v.object({
         kind: v.literal("ready"),
@@ -66,10 +66,11 @@ const schema = defineSchema({
       //   embeddingId: v.id("embeddings"),
       //   embedding: v.array(v.number()),
       //   filters: v.array(vNamedFilter),
+      //  importance: v.number(),
       // })
     ),
+    // TODO: should content be inline?
     contentId: v.id("content"),
-    importance: v.number(),
   })
     .index("documentId_order", ["documentId", "order"])
     .index("embeddingId", ["state.embeddingId"]),
