@@ -9,12 +9,19 @@ import {
   query,
   type QueryCtx,
 } from "./_generated/server.js";
-import {
+import schema, {
   v,
   vStatusWithOnComplete,
   type StatusWithOnComplete,
 } from "./schema.js";
-import { vStatus } from "../shared.js";
+import {
+  vNamespace,
+  vPaginationResult,
+  vStatus,
+  type Namespace,
+} from "../shared.js";
+import { paginationOptsValidator } from "convex/server";
+import { paginator } from "convex-helpers/server/pagination";
 
 export const get = query({
   args: {
@@ -107,3 +114,32 @@ export const getOrCreate = mutation({
     };
   },
 });
+
+export const list = query({
+  args: v.object({
+    paginationOpts: paginationOptsValidator,
+  }),
+  returns: vPaginationResult(vNamespace),
+  handler: async (ctx, args) => {
+    const namespaces = await paginator(ctx.db, schema)
+      .query("namespaces")
+      .order("desc")
+      .paginate(args.paginationOpts);
+    return {
+      ...namespaces,
+      page: namespaces.page.map(publicNamespace),
+    };
+  },
+});
+
+function publicNamespace(namespace: Doc<"namespaces">): Namespace {
+  const { _id, _creationTime, status, ...rest } = namespace;
+  return {
+    namespaceId: _id,
+    createdAt: _creationTime,
+    ...rest,
+    status: status.kind,
+  };
+}
+
+// TODO: deletion

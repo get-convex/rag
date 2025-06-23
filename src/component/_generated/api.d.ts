@@ -202,6 +202,27 @@ export type Mounts = {
       },
       { namespaceId: string; status: "pending" | "ready" }
     >;
+    list: FunctionReference<
+      "query",
+      "public",
+      {
+        paginationOpts: {
+          cursor: string | null;
+          endCursor?: string | null;
+          id?: number;
+          maximumBytesRead?: number;
+          maximumRowsRead?: number;
+          numItems: number;
+        };
+      },
+      {
+        continueCursor: string;
+        isDone: boolean;
+        page: Array<{ namespace: string; status: "pending" | "ready" }>;
+        pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+        splitCursor?: string | null;
+      }
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

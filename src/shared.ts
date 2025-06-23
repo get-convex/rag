@@ -8,6 +8,19 @@ import { vVectorId } from "./component/embeddings/tables.js";
 export const vStatus = v.union(v.literal("pending"), v.literal("ready"));
 export type Status = Infer<typeof vStatus>;
 
+export const vNamespace = v.object({
+  namespaceId: v.id("namespaces"),
+  createdAt: v.number(),
+  namespace: v.string(),
+  status: vStatus,
+  filterNames: v.array(v.string()),
+  dimension: v.number(),
+  modelId: v.string(),
+  version: v.number(),
+});
+
+export type Namespace = Infer<typeof vNamespace>;
+
 export const vDocument = v.object({
   key: v.string(),
   documentId: vDocumentId,
