@@ -38,17 +38,6 @@ import {
 } from "convex/server";
 import type { CreateChunkArgs } from "../shared.js";
 
-export { vNamespaceId, vDocumentId } from "./types.js";
-
-export type {
-  DocumentSearchComponent,
-  Source,
-  Status,
-  NamespaceId,
-  DocumentId,
-  OnCompleteNamespace,
-};
-
 // This is 0-1 with 1 being the most important and 0 being totally irrelevant.
 // Used for vector search weighting.
 type Importance = number;
@@ -444,3 +433,14 @@ export class DocumentSearch<
     });
   }
 }
+
+export { defaultChunker, type ChunkerOptions } from "./defaultChunker.js";
+export { vNamespaceId, vDocumentId } from "./types.js";
+export type {
+  DocumentSearchComponent,
+  Source,
+  Status,
+  NamespaceId,
+  DocumentId,
+  OnCompleteNamespace,
+};
