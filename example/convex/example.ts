@@ -43,7 +43,7 @@ export const uploadFile = action({
     const userId = await getUserId(ctx);
     // Maybe rate limit how often a user can upload a file / attribute?
     if (!userId) throw new Error("Unauthorized");
-    const { bytes, mimeType, filename, category } = args;
+    const { globalNamespace, bytes, mimeType, filename, category } = args;
 
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
@@ -56,14 +56,14 @@ export const uploadFile = action({
       new TextDecoder().decode(bytes)
     );
     const documentId = await documentSearch.upsertDocument(ctx, {
-      namespace: args.globalNamespace ? "global" : userId,
+      namespace: globalNamespace ? "global" : userId,
       chunks,
-      key: args.filename,
+      key: filename,
       source: { storageId },
       filterValues: [
-        { name: "documentKey", value: args.filename },
-        { name: "documentMimeType", value: args.mimeType },
-        { name: "category", value: args.category },
+        { name: "documentKey", value: filename },
+        { name: "documentMimeType", value: mimeType },
+        { name: "category", value: category },
       ],
     });
     // await ctx.runMutation(internal.example.recordUploadMetadata, {
