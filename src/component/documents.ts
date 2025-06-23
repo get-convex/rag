@@ -1,32 +1,29 @@
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api.js";
-import type { Doc, Id } from "./_generated/dataModel.js";
-import {
-  action,
-  internalAction,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server.js";
+import type { Doc } from "./_generated/dataModel.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { omit } from "convex-helpers";
-import schema, { vNamedFilter } from "./schema.js";
+import schema, { type Source } from "./schema.js";
 import { insertChunks, vCreateChunkArgs } from "./chunks.js";
+import { vDocument, vPaginationResult, type Document } from "../shared.js";
+import { paginationOptsValidator } from "convex/server";
+import { paginator } from "convex-helpers/server/pagination";
+import type { DocumentId } from "../client/index.js";
 
 export const upsert = mutation({
   args: {
-    document: v.object(
-      omit(schema.tables.documents.validator.fields, ["version", "status"])
-    ),
+    document: v.object({
+      ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
+    }),
+    onComplete: v.optional(v.string()),
     // If we can commit all chunks at the same time, the status is "ready"
-    allChunks: v.array(vCreateChunkArgs),
+    allChunks: v.optional(v.array(vCreateChunkArgs)),
   },
   returns: v.object({
     documentId: v.id("documents"),
     chunkIds: v.union(v.array(v.id("chunks")), v.null()),
   }),
-  handler: async (ctx, { document, allChunks }) => {
-    const { namespaceId, key } = document;
+  handler: async (ctx, args) => {
+    const { namespaceId, key } = args.document;
     const namespace = await ctx.db.get(namespaceId);
     if (!namespace) {
       throw new Error(`Namespace ${namespaceId} not found`);
@@ -39,11 +36,11 @@ export const upsert = mutation({
       )
       .order("desc")
       .first();
-    if (existing && existing.status === "pending") {
+    if (existing && existing.status.kind === "pending") {
       console.warn(
         `Existing document ${key} version ${existing.version} is still pending. Skipping...`
       );
-    } else if (existing && existing.status === "ready") {
+    } else if (existing && existing.status.kind === "ready") {
       // Check if the content is the same
       if (documentIsSame(existing, args.document)) {
         if (args.onComplete) {
@@ -57,18 +54,27 @@ export const upsert = mutation({
     }
     const version = existing ? existing.version + 1 : 0;
     const documentId = await ctx.db.insert("documents", {
-      ...document,
+      ...args.document,
       version,
-      status: allChunks ? "ready" : "pending",
+      status: args.allChunks
+        ? { kind: "ready" }
+        : { kind: "pending", onComplete: args.onComplete },
     });
-    const chunkIds = await insertChunks(ctx, {
-      documentId,
-      startOrder: 0,
-      chunks: allChunks,
-    });
-    return { documentId, chunkIds };
+    if (args.allChunks) {
+      const chunkIds = await insertChunks(ctx, {
+        documentId,
+        startOrder: 0,
+        chunks: args.allChunks,
+      });
+      return { documentId, chunkIds };
+    }
+    return { documentId, chunkIds: null };
   },
 });
+
+async function enqueueOnComplete(ctx: MutationCtx, onComplete: string) {
+  throw new Error("Not implemented");
+}
 
 function documentIsSame(
   existing: Doc<"documents">,

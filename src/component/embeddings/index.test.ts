@@ -41,7 +41,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -81,7 +81,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -135,7 +135,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -174,7 +174,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: ["category", "priority", "status", "author"],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -219,7 +219,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: ["type"],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -230,7 +230,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: ["type"],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -268,7 +268,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -279,7 +279,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -333,7 +333,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: ["category", "status"],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -388,7 +388,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: ["category", "priority"],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 
@@ -447,7 +447,7 @@ describe("embeddings", () => {
         modelId: "test-model",
         dimension: 128,
         filterNames: [],
-        status: "ready",
+        status: { kind: "ready" },
       });
     });
 

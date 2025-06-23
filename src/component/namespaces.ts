@@ -33,17 +33,17 @@ function namespaceIsCompatible(
   );
 }
 
-export const upsert = mutation({
+export const getOrCreate = mutation({
   args: {
     namespace: v.string(),
-    status: v.union(v.literal("pending"), v.literal("ready")),
+    status: vStatusWithOnComplete,
     modelId: v.string(),
     dimension: v.number(),
     filterNames: v.array(v.string()),
   },
   returns: v.object({
     namespaceId: v.id("namespaces"),
-    status: v.union(v.literal("pending"), v.literal("ready")),
+    status: vStatus,
   }),
   handler: async (ctx, args) => {
     const iter = ctx.db
@@ -52,14 +52,10 @@ export const upsert = mutation({
       .order("desc");
 
     for await (const existing of iter) {
-      if (existing.status === "pending") {
-        console.error(
-          `Namespace ${args.namespace} has a pending version ${existing.version}, overriding...`
+      if (existing.status.kind !== args.status.kind) {
+        console.debug(
+          `Namespace ${args.namespace} has status ${existing.status.kind}, skipping...`
         );
-        continue;
-      }
-      if (existing.status !== "ready") {
-        console.warn(`Namespace ${args.namespace} is not ready, skipping...`);
         continue;
       }
       // see if it's compatible
@@ -70,7 +66,7 @@ export const upsert = mutation({
         );
         return {
           namespaceId: existing._id,
-          status: existing.status,
+          status: existing.status.kind,
         };
       }
       console.debug(
@@ -81,14 +77,14 @@ export const upsert = mutation({
       const version = existing.version + 1;
       return {
         namespaceId: await ctx.db.insert("namespaces", { ...args, version }),
-        status: args.status,
+        status: args.status.kind,
       };
     }
     const version = 0;
     const namespaceId = await ctx.db.insert("namespaces", { ...args, version });
     return {
       namespaceId,
-      status: args.status,
+      status: args.status.kind,
     };
   },
 });

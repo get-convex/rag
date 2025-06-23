@@ -20,7 +20,20 @@ export const vSource = v.union(
 );
 export type Source = Infer<typeof vSource>;
 
-const schema = defineSchema({
+export const vStatusWithOnComplete = v.union(
+  v.object({
+    kind: v.literal("pending"),
+    // Callback function handle for when the namespace/document is ready/failed.
+    onComplete: v.optional(v.string()),
+  }),
+  v.object({
+    kind: v.literal("ready"),
+  })
+);
+
+export type StatusWithOnComplete = Infer<typeof vStatusWithOnComplete>;
+
+export const schema = defineSchema({
   namespaces: defineTable({
     // user-specified id, eg. userId or "documentation"
     namespace: v.string(),
@@ -28,7 +41,7 @@ const schema = defineSchema({
     modelId: v.string(),
     dimension: v.number(),
     filterNames: v.array(v.string()),
-    status: v.union(v.literal("pending"), v.literal("ready")),
+    status: vStatusWithOnComplete,
   }).index("namespace_version", ["namespace", "version"]),
   documents: defineTable({
     // user-specified id, eg. storage ID or "myfile.txt". Used for upserting.
@@ -36,15 +49,16 @@ const schema = defineSchema({
     namespaceId: v.id("namespaces"),
     version: v.number(),
     importance: v.number(),
+    filterValues: v.array(vNamedFilter),
     // To avoid re-creating/ updating the same document
     // This is a hash that ideally encompasses the content AND chunking strategy
     // e.g. a hash of the list of chunk content hashes.
     contentHash: v.optional(v.string()),
     // conveneient metadata
     source: vSource,
-    mimeType: v.string(),
-    metadata: v.optional(v.record(v.string(), v.any())),
-    status: v.union(v.literal("pending"), v.literal("ready")),
+    // mimeType: v.string(),
+    // metadata: v.optional(v.record(v.string(), v.any())),
+    status: vStatusWithOnComplete,
   }).index("namespaceId_key_version", ["namespaceId", "key", "version"]),
   chunks: defineTable({
     documentId: v.id("documents"),
@@ -53,21 +67,20 @@ const schema = defineSchema({
       v.object({
         kind: v.literal("pending"),
         embedding: v.array(v.number()),
-        filters: v.array(vNamedFilter),
         importance: v.number(),
       }),
       v.object({
         kind: v.literal("ready"),
         embeddingId: vVectorId,
+      }),
+      v.object({
+        kind: v.literal("deleted"),
+        embeddingId: v.id("embeddings"),
+        // We could store enough to re-create the embedding in the future.
+        //   embedding: v.array(v.number()),
+        //   filters: v.array(vNamedFilter),
+        //  importance: v.number(),
       })
-      // We could store the deleted state in a soft delete way in the future.
-      // v.object({
-      //   kind: v.literal("deleted"),
-      //   embeddingId: v.id("embeddings"),
-      //   embedding: v.array(v.number()),
-      //   filters: v.array(vNamedFilter),
-      //  importance: v.number(),
-      // })
     ),
     // TODO: should content be inline?
     contentId: v.id("content"),
