@@ -182,17 +182,8 @@ export type Mounts = {
             | { kind: "url"; url: string };
         };
         onComplete?: string;
-        splitAndEmbed?: string;
       },
-      {
-        documentId: string;
-        lastChunk: null | {
-          metadata?: Record<string, any>;
-          order: number;
-          state: "pending" | "ready" | "deleted";
-          text: string;
-        };
-      }
+      { documentId: string; status: "pending" | "ready" }
     >;
     upsertAsync: FunctionReference<
       "mutation",

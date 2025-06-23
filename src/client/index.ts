@@ -133,7 +133,7 @@ export class DocumentSearch<
         | { source: { storageId: GenericId<"_storage"> } }
         | { source: { url: string } }
       )
-  ) {
+  ): Promise<{ documentId: DocumentId; status: Status }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -169,7 +169,7 @@ export class DocumentSearch<
       batches.push(batch);
     }
 
-    const { documentId, lastChunk } = await ctx.runMutation(
+    const { documentId, status } = await ctx.runMutation(
       this.component.documents.upsert,
       {
         document: {
@@ -183,8 +183,8 @@ export class DocumentSearch<
         allChunks: batches.length === 1 ? batches[0] : undefined,
       }
     );
-    if (batches.length > 1) {
-      let startOrder = (lastChunk?.order ?? -1) + 1;
+    if (status !== "ready" && batches.length > 1) {
+      let startOrder = 0;
       for (const batch of batches) {
         await ctx.runMutation(this.component.chunks.insert, {
           documentId,
@@ -198,7 +198,7 @@ export class DocumentSearch<
         status: "ready",
       });
     }
-    return documentId;
+    return { documentId: documentId as DocumentId, status: "ready" as const };
   }
 
   async upsertDocumentAsync(
@@ -232,7 +232,7 @@ export class DocumentSearch<
         | { source: { storageId: GenericId<"_storage"> } }
         | { source: { url: string } }
       )
-  ) {
+  ): Promise<{ documentId: DocumentId; status: Status }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -252,20 +252,24 @@ export class DocumentSearch<
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
       : undefined;
-    const splitAndEmbed = await createFunctionHandle(args.chunkerAction);
+    const chunker = await createFunctionHandle(args.chunkerAction);
 
-    return await ctx.runMutation(this.component.documents.upsert, {
-      document: {
-        key: args.key,
-        namespaceId,
-        source,
-        filterValues: args.filterValues ?? [],
-        importance: args.importance ?? 1,
-        contentHash: args.contentHash,
-      },
-      onComplete,
-      splitAndEmbed,
-    });
+    const { documentId, status } = await ctx.runMutation(
+      this.component.documents.upsertAsync,
+      {
+        document: {
+          key: args.key,
+          namespaceId,
+          source,
+          filterValues: args.filterValues ?? [],
+          importance: args.importance ?? 1,
+          contentHash: args.contentHash,
+        },
+        onComplete,
+        chunker,
+      }
+    );
+    return { documentId: documentId as DocumentId, status };
   }
 
   async search(

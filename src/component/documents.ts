@@ -100,13 +100,12 @@ export const upsert = mutation({
       ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
     }),
     onComplete: v.optional(v.string()),
-    splitAndEmbed: v.optional(v.string()),
     // If we can commit all chunks at the same time, the status is "ready"
     allChunks: v.optional(v.array(vCreateChunkArgs)),
   },
   returns: v.object({
     documentId: v.id("documents"),
-    lastChunk: nullable(vChunk),
+    status: vStatus,
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.document;
@@ -121,8 +120,10 @@ export const upsert = mutation({
       if (args.onComplete) {
         await enqueueOnComplete(ctx, args.onComplete, existing._id);
       }
-      const lastChunk = await findLastChunk(ctx, existing._id);
-      return { documentId: existing._id, lastChunk };
+      return {
+        documentId: existing._id,
+        status: existing.status.kind,
+      };
     }
     const version = existing ? existing.version + 1 : 0;
     const documentId = await ctx.db.insert("documents", {
@@ -141,10 +142,9 @@ export const upsert = mutation({
       if (args.onComplete) {
         await enqueueOnComplete(ctx, args.onComplete, documentId);
       }
-      const lastChunk = await findLastChunk(ctx, documentId);
-      return { documentId, lastChunk };
+      return { documentId, status: "ready" as const };
     }
-    return { documentId, lastChunk: null };
+    return { documentId, status: "pending" as const };
   },
 });
 
@@ -160,7 +160,10 @@ function documentIsSame(
   existing: Doc<"documents">,
   newDocument: UpsertDocumentArgs
 ) {
-  if (existing.contentHash !== newDocument.contentHash) {
+  if (
+    existing.contentHash !== newDocument.contentHash &&
+    !!existing.contentHash
+  ) {
     return false;
   }
   if (existing.importance !== newDocument.importance) {
