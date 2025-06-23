@@ -45,12 +45,43 @@ export const upsert = mutation({
       );
     } else if (existing && existing.status === "ready") {
       // Check if the content is the same
-      if (existing && existing.contentHash === document.contentHash) {
-        console.debug(`Document ${key} content is the same, skipping...`);
-        return {
-          documentId: existing._id,
-          chunkIds: null,
-        };
+      if (existing && existing.contentHash === args.document.contentHash) {
+        // Check if the filter values are the same
+        if (
+          args.document.filterValues.every((filter) =>
+            existing.filterValues.some(
+              (f) => f.name === filter.name && f.value === filter.value
+            )
+          )
+        ) {
+          if (existing.importance === args.document.importance) {
+            console.debug(`Document ${key} is the same, skipping...`);
+            if (!sourceMatches(existing.source, args.document.source)) {
+              console.debug(
+                `Document ${key} is the same but source is different, patching...`
+              );
+              await ctx.db.patch(existing._id, {
+                source: args.document.source,
+              });
+            }
+            return {
+              documentId: existing._id,
+              chunkIds: null,
+            };
+          } else {
+            // We could be clever here and copy over the values and update just
+            // the importance, but it's not worth the complexity for now.
+            console.debug(
+              `Document ${key} is the same but importance is different, updating...`
+            );
+          }
+        } else {
+          // We could be clever here and copy over the values and update just
+          // the filter values, but it's not worth the complexity for now.
+          console.debug(
+            `Document ${key} hash matches but filter values are different, updating...`
+          );
+        }
       }
     }
     const version = existing ? existing.version + 1 : 0;
