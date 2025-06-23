@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@convex-dev/document-search": "file:..",
+    "@langchain/textsplitters": "^0.1.0",
     "convex": "file:../node_modules/convex",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

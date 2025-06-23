@@ -16,6 +16,7 @@ import {
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const documentSearch = new DocumentSearch(components.documentSearch, {
   filterNames: ["documentKey", "documentMimeType", "category"],
@@ -47,8 +48,16 @@ export const uploadFile = action({
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
-    const documentId = await documentSearch.upsertDocumentAsync(ctx, {
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 500,
+      chunkOverlap: 100,
+    });
+    const chunks = await textSplitter.splitText(
+      new TextDecoder().decode(bytes)
+    );
+    const documentId = await documentSearch.upsertDocument(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
+      chunks,
       key: args.filename,
       source: { storageId },
       filterValues: [
@@ -56,7 +65,6 @@ export const uploadFile = action({
         { name: "documentMimeType", value: args.mimeType },
         { name: "category", value: args.category },
       ],
-      chunkerAction: internal.example.chunkerAction,
     });
     // await ctx.runMutation(internal.example.recordUploadMetadata, {
     //   filename,
