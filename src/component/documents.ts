@@ -45,43 +45,14 @@ export const upsert = mutation({
       );
     } else if (existing && existing.status === "ready") {
       // Check if the content is the same
-      if (existing && existing.contentHash === args.document.contentHash) {
-        // Check if the filter values are the same
-        if (
-          args.document.filterValues.every((filter) =>
-            existing.filterValues.some(
-              (f) => f.name === filter.name && f.value === filter.value
-            )
-          )
-        ) {
-          if (existing.importance === args.document.importance) {
-            console.debug(`Document ${key} is the same, skipping...`);
-            if (!sourceMatches(existing.source, args.document.source)) {
-              console.debug(
-                `Document ${key} is the same but source is different, patching...`
-              );
-              await ctx.db.patch(existing._id, {
-                source: args.document.source,
-              });
-            }
-            return {
-              documentId: existing._id,
-              chunkIds: null,
-            };
-          } else {
-            // We could be clever here and copy over the values and update just
-            // the importance, but it's not worth the complexity for now.
-            console.debug(
-              `Document ${key} is the same but importance is different, updating...`
-            );
-          }
-        } else {
-          // We could be clever here and copy over the values and update just
-          // the filter values, but it's not worth the complexity for now.
-          console.debug(
-            `Document ${key} hash matches but filter values are different, updating...`
-          );
+      if (documentIsSame(existing, args.document)) {
+        if (args.onComplete) {
+          await enqueueOnComplete(ctx, args.onComplete);
         }
+        return {
+          documentId: existing._id,
+          chunkIds: null,
+        };
       }
     }
     const version = existing ? existing.version + 1 : 0;
@@ -98,3 +69,62 @@ export const upsert = mutation({
     return { documentId, chunkIds };
   },
 });
+
+function documentIsSame(
+  existing: Doc<"documents">,
+  newDocument: Pick<
+    Doc<"documents">,
+    "key" | "contentHash" | "importance" | "source" | "filterValues"
+  >
+) {
+  if (existing.contentHash !== newDocument.contentHash) {
+    return false;
+  }
+  if (existing.importance !== newDocument.importance) {
+    console.debug(
+      `Document ${newDocument.key} importance is different, skipping...`
+    );
+    return false;
+  }
+  if (newDocument.filterValues.length !== existing.filterValues.length) {
+    console.debug(
+      `Document ${newDocument.key} has a different number of filter values, skipping...`
+    );
+    return false;
+  }
+  if (
+    existing.filterValues.every((filter) =>
+      newDocument.filterValues.some(
+        (f) => f.name === filter.name && f.value === filter.value
+      )
+    )
+  ) {
+    console.debug(
+      `Document ${newDocument.key} filter values are different, skipping...`
+    );
+    return false;
+  }
+  if (!sourceMatches(existing.source, newDocument.source)) {
+    console.debug(
+      `Document ${newDocument.key} source is different, skipping...`
+    );
+    return false;
+  }
+  return true;
+}
+
+function sourceMatches(existing: Source, newSource: Source) {
+  switch (existing.kind) {
+    case "custom":
+      return newSource.kind === "custom" && existing.text === newSource.text;
+    case "url":
+      return newSource.kind === "url" && existing.url === newSource.url;
+    case "_storage":
+      return (
+        newSource.kind === "_storage" &&
+        existing.storageId === newSource.storageId
+      );
+    default:
+      throw new Error(`Unknown source kind: ${existing}`);
+  }
+}
