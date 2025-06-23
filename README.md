@@ -52,5 +52,5 @@ const documentSearch = new DocumentSearch(components.documentSearch, {
 
 See more example usage in [example.ts](./example/convex/example.ts).
 
-Run the example with `npm run example`.
+Run the example with `npm i && npm run example`.
 <!-- END: Include on https://convex.dev/components -->
