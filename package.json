@@ -23,7 +23,7 @@
   "scripts": {
     "example": "npm run setup && cd example && npm run dev",
     "dashboard": "cd example && npx convex dashboard",
-    "dev": "run-p 'example' 'build:watch'",
+    "dev": "run-p -r 'example' 'build:watch'",
     "setup": "npm run build && cd example && npm i",
     "build": "npm run build:esm && npm run build:cjs",
     "build:watch": "cd src && npx chokidar '../tsconfig.json' '*.ts' 'react/**/*.ts' 'component/**/*.ts' 'client/**/*.ts' -c 'npm run build' --initial",
