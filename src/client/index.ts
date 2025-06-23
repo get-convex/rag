@@ -38,6 +38,17 @@ import {
 } from "convex/server";
 import type { CreateChunkArgs } from "../shared.js";
 
+export { vNamespaceId, vDocumentId } from "./types.js";
+
+export type {
+  DocumentSearchComponent,
+  Source,
+  Status,
+  NamespaceId,
+  DocumentId,
+  OnCompleteNamespace,
+};
+
 // This is 0-1 with 1 being the most important and 0 being totally irrelevant.
 // Used for vector search weighting.
 type Importance = number;
@@ -55,11 +66,13 @@ type LangChainChunk = {
   embedding?: Array<number>;
 };
 
-export type InputChunk = (MastraChunk | LangChainChunk) & {
-  // In the future we can add per-chunk metadata if it's useful.
-  // importance?: Importance;
-  // filters?: NamedFilter<FitlerNames>[];
-};
+export type InputChunk =
+  | string
+  | ((MastraChunk | LangChainChunk) & {
+      // In the future we can add per-chunk metadata if it's useful.
+      // importance?: Importance;
+      // filters?: NamedFilter<FitlerNames>[];
+    });
 
 type SearchOptions = {
   /**
@@ -348,9 +361,14 @@ export class DocumentSearch<
   }
 
   async _chunkToCreateChunkArgs(chunk: InputChunk): Promise<CreateChunkArgs> {
-    const text = "text" in chunk ? chunk.text : chunk.pageContent;
+    const text =
+      typeof chunk === "string"
+        ? chunk
+        : "text" in chunk
+          ? chunk.text
+          : chunk.pageContent;
     let embedding: number[];
-    if (chunk.embedding) {
+    if (typeof chunk !== "string" && chunk.embedding) {
       embedding = chunk.embedding;
     } else if (hasDoEmbed(this.options.textEmbeddingModel)) {
       ({ embedding } = await embed({
@@ -362,7 +380,13 @@ export class DocumentSearch<
         "No embedding provided and textEmbeddingModel doesn't support embedding"
       );
     }
-    return { embedding, content: { text, metadata: chunk.metadata } };
+    const metadata =
+      typeof chunk === "string"
+        ? {}
+        : "metadata" in chunk
+          ? chunk.metadata
+          : {};
+    return { embedding, content: { text, metadata } };
   }
 
   defineChunkerAction(
@@ -433,14 +457,3 @@ export class DocumentSearch<
     });
   }
 }
-
-export { defaultChunker, type ChunkerOptions } from "./defaultChunker.js";
-export { vNamespaceId, vDocumentId } from "./types.js";
-export type {
-  DocumentSearchComponent,
-  Source,
-  Status,
-  NamespaceId,
-  DocumentId,
-  OnCompleteNamespace,
-};
