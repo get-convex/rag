@@ -173,7 +173,7 @@ export const replaceChunksAsync = mutation({
             assert(chunk.state.kind === "ready");
             await ctx.db.delete(chunk.state.embeddingId);
             await ctx.db.patch(chunk._id, {
-              state: { kind: "deleted", embeddingId: chunk.state.embeddingId },
+              state: { kind: "replaced", embeddingId: chunk.state.embeddingId },
             });
           })
         );

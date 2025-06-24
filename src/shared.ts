@@ -64,7 +64,7 @@ export const vChunk = v.object({
   state: v.union(
     v.literal("pending"),
     v.literal("ready"),
-    v.literal("deleted")
+    v.literal("replaced")
   ),
   text: v.string(),
   metadata: v.optional(v.record(v.string(), v.any())),

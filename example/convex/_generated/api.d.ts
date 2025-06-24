@@ -74,7 +74,7 @@ export declare const components: {
           page: Array<{
             metadata?: Record<string, any>;
             order: number;
-            state: "pending" | "ready" | "deleted";
+            state: "pending" | "ready" | "replaced";
             text: string;
           }>;
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
