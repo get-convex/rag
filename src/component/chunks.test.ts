@@ -5,7 +5,12 @@ import { convexTest, type TestConvex } from "convex-test";
 import schema, { v } from "./schema.js";
 import { api, internal } from "./_generated/api.js";
 import { modules } from "./setup.test.js";
-import { insertChunks, deleteChunksPage, getRangesOfChunks } from "./chunks.js";
+import {
+  insertChunks,
+  deleteChunksPage,
+  getRangesOfChunks,
+  replaceChunksPage,
+} from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
 import { assert } from "convex-helpers";
 
@@ -469,32 +474,442 @@ describe("chunks", () => {
 
     test("works finding chunks from multiple documents", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+
+      // Create two documents
+      const doc1Id = await setupTestDocument(t, namespaceId, "doc1");
+      const doc2Id = await setupTestDocument(t, namespaceId, "doc2");
+
+      // Insert chunks in both documents
+      const doc1Chunks = createTestChunks(3);
+      const doc2Chunks = createTestChunks(4);
+
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId: doc1Id,
+          startOrder: 0,
+          chunks: doc1Chunks,
+        });
+        await insertChunks(ctx, {
+          documentId: doc2Id,
+          startOrder: 0,
+          chunks: doc2Chunks,
+        });
+      });
+
+      // Get chunks from both documents
+      const doc1ChunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", doc1Id))
+          .collect();
+      });
+      const doc2ChunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", doc2Id))
+          .collect();
+      });
+
+      assert(doc1ChunkDocs[1].state.kind === "ready");
+      assert(doc2ChunkDocs[2].state.kind === "ready");
+
+      const { ranges, documents } = await t.query(
+        internal.chunks.getRangesOfChunks,
+        {
+          embeddingIds: [
+            doc1ChunkDocs[1].state.embeddingId, // doc1, chunk at order 1
+            doc2ChunkDocs[2].state.embeddingId, // doc2, chunk at order 2
+          ],
+          messageRange: { before: 1, after: 1 },
+        }
+      );
+
+      expect(documents).toHaveLength(2);
+      expect(ranges).toHaveLength(2);
+
+      // First range should be from doc1
+      expect(ranges[0]?.documentId).toBe(doc1Id);
+      expect(ranges[0]?.order).toBe(1);
+      expect(ranges[0]?.startOrder).toBe(0);
+      expect(ranges[0]?.content).toHaveLength(3); // orders 0, 1, 2
+
+      // Second range should be from doc2
+      expect(ranges[1]?.documentId).toBe(doc2Id);
+      expect(ranges[1]?.order).toBe(2);
+      expect(ranges[1]?.startOrder).toBe(1);
+      expect(ranges[1]?.content).toHaveLength(3); // orders 1, 2, 3
     });
-    test("finds chunks on both a pending and ready version of the same document", async () => {
+
+    test("finds chunks on both a ready and replaced version of the same document", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+
+      // Create version 1 (ready) and version 2 (ready) of the same document
+      // (We'll test with ready versions since pending chunks don't have embeddingIds)
+      const docV1Id = await setupTestDocument(
+        t,
+        namespaceId,
+        "versioned-doc",
+        1,
+        "ready"
+      );
+
+      // Insert chunks in version 1
+      const v1Chunks = createTestChunks(3);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId: docV1Id,
+          startOrder: 0,
+          chunks: v1Chunks,
+        });
+      });
+
+      const docV2Id = await setupTestDocument(
+        t,
+        namespaceId,
+        "versioned-doc",
+        2,
+        "pending"
+      );
+
+      // Insert chunks in version 2
+      const v2Chunks = createTestChunks(3);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId: docV2Id,
+          startOrder: 0,
+          chunks: v2Chunks,
+        });
+      });
+      while (true) {
+        const result = await t.mutation(api.chunks.replaceChunksPage, {
+          documentId: docV2Id,
+          startOrder: 0,
+        });
+        if (result.isDone) {
+          break;
+        }
+      }
+
+      // Get chunks from both versions
+      const v1ChunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", docV1Id))
+          .collect();
+      });
+      const v2ChunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", docV2Id))
+          .collect();
+      });
+
+      expect(v1ChunkDocs[1].state.kind).toBe("replaced");
+      expect(v2ChunkDocs[1].state.kind).toBe("ready");
+
+      // Type guard to ensure we have ready chunks
+      assert(v1ChunkDocs[1].state.kind === "replaced");
+      assert(v2ChunkDocs[1].state.kind === "ready");
+
+      const { ranges, documents } = await t.query(
+        internal.chunks.getRangesOfChunks,
+        {
+          embeddingIds: [
+            v1ChunkDocs[1].state.embeddingId, // v1, chunk at order 1
+            v2ChunkDocs[1].state.embeddingId, // v2, chunk at order 1
+          ],
+          messageRange: { before: 1, after: 1 },
+        }
+      );
+
+      expect(documents).toHaveLength(2);
+      expect(ranges).toHaveLength(2);
+      expect(ranges[0]?.documentId).toBe(docV1Id);
+      expect(ranges[0]?.order).toBe(1);
+      expect(ranges[1]?.documentId).toBe(docV2Id);
+      expect(ranges[1]?.order).toBe(1);
     });
+
     test("finds chunks before and after a chunk", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+      const documentId = await setupTestDocument(t, namespaceId);
+
+      // Insert chunks
+      const chunks = createTestChunks(7);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId,
+          startOrder: 0,
+          chunks,
+        });
+      });
+
+      const chunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .collect();
+      });
+      assert(chunkDocs[3].state.kind === "ready");
+
+      const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [chunkDocs[3].state.embeddingId], // chunk at order 3
+        messageRange: { before: 2, after: 2 },
+      });
+
+      expect(ranges).toHaveLength(1);
+      expect(ranges[0]?.order).toBe(3);
+      expect(ranges[0]?.startOrder).toBe(1); // 3 - 2 = 1
+      expect(ranges[0]?.content).toHaveLength(5); // orders 1, 2, 3, 4, 5
+      expect(ranges[0]?.content[0].text).toBe("Test chunk content 2"); // order 1
+      expect(ranges[0]?.content[1].text).toBe("Test chunk content 3"); // order 2
+      expect(ranges[0]?.content[2].text).toBe("Test chunk content 4"); // order 3 (target)
+      expect(ranges[0]?.content[3].text).toBe("Test chunk content 5"); // order 4
+      expect(ranges[0]?.content[4].text).toBe("Test chunk content 6"); // order 5
     });
+
     test("accepts ranges outside of the document order bounds", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+      const documentId = await setupTestDocument(t, namespaceId);
+
+      // Insert only 3 chunks (orders 0, 1, 2)
+      const chunks = createTestChunks(3);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId,
+          startOrder: 0,
+          chunks,
+        });
+      });
+
+      const chunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .collect();
+      });
+      assert(chunkDocs[2].state.kind === "ready");
+
+      // Request a large range that extends beyond document bounds
+      const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [chunkDocs[2].state.embeddingId], // chunk at order 2
+        messageRange: { before: 5, after: 5 }, // Large range
+      });
+
+      expect(ranges).toHaveLength(1);
+      expect(ranges[0]?.order).toBe(2);
+      expect(ranges[0]?.startOrder).toBe(0); // Should be clamped to 0
+      expect(ranges[0]?.content).toHaveLength(3); // All available chunks (0, 1, 2)
+      expect(ranges[0]?.content[0].text).toBe("Test chunk content 1"); // order 0
+      expect(ranges[0]?.content[1].text).toBe("Test chunk content 2"); // order 1
+      expect(ranges[0]?.content[2].text).toBe("Test chunk content 3"); // order 2
     });
+
     test("when two ranges overlap, the later range gets priority on the chunks in between", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+      const documentId = await setupTestDocument(t, namespaceId);
+
+      // Insert chunks
+      const chunks = createTestChunks(10);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId,
+          startOrder: 0,
+          chunks,
+        });
+      });
+
+      const chunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .collect();
+      });
+      assert(chunkDocs[2].state.kind === "ready");
+      assert(chunkDocs[6].state.kind === "ready");
+
+      const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [
+          chunkDocs[2].state.embeddingId, // chunk at order 2
+          chunkDocs[6].state.embeddingId, // chunk at order 6
+        ],
+        messageRange: { before: 3, after: 3 },
+      });
+
+      expect(ranges).toHaveLength(2);
+
+      // First range (order 2): should stop before the second range's territory
+      expect(ranges[0]?.order).toBe(2);
+      expect(ranges[0]?.startOrder).toBe(0);
+      // The end should be limited by the second range's before context
+      expect(ranges[0]?.content.length).toBe(3); // orders 0, 1, 2
+
+      // Second range (order 6): should get priority for overlapping chunks
+      expect(ranges[1]?.order).toBe(6);
+      expect(ranges[1]?.startOrder).toBe(3); // start at 6, 3 before
+      expect(ranges[1]?.content).toHaveLength(7); // orders 3, 4, 5, 6, 7, 8, 9
     });
+
     test("when three ranges overlap, the middle chunk gets priority on before chunk but not after chunk", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+      const documentId = await setupTestDocument(t, namespaceId);
+
+      // Insert chunks
+      const chunks = createTestChunks(15);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId,
+          startOrder: 0,
+          chunks,
+        });
+      });
+
+      const chunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .collect();
+      });
+      assert(chunkDocs[2].state.kind === "ready");
+      assert(chunkDocs[7].state.kind === "ready");
+      assert(chunkDocs[12].state.kind === "ready");
+
+      const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [
+          chunkDocs[2].state.embeddingId, // chunk at order 2
+          chunkDocs[7].state.embeddingId, // chunk at order 7 (middle)
+          chunkDocs[12].state.embeddingId, // chunk at order 12
+        ],
+        messageRange: { before: 4, after: 4 },
+      });
+
+      expect(ranges).toHaveLength(3);
+
+      // First range (order 2)
+      expect(ranges[0]?.order).toBe(2);
+      expect(ranges[0]?.startOrder).toBe(0);
+
+      // Middle range (order 7): should get priority over first range's after context
+      expect(ranges[1]?.order).toBe(7);
+      expect(ranges[1]?.startOrder).toBe(3); // Should start after first range's territory
+
+      // Last range (order 12): should get priority over middle range's after context
+      expect(ranges[2]?.order).toBe(12);
+      expect(ranges[2]?.startOrder).toBe(8); // Should start after middle range's territory
+      expect(ranges[2]?.content.length).toBeLessThanOrEqual(7); // Should not extend beyond document
     });
+
     test("it works with before/after of 0", async () => {
       const t = convexTest(schema, modules);
-      // TODO: Test this
+      const namespaceId = await setupTestNamespace(t);
+      const documentId = await setupTestDocument(t, namespaceId);
+
+      // Insert chunks
+      const chunks = createTestChunks(5);
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId,
+          startOrder: 0,
+          chunks,
+        });
+      });
+
+      const chunkDocs = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .collect();
+      });
+      assert(chunkDocs[2].state.kind === "ready");
+
+      const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [chunkDocs[2].state.embeddingId], // chunk at order 2
+        messageRange: { before: 0, after: 0 },
+      });
+
+      expect(ranges).toHaveLength(1);
+      expect(ranges[0]?.order).toBe(2);
+      expect(ranges[0]?.startOrder).toBe(2);
+      expect(ranges[0]?.content).toHaveLength(1); // Only the target chunk
+      expect(ranges[0]?.content[0].text).toBe("Test chunk content 3"); // order 2
     });
-    test("it returns de-duplicated documents in the order of the associated embedding ids", async () => {});
+
+    test("it returns de-duplicated documents in the order of the associated embedding ids", async () => {
+      const t = convexTest(schema, modules);
+      const namespaceId = await setupTestNamespace(t);
+
+      // Create three documents
+      const doc1Id = await setupTestDocument(t, namespaceId, "doc1");
+      const doc2Id = await setupTestDocument(t, namespaceId, "doc2");
+      const doc3Id = await setupTestDocument(t, namespaceId, "doc3");
+
+      // Insert chunks in all documents
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          documentId: doc1Id,
+          startOrder: 0,
+          chunks: createTestChunks(2),
+        });
+        await insertChunks(ctx, {
+          documentId: doc2Id,
+          startOrder: 0,
+          chunks: createTestChunks(2),
+        });
+        await insertChunks(ctx, {
+          documentId: doc3Id,
+          startOrder: 0,
+          chunks: createTestChunks(2),
+        });
+      });
+
+      // Get chunks from all documents
+      const [doc1Chunks, doc2Chunks, doc3Chunks] = await t.run(async (ctx) => {
+        return Promise.all([
+          ctx.db
+            .query("chunks")
+            .withIndex("documentId_order", (q) => q.eq("documentId", doc1Id))
+            .collect(),
+          ctx.db
+            .query("chunks")
+            .withIndex("documentId_order", (q) => q.eq("documentId", doc2Id))
+            .collect(),
+          ctx.db
+            .query("chunks")
+            .withIndex("documentId_order", (q) => q.eq("documentId", doc3Id))
+            .collect(),
+        ]);
+      });
+
+      assert(doc1Chunks[0].state.kind === "ready");
+      assert(doc2Chunks[1].state.kind === "ready");
+      assert(doc3Chunks[0].state.kind === "ready");
+      assert(doc1Chunks[1].state.kind === "ready");
+      assert(doc2Chunks[0].state.kind === "ready");
+
+      const { documents } = await t.query(internal.chunks.getRangesOfChunks, {
+        embeddingIds: [
+          doc2Chunks[1].state.embeddingId, // doc2 first
+          doc1Chunks[0].state.embeddingId, // doc1 second
+          doc3Chunks[0].state.embeddingId, // doc3 third
+          doc1Chunks[1].state.embeddingId, // doc1 again (should be deduplicated)
+          doc2Chunks[0].state.embeddingId, // doc2 again (should be deduplicated)
+        ],
+        messageRange: { before: 0, after: 0 },
+      });
+
+      // Should return only 3 documents (deduplicated)
+      expect(documents).toHaveLength(3);
+
+      // Should be in the order they first appeared in the embedding IDs
+      expect(documents[0].documentId).toBe(doc2Id); // First appearance
+      expect(documents[1].documentId).toBe(doc1Id); // Second appearance
+      expect(documents[2].documentId).toBe(doc3Id); // Third appearance
+    });
   });
 });
