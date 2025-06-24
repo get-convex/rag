@@ -257,5 +257,40 @@ export declare const components: {
         }
       >;
     };
+    search: {
+      search: FunctionReference<
+        "action",
+        "internal",
+        {
+          embedding: Array<number>;
+          filters: Array<{ name: string; value: any }>;
+          limit: number;
+          messageRange?: { after: number; before: number };
+          modelId: string;
+          namespace: string;
+          vectorScoreThreshold?: number;
+        },
+        {
+          documents: Array<{
+            contentHash?: string;
+            documentId: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            source:
+              | { kind: "_storage"; storageId: string }
+              | { kind: "url"; url: string };
+            status: "pending" | "ready";
+          }>;
+          results: Array<{
+            content: Array<{ metadata?: Record<string, any>; text: string }>;
+            documentId: string;
+            order: number;
+            score: number;
+            startOrder: number;
+          }>;
+        }
+      >;
+    };
   };
 };

@@ -14,6 +14,7 @@ import type * as embeddings_importance from "../embeddings/importance.js";
 import type * as embeddings_index from "../embeddings/index.js";
 import type * as embeddings_tables from "../embeddings/tables.js";
 import type * as namespaces from "../namespaces.js";
+import type * as search from "../search.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "embeddings/index": typeof embeddings_index;
   "embeddings/tables": typeof embeddings_tables;
   namespaces: typeof namespaces;
+  search: typeof search;
 }>;
 export type Mounts = {
   chunks: {
@@ -252,6 +254,41 @@ export type Mounts = {
         }>;
         pageStatus?: "SplitRecommended" | "SplitRequired" | null;
         splitCursor?: string | null;
+      }
+    >;
+  };
+  search: {
+    search: FunctionReference<
+      "action",
+      "public",
+      {
+        embedding: Array<number>;
+        filters: Array<{ name: string; value: any }>;
+        limit: number;
+        messageRange?: { after: number; before: number };
+        modelId: string;
+        namespace: string;
+        vectorScoreThreshold?: number;
+      },
+      {
+        documents: Array<{
+          contentHash?: string;
+          documentId: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          source:
+            | { kind: "_storage"; storageId: string }
+            | { kind: "url"; url: string };
+          status: "pending" | "ready";
+        }>;
+        results: Array<{
+          content: Array<{ metadata?: Record<string, any>; text: string }>;
+          documentId: string;
+          order: number;
+          score: number;
+          startOrder: number;
+        }>;
       }
     >;
   };

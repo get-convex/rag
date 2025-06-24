@@ -1,18 +1,11 @@
-import { v, type Infer } from "convex/values";
+import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { action } from "./_generated/server.js";
 import { searchEmbeddings, type NamedFilter } from "./embeddings/index.js";
 import type { NumberedFilter } from "./embeddings/tables.js";
 import { vNamedFilter } from "./schema.js";
 import { internal } from "./_generated/api.js";
-import {
-  vDocument,
-  vSearchResult,
-  type Document,
-  type SearchResult,
-} from "../shared.js";
-import type { DocumentId } from "../client/index.js";
-import { vRangeResult } from "./chunks.js";
+import { vDocument, type Document } from "../shared.js";
 
 export const search = action({
   args: {
@@ -58,7 +51,7 @@ export const search = action({
   }> => {
     const { modelId, embedding, filters, limit } = args;
     const namespace = await ctx.runQuery(
-      internal.namespaces.getCompatibleNamespaceOrThrow,
+      internal.namespaces.getCompatibleNamespace,
       {
         namespace: args.namespace,
         modelId,
@@ -66,6 +59,15 @@ export const search = action({
         filterNames: filters.map((f) => f.name),
       }
     );
+    if (!namespace) {
+      console.debug(
+        `No compatible namespace found for ${args.namespace} with model ${args.modelId} and dimension ${embedding.length} and filters ${filters.map((f) => f.name).join(", ")}.`
+      );
+      return {
+        results: [],
+        documents: [],
+      };
+    }
     const results = await searchEmbeddings(ctx, {
       embedding,
       namespaceId: namespace._id,

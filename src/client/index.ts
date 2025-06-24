@@ -49,6 +49,8 @@ export type {
   OnCompleteNamespace,
 };
 
+const DEFAULT_SEARCH_LIMIT = 10;
+
 // This is 0-1 with 1 being the most important and 0 being totally irrelevant.
 // Used for vector search weighting.
 type Importance = number;
@@ -94,13 +96,6 @@ type NamedFilter<FilterNames extends string = string, ValueType = Value> = {
   value: ValueType;
 };
 
-// Add this type guard function after the imports
-function hasDoEmbed(
-  model: EmbeddingModelV1<string> | { modelId: string }
-): model is EmbeddingModelV1<string> {
-  return "doEmbed" in model;
-}
-
 export class DocumentSearch<
   FitlerSchemas extends Record<
     FilterNames,
@@ -112,7 +107,7 @@ export class DocumentSearch<
     public component: DocumentSearchComponent,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModelV1<string> | { modelId: string };
+      textEmbeddingModel: EmbeddingModelV1<string>;
       filterNames?: FilterNames[];
       // Common parameters:
       // logLevel
@@ -276,21 +271,46 @@ export class DocumentSearch<
 
   async search(
     ctx: RunActionCtx,
-    args: {
-      query: string;
+    args: (
+      | { query: string; embedding?: undefined }
+      | { embedding: number[]; query?: undefined }
+    ) & {
       namespace: string;
       namespaceVersion?: number;
       filters?: NamedFilter<FilterNames>[];
       searchOptions?: SearchOptions;
+      limit?: number;
     }
   ) {
-    const { query, namespace, namespaceVersion, filters } = args;
-    // const namespaceId = await this.component.lib.search(ctx, {
-    //   vectors: [],
-    //   namespace,
-    //   vector: [],
-    //   filters: [],
-    // });
+    const { namespace, namespaceVersion, filters } = args;
+    const embedding =
+      args.embedding ??
+      embed({
+        model: this.options.textEmbeddingModel,
+        value: args.query,
+      }).then(({ embedding }) => embedding);
+    const { results, documents } = await ctx.runAction(
+      this.component.search.search,
+      {
+        embedding: [],
+        namespace,
+        modelId: this.options.textEmbeddingModel.modelId,
+        filters: filters ?? [],
+        limit: args.searchOptions?.limit ?? DEFAULT_SEARCH_LIMIT,
+      }
+    );
+    return {
+      results,
+      text: results.map((r) => r.content.map((c) => c.text).join("\n")),
+      sources: documents.map((d) => ({
+        documentId: d.documentId,
+        key: d.key,
+        importance: d.importance,
+        filterValues: d.filterValues,
+        source: d.source,
+        score: results.find((r) => r.documentId === d.documentId)?.score ?? 0,
+      })),
+    };
   }
 
   async getOrCreateNamespace(
@@ -370,15 +390,11 @@ export class DocumentSearch<
     let embedding: number[];
     if (typeof chunk !== "string" && chunk.embedding) {
       embedding = chunk.embedding;
-    } else if (hasDoEmbed(this.options.textEmbeddingModel)) {
+    } else {
       ({ embedding } = await embed({
         model: this.options.textEmbeddingModel,
         value: text,
       }));
-    } else {
-      throw new Error(
-        "No embedding provided and textEmbeddingModel doesn't support embedding"
-      );
     }
     const metadata =
       typeof chunk === "string"

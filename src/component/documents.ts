@@ -261,7 +261,7 @@ export const updateStatus = mutation({
   },
 });
 
-function publicDocument(document: Doc<"documents">): Document {
+export function publicDocument(document: Doc<"documents">): Document {
   const { key, importance, filterValues, contentHash, source } = document;
 
   return {

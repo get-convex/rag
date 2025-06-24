@@ -60,6 +60,31 @@ function namespaceIsCompatible(
   );
 }
 
+export const getCompatibleNamespace = internalQuery({
+  args: {
+    namespace: v.string(),
+    modelId: v.string(),
+    dimension: v.number(),
+    filterNames: v.array(v.string()),
+  },
+  returns: v.union(v.null(), v.doc("namespaces")),
+  handler: async (ctx, args) => {
+    const iter = ctx.db
+      .query("namespaces")
+      .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
+      .filter((q) => q.eq(q.field("status.kind"), "ready"))
+      .order("desc");
+    let first: Doc<"namespaces"> | null = null;
+    for await (const existing of iter) {
+      if (!first) first = existing;
+      if (namespaceIsCompatible(existing, args)) {
+        return existing;
+      }
+    }
+    return null;
+  },
+});
+
 export const getOrCreate = mutation({
   args: {
     namespace: v.string(),

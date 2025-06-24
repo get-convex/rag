@@ -1,33 +1,30 @@
-import { convexToJson, v, type Infer } from "convex/values";
-import { api, internal } from "./_generated/api.js";
-import type { Doc, Id } from "./_generated/dataModel.js";
-import {
-  action,
-  internalAction,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-  type MutationCtx,
-  type QueryCtx,
-} from "./_generated/server.js";
-import { mergedStream, stream } from "convex-helpers/server/stream";
-import type { VectorTableId } from "./embeddings/tables.js";
-import { vVectorId } from "./embeddings/tables.js";
-import schema, { vNamedFilter } from "./schema.js";
-import { insertEmbedding } from "./embeddings/index.js";
-import { assert } from "convex-helpers";
-import { paginationOptsValidator } from "convex/server";
+import { assert, nullThrows } from "convex-helpers";
 import { paginator } from "convex-helpers/server/pagination";
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import { paginationOptsValidator } from "convex/server";
+import { convexToJson, type Infer } from "convex/values";
 import {
   BANDWIDTH_PER_TRANSACTION_HARD_LIMIT,
   BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
   KB,
   vChunk,
   vCreateChunkArgs,
+  vDocument,
   vPaginationResult,
-  type Chunk,
+  type Document,
 } from "../shared.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
+import {
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server.js";
+import { insertEmbedding } from "./embeddings/index.js";
+import { vVectorId } from "./embeddings/tables.js";
+import { schema, v } from "./schema.js";
+import { publicDocument } from "./documents.js";
 
 export const vInsertChunksArgs = v.object({
   documentId: v.id("documents"),
@@ -220,6 +217,150 @@ export const replaceChunksAsync = mutation({
   },
 });
 
+export const vRangeResult = v.object({
+  documentId: v.id("documents"),
+  order: v.number(),
+  startOrder: v.number(),
+  content: v.array(
+    v.object({
+      text: v.string(),
+      metadata: v.optional(v.record(v.string(), v.any())),
+    })
+  ),
+});
+
+export const getRangesOfChunks = internalQuery({
+  args: {
+    embeddingIds: v.array(vVectorId),
+    messageRange: v.object({ before: v.number(), after: v.number() }),
+  },
+  returns: v.object({
+    ranges: v.array(v.union(v.null(), vRangeResult)),
+    documents: v.array(vDocument),
+  }),
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    ranges: (null | Infer<typeof vRangeResult>)[];
+    documents: Document[];
+  }> => {
+    const { embeddingIds, messageRange } = args;
+    const chunks = await Promise.all(
+      embeddingIds.map((embeddingId) =>
+        ctx.db
+          .query("chunks")
+          .withIndex("embeddingId", (q) =>
+            q.eq("state.embeddingId", embeddingId)
+          )
+          .order("desc")
+          .first()
+      )
+    );
+
+    // Note: This preserves order of documents as they first appeared.
+    const documents = (
+      await Promise.all(
+        Array.from(
+          new Set(chunks.filter((c) => c !== null).map((c) => c.documentId))
+        ).map((id) => ctx.db.get(id))
+      )
+    )
+      .filter((d) => d !== null)
+      .map(publicDocument);
+
+    const documentOders = chunks
+      .filter((c) => c !== null)
+      .map((c) => [c.documentId, c.order] as const)
+      .reduce(
+        (acc, [documentId, order]) => {
+          if (acc[documentId]?.includes(order)) {
+            // De-dupe orders
+            return acc;
+          }
+          acc[documentId] = [...(acc[documentId] ?? []), order].sort(
+            (a, b) => a - b
+          );
+          return acc;
+        },
+        {} as Record<Id<"documents">, number[]>
+      );
+
+    const result: Array<Infer<typeof vRangeResult> | null> = [];
+
+    for (const chunk of chunks) {
+      if (chunk === null) {
+        result.push(null);
+        continue;
+      }
+      // Note: if we parallelize this in the future, we could have a race
+      // instead we'd check that other chunks are not the same doc/order
+      if (
+        result.find(
+          (r) => r?.documentId === chunk.documentId && r?.order === chunk.order
+        )
+      ) {
+        // De-dupe chunks
+        result.push(null);
+        continue;
+      }
+      const documentId = chunk.documentId;
+      const document = await ctx.db.get(documentId);
+      assert(document, `Document ${documentId} not found`);
+      const otherOrders = documentOders[documentId] ?? [chunk.order];
+      const ourOrderIndex = otherOrders.indexOf(chunk.order);
+      const previousOrder = otherOrders[ourOrderIndex - 1] ?? chunk.order;
+      const nextOrder = otherOrders[ourOrderIndex + 1] ?? chunk.order;
+      // We absorb all previous context up to the previous chunk.
+      const startOrder = Math.max(
+        chunk.order - messageRange.before,
+        previousOrder + 1
+      );
+      // We stop short if the next chunk order's "before" context will cover it.
+      const endOrder = Math.min(
+        chunk.order + messageRange.after + 1,
+        Math.max(nextOrder - messageRange.before, chunk.order + 1)
+      );
+      const contentIds: Id<"content">[] = [];
+      if (startOrder === chunk.order && endOrder === chunk.order + 1) {
+        contentIds.push(chunk.contentId);
+      } else {
+        const chunks = await ctx.db
+          .query("chunks")
+          .withIndex("documentId_order", (q) =>
+            q
+              .eq("documentId", documentId)
+              .gte("order", startOrder)
+              .lt("order", endOrder)
+          )
+          .collect();
+        for (const chunk of chunks) {
+          contentIds.push(chunk.contentId);
+        }
+      }
+      const content = await Promise.all(
+        contentIds.map(async (contentId) => {
+          const content = await ctx.db.get(contentId);
+          assert(content, `Content ${contentId} not found`);
+          return { text: content.text, metadata: content.metadata };
+        })
+      );
+
+      result.push({
+        documentId,
+        order: chunk.order,
+        startOrder,
+        content,
+      });
+    }
+
+    return {
+      ranges: result,
+      documents,
+    };
+  },
+});
+
 export const list = query({
   args: v.object({
     documentId: v.id("documents"),
@@ -246,22 +387,22 @@ export const list = query({
   },
 });
 
-export async function findLastChunk(
-  ctx: MutationCtx,
-  documentId: Id<"documents">
-): Promise<Chunk | null> {
-  const chunk = await ctx.db
-    .query("chunks")
-    .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
-    .order("desc")
-    .first();
-  if (!chunk) {
-    return null;
-  }
-  const content = await ctx.db.get(chunk.contentId);
-  assert(content, `Content for chunk ${chunk._id} not found`);
-  return publicChunk(chunk, content);
-}
+// export async function findLastChunk(
+//   ctx: MutationCtx,
+//   documentId: Id<"documents">
+// ): Promise<Chunk | null> {
+//   const chunk = await ctx.db
+//     .query("chunks")
+//     .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+//     .order("desc")
+//     .first();
+//   if (!chunk) {
+//     return null;
+//   }
+//   const content = await ctx.db.get(chunk.contentId);
+//   assert(content, `Content for chunk ${chunk._id} not found`);
+//   return publicChunk(chunk, content);
+// }
 
 async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
   return {
