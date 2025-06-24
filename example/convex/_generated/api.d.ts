@@ -81,26 +81,11 @@ export declare const components: {
           splitCursor?: string | null;
         }
       >;
-      replaceChunksAsync: FunctionReference<
+      replaceChunksPage: FunctionReference<
         "mutation",
         "internal",
-        {
-          documentId: string;
-          embeddingIds: Array<
-            | string
-            | string
-            | string
-            | string
-            | string
-            | string
-            | string
-            | string
-            | string
-            | string
-          >;
-          startOrder: number;
-        },
-        any
+        { documentId: string; startOrder: number },
+        { isDone: boolean; nextStartOrder: number }
       >;
     };
     documents: {

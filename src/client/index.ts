@@ -190,6 +190,17 @@ export class DocumentSearch<
         });
         startOrder += batch.length;
       }
+      startOrder = 0;
+      while (true) {
+        const { isDone, nextStartOrder } = await ctx.runMutation(
+          this.component.chunks.replaceChunksPage,
+          { documentId, startOrder }
+        );
+        if (isDone) {
+          break;
+        }
+        startOrder = nextStartOrder;
+      }
       await ctx.runMutation(this.component.documents.updateStatus, {
         documentId,
         status: "ready",

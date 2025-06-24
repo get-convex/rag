@@ -91,14 +91,17 @@ async function ensureLatestDocumentVersion(
   }
 }
 
-export const replaceChunksAsync = mutation({
+export const replaceChunksPage = mutation({
   args: v.object({
     documentId: v.id("documents"),
     startOrder: v.number(),
-    embeddingIds: v.array(vVectorId),
+  }),
+  returns: v.object({
+    isDone: v.boolean(),
+    nextStartOrder: v.number(),
   }),
   handler: async (ctx, args) => {
-    const { documentId, startOrder, embeddingIds } = args;
+    const { documentId, startOrder } = args;
     const documentOrNull = await ctx.db.get(documentId);
     if (!documentOrNull) {
       throw new Error(`Document ${documentId} not found`);
@@ -187,11 +190,17 @@ export const replaceChunksAsync = mutation({
         // check if we're close to the limit
         // if so, bail and pick up on this chunk.order.
         if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
-          break;
+          return {
+            isDone: false,
+            nextStartOrder: indexToDelete,
+          };
         }
       }
       if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
-        break;
+        return {
+          isDone: false,
+          nextStartOrder: indexToDelete,
+        };
       }
       if (chunk.state.kind === "pending") {
         if (chunk.documentId === documentId) {
@@ -207,13 +216,16 @@ export const replaceChunksAsync = mutation({
         if (chunk.documentId !== documentId && chunk.state.kind === "ready") {
           chunksToDeleteEmbeddings.push(chunk);
         } else {
-          console.warn(
+          console.debug(
             `Skipping adding chunk ${chunk._id} for document ${documentId} version ${document.version} since it's already ready`
           );
         }
       }
     }
-    // TODO: schedule next page - workpool?
+    return {
+      isDone: true,
+      nextStartOrder: 0,
+    };
   },
 });
 

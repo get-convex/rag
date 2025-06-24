@@ -81,26 +81,11 @@ export type Mounts = {
         splitCursor?: string | null;
       }
     >;
-    replaceChunksAsync: FunctionReference<
+    replaceChunksPage: FunctionReference<
       "mutation",
       "public",
-      {
-        documentId: string;
-        embeddingIds: Array<
-          | string
-          | string
-          | string
-          | string
-          | string
-          | string
-          | string
-          | string
-          | string
-          | string
-        >;
-        startOrder: number;
-      },
-      any
+      { documentId: string; startOrder: number },
+      { isDone: boolean; nextStartOrder: number }
     >;
   };
   documents: {
