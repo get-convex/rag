@@ -47,6 +47,16 @@ export async function insertChunks(
     throw new Error(`Document ${documentId} not found`);
   }
   await ensureLatestDocumentVersion(ctx, document);
+  const previousDocument = await ctx.db
+    .query("documents")
+    .withIndex("namespaceId_key_version", (q) =>
+      q
+        .eq("namespaceId", document.namespaceId)
+        .eq("key", document.key)
+        .lt("version", document.version)
+    )
+    .order("desc")
+    .first();
   let order = startOrder;
   const chunkIds: Id<"chunks">[] = [];
   for (const chunk of chunks) {
@@ -54,15 +64,26 @@ export async function insertChunks(
       text: chunk.content.text,
       metadata: chunk.content.metadata,
     });
+    let state: Doc<"chunks">["state"] = {
+      kind: "pending",
+      embedding: chunk.embedding,
+      importance: document.importance,
+    };
+    if (!previousDocument) {
+      const embeddingId = await insertEmbedding(
+        ctx,
+        chunk.embedding,
+        document.namespaceId,
+        document.importance,
+        document.filterValues
+      );
+      state = { kind: "ready", embeddingId };
+    }
     chunkIds.push(
       await ctx.db.insert("chunks", {
         documentId,
         order,
-        state: {
-          kind: "pending",
-          embedding: chunk.embedding,
-          importance: document.importance,
-        },
+        state,
         contentId,
       })
     );
