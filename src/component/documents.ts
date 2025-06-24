@@ -1,23 +1,20 @@
+import { assert, omit } from "convex-helpers";
+import { paginator } from "convex-helpers/server/pagination";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel.js";
-import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { omit } from "convex-helpers";
-import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
-import { deleteChunksPage, findLastChunk, insertChunks } from "./chunks.js";
+import type { DocumentId } from "../client/index.js";
 import {
-  vChunk,
+  vCreateChunkArgs,
   vDocument,
   vPaginationResult,
   vStatus,
   type Document,
-  vCreateChunkArgs,
 } from "../shared.js";
-import { paginationOptsValidator } from "convex/server";
-import { paginator } from "convex-helpers/server/pagination";
-import type { DocumentId } from "../client/index.js";
 import { api } from "./_generated/api.js";
-import { assert } from "convex-helpers";
-import { nullable } from "convex-helpers/validators";
+import type { Doc, Id } from "./_generated/dataModel.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
+import { deleteChunksPage, insertChunks } from "./chunks.js";
+import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
 
 export const upsertAsync = mutation({
   args: {
