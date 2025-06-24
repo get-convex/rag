@@ -9,7 +9,8 @@ import {
   query,
   type QueryCtx,
 } from "./_generated/server.js";
-import schema, {
+import {
+  schema,
   v,
   vStatusWithOnComplete,
   type StatusWithOnComplete,
@@ -77,7 +78,9 @@ export const getOrCreate = mutation({
       .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
       .order("desc");
 
+    let version: number = 0;
     for await (const existing of iter) {
+      if (!version) version = existing.version + 1;
       if (existing.status.kind !== args.status.kind) {
         console.debug(
           `Namespace ${args.namespace} has status ${existing.status.kind}, skipping...`
@@ -100,13 +103,11 @@ export const getOrCreate = mutation({
         existing,
         args
       );
-      const version = existing.version + 1;
       return {
         namespaceId: await ctx.db.insert("namespaces", { ...args, version }),
         status: args.status.kind,
       };
     }
-    const version = 0;
     const namespaceId = await ctx.db.insert("namespaces", { ...args, version });
     return {
       namespaceId,
