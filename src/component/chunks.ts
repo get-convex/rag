@@ -71,9 +71,11 @@ export async function insertChunks(
         .lt("order", startOrder + chunks.length)
     )
     .collect();
-  console.debug(
-    `Deleting ${existingChunks.length} existing chunks for document ${documentId} at version ${document.version}`
-  );
+  if (existingChunks.length > 0) {
+    console.debug(
+      `Deleting ${existingChunks.length} existing chunks for document ${documentId} at version ${document.version}`
+    );
+  }
   await Promise.all(
     existingChunks.map(async (c) => {
       if (c.state.kind === "ready") {
@@ -211,6 +213,22 @@ export const replaceChunksPage = mutation({
     let chunksToDeleteEmbeddings: Doc<"chunks">[] = [];
     let chunkToAdd: (Doc<"chunks"> & { state: { kind: "pending" } }) | null =
       null;
+    async function handleBatch() {
+      await Promise.all(
+        chunksToDeleteEmbeddings.map(async (chunk) => {
+          assert(chunk.state.kind === "ready");
+          await ctx.db.delete(chunk.state.embeddingId);
+          await ctx.db.patch(chunk._id, {
+            state: { kind: "replaced", embeddingId: chunk.state.embeddingId },
+          });
+        })
+      );
+      chunksToDeleteEmbeddings = [];
+      if (chunkToAdd) {
+        await addChunk(chunkToAdd);
+      }
+      chunkToAdd = null;
+    }
     for await (const chunk of chunkStream) {
       if (chunk.state.kind === "pending") {
         dataUsedSoFar += await estimateChunkSize(chunk);
@@ -218,21 +236,8 @@ export const replaceChunksPage = mutation({
         dataUsedSoFar += 17 * KB; // embedding conservative estimate
       }
       if (chunk.order > indexToDelete) {
-        await Promise.all(
-          chunksToDeleteEmbeddings.map(async (chunk) => {
-            assert(chunk.state.kind === "ready");
-            await ctx.db.delete(chunk.state.embeddingId);
-            await ctx.db.patch(chunk._id, {
-              state: { kind: "replaced", embeddingId: chunk.state.embeddingId },
-            });
-          })
-        );
-        if (chunkToAdd) {
-          await addChunk(chunkToAdd);
-        }
+        await handleBatch();
         indexToDelete = chunk.order;
-        chunksToDeleteEmbeddings = [];
-        chunkToAdd = null;
         // delete the chunks
         // check if we're close to the limit
         // if so, bail and pick up on this chunk.order.
@@ -269,6 +274,9 @@ export const replaceChunksPage = mutation({
         }
       }
     }
+    // handle the last batch
+    await handleBatch();
+
     return {
       isDone: true,
       nextStartOrder: 0,
