@@ -61,6 +61,28 @@ export async function insertChunks(
     .first();
   let order = startOrder;
   const chunkIds: Id<"chunks">[] = [];
+  // TODO: avoid writing if they're the same
+  const existingChunks = await ctx.db
+    .query("chunks")
+    .withIndex("documentId_order", (q) =>
+      q
+        .eq("documentId", documentId)
+        .gte("order", startOrder)
+        .lt("order", startOrder + chunks.length)
+    )
+    .collect();
+  console.debug(
+    `Deleting ${existingChunks.length} existing chunks for document ${documentId} at version ${document.version}`
+  );
+  await Promise.all(
+    existingChunks.map(async (c) => {
+      if (c.state.kind === "ready") {
+        await ctx.db.delete(c.state.embeddingId);
+      }
+      await ctx.db.delete(c.contentId);
+      await ctx.db.delete(c._id);
+    })
+  );
   for (const chunk of chunks) {
     const contentId = await ctx.db.insert("content", {
       text: chunk.content.text,
