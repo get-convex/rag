@@ -9,7 +9,11 @@ export const MB = 1_024 * KB;
 export const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
 export const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
 
-export const vStatus = v.union(v.literal("pending"), v.literal("ready"));
+export const vStatus = v.union(
+  v.literal("pending"),
+  v.literal("ready"),
+  v.literal("replaced")
+);
 export type Status = Infer<typeof vStatus>;
 
 export const vNamespace = v.object({
@@ -61,11 +65,7 @@ export type Document = {
 
 export const vChunk = v.object({
   order: v.number(),
-  state: v.union(
-    v.literal("pending"),
-    v.literal("ready"),
-    v.literal("replaced")
-  ),
+  state: vStatus,
   text: v.string(),
   metadata: v.optional(v.record(v.string(), v.any())),
 });

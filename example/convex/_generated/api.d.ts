@@ -52,7 +52,7 @@ export declare const components: {
           documentId: string;
           startOrder: number;
         },
-        { status: "pending" | "ready" }
+        { status: "pending" | "ready" | "replaced" }
       >;
       list: FunctionReference<
         "query",
@@ -108,7 +108,7 @@ export declare const components: {
           source:
             | { kind: "_storage"; storageId: string }
             | { kind: "url"; url: string };
-          status: "pending" | "ready";
+          status: "pending" | "ready" | "replaced";
         } | null
       >;
       list: FunctionReference<
@@ -138,16 +138,16 @@ export declare const components: {
             source:
               | { kind: "_storage"; storageId: string }
               | { kind: "url"; url: string };
-            status: "pending" | "ready";
+            status: "pending" | "ready" | "replaced";
           }>;
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
           splitCursor?: string | null;
         }
       >;
-      updateStatus: FunctionReference<
+      promoteToReady: FunctionReference<
         "mutation",
         "internal",
-        { documentId: string; status: "pending" | "ready" },
+        { documentId: string },
         any
       >;
       upsert: FunctionReference<
@@ -170,7 +170,7 @@ export declare const components: {
           };
           onComplete?: string;
         },
-        { documentId: string; status: "pending" | "ready" }
+        { documentId: string; status: "pending" | "ready" | "replaced" }
       >;
       upsertAsync: FunctionReference<
         "mutation",
@@ -189,7 +189,7 @@ export declare const components: {
           };
           onComplete?: string;
         },
-        { documentId: string; status: "pending" | "ready" }
+        { documentId: string; status: "pending" | "ready" | "replaced" }
       >;
     };
     namespaces: {
@@ -197,7 +197,7 @@ export declare const components: {
         "query",
         "internal",
         { namespaceId: string },
-        { namespace: string; status: "pending" | "ready" }
+        { namespace: string; status: "pending" | "ready" | "replaced" }
       >;
       getOrCreate: FunctionReference<
         "mutation",
@@ -207,9 +207,12 @@ export declare const components: {
           filterNames: Array<string>;
           modelId: string;
           namespace: string;
-          status: { kind: "pending"; onComplete?: string } | { kind: "ready" };
+          status:
+            | { kind: "pending"; onComplete?: string }
+            | { kind: "ready" }
+            | { kind: "replaced"; replacedAt: number };
         },
-        { namespaceId: string; status: "pending" | "ready" }
+        { namespaceId: string; status: "pending" | "ready" | "replaced" }
       >;
       list: FunctionReference<
         "query",
@@ -234,7 +237,7 @@ export declare const components: {
             modelId: string;
             namespace: string;
             namespaceId: string;
-            status: "pending" | "ready";
+            status: "pending" | "ready" | "replaced";
             version: number;
           }>;
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
@@ -265,7 +268,7 @@ export declare const components: {
             source:
               | { kind: "_storage"; storageId: string }
               | { kind: "url"; url: string };
-            status: "pending" | "ready";
+            status: "pending" | "ready" | "replaced";
           }>;
           results: Array<{
             content: Array<{ metadata?: Record<string, any>; text: string }>;

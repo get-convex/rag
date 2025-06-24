@@ -37,6 +37,7 @@ import {
   type PaginationResult,
 } from "convex/server";
 import type { CreateChunkArgs } from "../shared.js";
+import { assert } from "convex-helpers";
 
 export { vNamespaceId, vDocumentId } from "./types.js";
 
@@ -208,9 +209,8 @@ export class DocumentSearch<
           startOrder = nextStartOrder;
         }
       }
-      await ctx.runMutation(this.component.documents.updateStatus, {
+      await ctx.runMutation(this.component.documents.promoteToReady, {
         documentId,
-        status: "ready",
       });
     }
     return { documentId: documentId as DocumentId, status: "ready" as const };
@@ -340,11 +340,15 @@ export class DocumentSearch<
     }
   ): Promise<{
     namespaceId: NamespaceId;
-    status: "pending" | "ready";
+    status: "pending" | "ready" | "replaced";
   }> {
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
       : undefined;
+    assert(
+      args.status !== "replaced",
+      "Creating replaced namespaces is not supported"
+    );
     const { namespaceId, status } = await ctx.runMutation(
       this.component.namespaces.getOrCreate,
       {

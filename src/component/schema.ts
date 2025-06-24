@@ -28,6 +28,10 @@ export const vStatusWithOnComplete = v.union(
   }),
   v.object({
     kind: v.literal("ready"),
+  }),
+  v.object({
+    kind: v.literal("replaced"),
+    replacedAt: v.number(),
   })
 );
 

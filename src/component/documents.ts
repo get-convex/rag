@@ -249,14 +249,28 @@ export const get = query({
   },
 });
 
-export const updateStatus = mutation({
+export const promoteToReady = mutation({
   args: v.object({
     documentId: v.id("documents"),
-    status: vStatus,
   }),
   handler: async (ctx, args) => {
+    const document = await ctx.db.get(args.documentId);
+    assert(document, `Document ${args.documentId} not found`);
+    const previousDocument = await ctx.db
+      .query("documents")
+      .withIndex("namespaceId_key_version", (q) =>
+        q.eq("namespaceId", document.namespaceId).eq("key", document.key)
+      )
+      .filter((q) => q.neq(q.field("status"), { kind: "pending" }))
+      .order("desc")
+      .first();
+    if (previousDocument) {
+      await ctx.db.patch(previousDocument._id, {
+        status: { kind: "replaced", replacedAt: Date.now() },
+      });
+    }
     await ctx.db.patch(args.documentId, {
-      status: { kind: args.status },
+      status: { kind: "ready" },
     });
   },
 });
