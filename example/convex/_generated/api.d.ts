@@ -52,7 +52,7 @@ export declare const components: {
           documentId: string;
           startOrder: number;
         },
-        any
+        { status: "pending" | "ready" }
       >;
       list: FunctionReference<
         "query",

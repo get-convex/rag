@@ -52,7 +52,7 @@ export type Mounts = {
         documentId: string;
         startOrder: number;
       },
-      any
+      { status: "pending" | "ready" }
     >;
     list: FunctionReference<
       "query",

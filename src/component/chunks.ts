@@ -11,6 +11,7 @@ import {
   vCreateChunkArgs,
   vDocument,
   vPaginationResult,
+  vStatus,
   type Document,
 } from "../shared.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
@@ -35,6 +36,7 @@ type InsertChunksArgs = Infer<typeof vInsertChunksArgs>;
 
 export const insert = mutation({
   args: vInsertChunksArgs,
+  returns: v.object({ status: vStatus }),
   handler: insertChunks,
 });
 
@@ -89,7 +91,9 @@ export async function insertChunks(
     );
     order++;
   }
-  return chunkIds;
+  return {
+    status: previousDocument ? ("pending" as const) : ("ready" as const),
+  };
 }
 
 async function ensureLatestDocumentVersion(

@@ -182,24 +182,31 @@ export class DocumentSearch<
     );
     if (status !== "ready" && batches.length > 1) {
       let startOrder = 0;
+      let isPending = false;
       for (const batch of batches) {
-        await ctx.runMutation(this.component.chunks.insert, {
+        const { status } = await ctx.runMutation(this.component.chunks.insert, {
           documentId,
           startOrder,
           chunks: batch,
         });
+        if (status === "pending") {
+          isPending = true;
+        }
         startOrder += batch.length;
       }
-      startOrder = 0;
-      while (true) {
-        const { isDone, nextStartOrder } = await ctx.runMutation(
-          this.component.chunks.replaceChunksPage,
-          { documentId, startOrder }
-        );
-        if (isDone) {
-          break;
+      if (isPending) {
+        startOrder = 0;
+        // replace any older version of the document with the new one
+        while (true) {
+          const { isDone, nextStartOrder } = await ctx.runMutation(
+            this.component.chunks.replaceChunksPage,
+            { documentId, startOrder }
+          );
+          if (isDone) {
+            break;
+          }
+          startOrder = nextStartOrder;
         }
-        startOrder = nextStartOrder;
       }
       await ctx.runMutation(this.component.documents.updateStatus, {
         documentId,
