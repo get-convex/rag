@@ -376,12 +376,13 @@ export const getRangesOfChunks = internalQuery({
       assert(document, `Document ${documentId} not found`);
       const otherOrders = documentOders[documentId] ?? [chunk.order];
       const ourOrderIndex = otherOrders.indexOf(chunk.order);
-      const previousOrder = otherOrders[ourOrderIndex - 1] ?? chunk.order;
-      const nextOrder = otherOrders[ourOrderIndex + 1] ?? chunk.order;
+      const previousOrder = otherOrders[ourOrderIndex - 1] ?? -Infinity;
+      const nextOrder = otherOrders[ourOrderIndex + 1] ?? Infinity;
       // We absorb all previous context up to the previous chunk.
       const startOrder = Math.max(
         chunk.order - messageRange.before,
-        previousOrder + 1
+        0,
+        Math.min(previousOrder + 1, chunk.order)
       );
       // We stop short if the next chunk order's "before" context will cover it.
       const endOrder = Math.min(
