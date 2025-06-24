@@ -96,9 +96,10 @@ export async function searchEmbeddings(
   }: {
     embedding: number[];
     namespaceId: Id<"namespaces">;
-    // list of ORs of filters in the form of
-    // [{3: filter3}, {1: filter1}, {2: filter2}]
-    // where null is a placeholder for a filter that is not used.
+    // NOTE: Current vector search supports OR logic between filters
+    // Multiple filters will match if ANY condition is met
+    // e.g. [{3: filter3}, {1: filter1}, {2: filter2}] will match if any of
+    // filter3, filter1, or filter2 is present.
     filters: Array<NumberedFilter>;
     limit: number;
   }

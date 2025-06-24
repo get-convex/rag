@@ -52,12 +52,23 @@ function namespaceIsCompatible(
     filterNames: string[];
   }
 ) {
-  return (
-    existing.modelId === args.modelId &&
-    existing.dimension === args.dimension &&
-    existing.filterNames.length === args.filterNames.length &&
-    existing.filterNames.every((name, i) => name === args.filterNames[i])
-  );
+  // Check basic compatibility
+  if (
+    existing.modelId !== args.modelId ||
+    existing.dimension !== args.dimension
+  ) {
+    return false;
+  }
+
+  // For filter names, the namespace must support all requested filters
+  // but can support additional filters (superset is OK)
+  for (const requestedFilterName of args.filterNames) {
+    if (!existing.filterNames.includes(requestedFilterName)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export const getCompatibleNamespace = internalQuery({

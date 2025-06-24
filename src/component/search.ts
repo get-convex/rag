@@ -12,6 +12,7 @@ export const search = action({
     namespace: v.string(),
     embedding: v.array(v.number()),
     modelId: v.string(),
+    // These are all OR'd together
     filters: v.array(vNamedFilter),
     limit: v.number(),
     vectorScoreThreshold: v.optional(v.number()),
@@ -71,9 +72,10 @@ export const search = action({
     const results = await searchEmbeddings(ctx, {
       embedding,
       namespaceId: namespace._id,
-      filters: numberedFilterFromNamedFilter(namespace, filters),
+      filters: numberedFiltersFromNamedFilters(namespace, filters),
       limit,
     });
+
     const threshold = args.vectorScoreThreshold ?? -1;
     const aboveThreshold = results.filter((r) => r._score >= threshold);
     const messageRange = args.messageRange ?? { before: 0, after: 0 };
@@ -96,7 +98,9 @@ export const search = action({
   },
 });
 
-function numberedFilterFromNamedFilter(
+// This makes a list of filters with values into a list with their indices.
+// This is used for search, not inserting embeddings.
+function numberedFiltersFromNamedFilters(
   namespace: Doc<"namespaces">,
   filters: NamedFilter[]
 ): Array<NumberedFilter> {

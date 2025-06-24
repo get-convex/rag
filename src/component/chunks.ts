@@ -26,6 +26,7 @@ import { insertEmbedding } from "./embeddings/index.js";
 import { vVectorId } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
 import { publicDocument } from "./documents.js";
+import type { NumberedFilter } from "./embeddings/tables.js";
 
 export const vInsertChunksArgs = v.object({
   documentId: v.id("documents"),
@@ -49,6 +50,11 @@ export async function insertChunks(
     throw new Error(`Document ${documentId} not found`);
   }
   await ensureLatestDocumentVersion(ctx, document);
+
+  // Get the namespace for filter conversion
+  const namespace = await ctx.db.get(document.namespaceId);
+  assert(namespace, `Namespace ${document.namespaceId} not found`);
+
   const previousDocument = await ctx.db
     .query("documents")
     .withIndex("namespaceId_key_version", (q) =>
@@ -101,7 +107,7 @@ export async function insertChunks(
         chunk.embedding,
         document.namespaceId,
         document.importance,
-        document.filterValues
+        namedFiltersToNumberedFilter(document.filterValues, namespace!)
       );
       state = { kind: "ready", embeddingId };
     }
@@ -157,6 +163,11 @@ export const replaceChunksPage = mutation({
     }
     const document = documentOrNull;
     await ensureLatestDocumentVersion(ctx, document);
+
+    // Get the namespace for filter conversion
+    const namespace = await ctx.db.get(document.namespaceId);
+    assert(namespace, `Namespace ${document.namespaceId} not found`);
+
     const previousDocument = await ctx.db
       .query("documents")
       .withIndex("namespaceId_key_version", (q) =>
@@ -202,7 +213,7 @@ export const replaceChunksPage = mutation({
         chunk.state.embedding,
         namespaceId,
         document.importance,
-        document.filterValues
+        namedFiltersToNumberedFilter(document.filterValues, namespace!)
       );
       await ctx.db.patch(chunk._id, {
         state: { kind: "ready", embeddingId },
@@ -525,4 +536,23 @@ async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
     ).length;
   }
   return dataUsedSoFar;
+}
+
+// Helper function to convert named filters to numbered filters
+// This makes a single filter item for use in inserting embeddings.
+function namedFiltersToNumberedFilter(
+  namedFilters: Array<{ name: string; value: any }>,
+  namespace: Doc<"namespaces">
+): NumberedFilter {
+  const numberedFilter: NumberedFilter = {};
+  for (const namedFilter of namedFilters) {
+    const index = namespace.filterNames.indexOf(namedFilter.name);
+    if (index === -1) {
+      throw new Error(
+        `Unknown filter name: ${namedFilter.name} for namespace ${namespace._id} (${namespace.namespace} version ${namespace.version})`
+      );
+    }
+    numberedFilter[index] = namedFilter.value;
+  }
+  return numberedFilter;
 }
