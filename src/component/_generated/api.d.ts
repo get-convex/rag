@@ -253,7 +253,7 @@ export type Mounts = {
         embedding: Array<number>;
         filters: Array<{ name: string; value: any }>;
         limit: number;
-        messageRange?: { after: number; before: number };
+        chunkContext?: { after: number; before: number };
         modelId: string;
         namespace: string;
         vectorScoreThreshold?: number;

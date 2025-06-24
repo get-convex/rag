@@ -77,21 +77,6 @@ export type InputChunk =
       // filters?: NamedFilter<FitlerNames>[];
     });
 
-type SearchOptions = {
-  /**
-   * The maximum number of messages to fetch. Default is 10.
-   */
-  limit: number;
-  /**
-   * What chunks around the search results to include.
-   * Default: { before: 0, after: 0 }
-   * Note, this is after the limit is applied.
-   * e.g. { before: 2, after: 1 } means 2 chunks before and 1 chunk after.
-   * This would result in up to (4 * limit) items returned.
-   */
-  chunkRange?: { before: number; after: number };
-};
-
 type NamedFilter<FilterNames extends string = string, ValueType = Value> = {
   name: FilterNames;
   value: ValueType;
@@ -293,14 +278,49 @@ export class DocumentSearch<
       | { query: string; embedding?: undefined }
       | { embedding: number[]; query?: undefined }
     ) & {
+      /** The namespace to search in. e.g. a userId if documents are per-user. */
       namespace: string;
-      namespaceVersion?: number;
+      /**
+       * Filters to apply to the search. These are OR'd together. To represent
+       * AND logic, your filter can be an object or array with multiple values.
+       * e.g. `[{ category: "articles" }, { priority: "high" }]` will return
+       * documents that have "articles" category OR "high" priority.
+       * `[{ category_priority: ["articles", "high"] }]` will return
+       * documents that have "articles" category AND "high" priority.
+       * This requires inserting the documents with these filter values exactly.
+       * e.g. if you insert a document with
+       * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
+       * `{ team_user: { team: "team1" } }` but it will match
+       */
       filters?: NamedFilter<FilterNames>[];
-      searchOptions?: SearchOptions;
-      limit?: number;
+      /**
+       * The maximum number of messages to fetch. Default is 10.
+       * This is the number *before* the chunkContext is applied.
+       * e.g. { before: 2, after: 1 } means 4x the limit is returned.
+       */
+      limit: number;
+      /**
+       * What chunks around the search results to include.
+       * Default: { before: 0, after: 0 }
+       * e.g. { before: 2, after: 1 } means 2 chunks before + 1 chunk after.
+       * If `chunk4` was the only result, the results returned would be:
+       * `[{ content: [chunk2, chunk3, chunk4, chunk5], score, ... }]`
+       * The results don't overlap, and bias toward giving "before" context.
+       * So if `chunk7` was also a result, the results returned would be:
+       * `[
+       *   { content: [chunk2, chunk3, chunk4], score, ... }
+       *   { content: [chunk5, chunk6, chunk7, chunk8], score, ... },
+       * ]`
+       */
+      chunkContext?: { before: number; after: number };
     }
   ) {
-    const { namespace, namespaceVersion, filters } = args;
+    const {
+      namespace,
+      filters = [],
+      limit = DEFAULT_SEARCH_LIMIT,
+      chunkContext = { before: 0, after: 0 },
+    } = args;
     const embedding =
       args.embedding ??
       embed({
@@ -313,8 +333,9 @@ export class DocumentSearch<
         embedding: [],
         namespace,
         modelId: this.options.textEmbeddingModel.modelId,
-        filters: filters ?? [],
-        limit: args.searchOptions?.limit ?? DEFAULT_SEARCH_LIMIT,
+        filters,
+        limit,
+        chunkContext,
       }
     );
     return {

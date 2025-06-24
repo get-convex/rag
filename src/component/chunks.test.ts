@@ -456,7 +456,7 @@ describe("chunks", () => {
         internal.chunks.getRangesOfChunks,
         {
           embeddingIds: [chunkDocs[2].state.embeddingId],
-          messageRange: { before: 1, after: 2 },
+          chunkContext: { before: 1, after: 2 },
         }
       );
       expect(documents).toHaveLength(1);
@@ -521,7 +521,7 @@ describe("chunks", () => {
             doc1ChunkDocs[1].state.embeddingId, // doc1, chunk at order 1
             doc2ChunkDocs[2].state.embeddingId, // doc2, chunk at order 2
           ],
-          messageRange: { before: 1, after: 1 },
+          chunkContext: { before: 1, after: 1 },
         }
       );
 
@@ -620,7 +620,7 @@ describe("chunks", () => {
             v1ChunkDocs[1].state.embeddingId, // v1, chunk at order 1
             v2ChunkDocs[1].state.embeddingId, // v2, chunk at order 1
           ],
-          messageRange: { before: 1, after: 1 },
+          chunkContext: { before: 1, after: 1 },
         }
       );
 
@@ -657,7 +657,7 @@ describe("chunks", () => {
 
       const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
         embeddingIds: [chunkDocs[3].state.embeddingId], // chunk at order 3
-        messageRange: { before: 2, after: 2 },
+        chunkContext: { before: 2, after: 2 },
       });
 
       expect(ranges).toHaveLength(1);
@@ -697,7 +697,7 @@ describe("chunks", () => {
       // Request a large range that extends beyond document bounds
       const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
         embeddingIds: [chunkDocs[2].state.embeddingId], // chunk at order 2
-        messageRange: { before: 5, after: 5 }, // Large range
+        chunkContext: { before: 5, after: 5 }, // Large range
       });
 
       expect(ranges).toHaveLength(1);
@@ -738,7 +738,7 @@ describe("chunks", () => {
           chunkDocs[2].state.embeddingId, // chunk at order 2
           chunkDocs[6].state.embeddingId, // chunk at order 6
         ],
-        messageRange: { before: 3, after: 3 },
+        chunkContext: { before: 3, after: 3 },
       });
 
       expect(ranges).toHaveLength(2);
@@ -786,7 +786,7 @@ describe("chunks", () => {
           chunkDocs[7].state.embeddingId, // chunk at order 7 (middle)
           chunkDocs[12].state.embeddingId, // chunk at order 12
         ],
-        messageRange: { before: 4, after: 4 },
+        chunkContext: { before: 4, after: 4 },
       });
 
       expect(ranges).toHaveLength(3);
@@ -830,7 +830,7 @@ describe("chunks", () => {
 
       const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
         embeddingIds: [chunkDocs[2].state.embeddingId], // chunk at order 2
-        messageRange: { before: 0, after: 0 },
+        chunkContext: { before: 0, after: 0 },
       });
 
       expect(ranges).toHaveLength(1);
@@ -900,7 +900,7 @@ describe("chunks", () => {
           doc1Chunks[1].state.embeddingId, // doc1 again (should be deduplicated)
           doc2Chunks[0].state.embeddingId, // doc2 again (should be deduplicated)
         ],
-        messageRange: { before: 0, after: 0 },
+        chunkContext: { before: 0, after: 0 },
       });
 
       // Should return only 3 documents (deduplicated)

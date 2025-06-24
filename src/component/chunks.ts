@@ -310,7 +310,7 @@ export const vRangeResult = v.object({
 export const getRangesOfChunks = internalQuery({
   args: {
     embeddingIds: v.array(vVectorId),
-    messageRange: v.object({ before: v.number(), after: v.number() }),
+    chunkContext: v.object({ before: v.number(), after: v.number() }),
   },
   returns: v.object({
     ranges: v.array(v.union(v.null(), vRangeResult)),
@@ -323,7 +323,7 @@ export const getRangesOfChunks = internalQuery({
     ranges: (null | Infer<typeof vRangeResult>)[];
     documents: Document[];
   }> => {
-    const { embeddingIds, messageRange } = args;
+    const { embeddingIds, chunkContext } = args;
     const chunks = await Promise.all(
       embeddingIds.map((embeddingId) =>
         ctx.db
@@ -391,14 +391,14 @@ export const getRangesOfChunks = internalQuery({
       const nextOrder = otherOrders[ourOrderIndex + 1] ?? Infinity;
       // We absorb all previous context up to the previous chunk.
       const startOrder = Math.max(
-        chunk.order - messageRange.before,
+        chunk.order - chunkContext.before,
         0,
         Math.min(previousOrder + 1, chunk.order)
       );
       // We stop short if the next chunk order's "before" context will cover it.
       const endOrder = Math.min(
-        chunk.order + messageRange.after + 1,
-        Math.max(nextOrder - messageRange.before, chunk.order + 1)
+        chunk.order + chunkContext.after + 1,
+        Math.max(nextOrder - chunkContext.before, chunk.order + 1)
       );
       const contentIds: Id<"content">[] = [];
       if (startOrder === chunk.order && endOrder === chunk.order + 1) {

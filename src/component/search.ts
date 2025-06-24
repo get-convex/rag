@@ -16,7 +16,7 @@ export const search = action({
     filters: v.array(vNamedFilter),
     limit: v.number(),
     vectorScoreThreshold: v.optional(v.number()),
-    messageRange: v.optional(
+    chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() })
     ),
   },
@@ -78,13 +78,13 @@ export const search = action({
 
     const threshold = args.vectorScoreThreshold ?? -1;
     const aboveThreshold = results.filter((r) => r._score >= threshold);
-    const messageRange = args.messageRange ?? { before: 0, after: 0 };
+    const chunkContext = args.chunkContext ?? { before: 0, after: 0 };
     // TODO: break this up if there are too many results
     const { ranges, documents } = await ctx.runQuery(
       internal.chunks.getRangesOfChunks,
       {
         embeddingIds: aboveThreshold.map((r) => r._id),
-        messageRange,
+        chunkContext,
       }
     );
     return {
