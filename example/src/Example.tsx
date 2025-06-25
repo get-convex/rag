@@ -12,6 +12,10 @@ interface SearchResult {
       text: string;
     }>;
     documentId: string;
+    title?: string;
+    key?: string;
+    importance?: number;
+    filterValues?: { [x: string]: any };
     order: number;
     score: number;
     startOrder: number;
@@ -143,10 +147,10 @@ function Example() {
           });
           break;
         case "category":
-          // searchCategory returns {}, so we'll use regular search with filters
-          results = await search({
+          results = await searchCategory({
             query: searchQuery,
             globalNamespace: true,
+            category: selectedCategory,
           });
           // Filter results by category on the client side for now
           if (results && results.results) {
@@ -322,7 +326,16 @@ function Example() {
               {globalDocuments?.page?.map((doc) => (
                 <div
                   key={doc._id}
-                  className="p-2 border border-gray-200 rounded bg-gray-50"
+                  onClick={() => {
+                    setSelectedDocument({ ...doc, global: true });
+                    setSearchType("document");
+                  }}
+                  className={`p-2 border rounded cursor-pointer transition-colors ${
+                    selectedDocument?.filename === doc.filename &&
+                    selectedDocument?.global === true
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -330,7 +343,8 @@ function Example() {
                         {doc.filename}
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedCategory(doc.category);
                           setSearchType("category");
                         }}
@@ -339,16 +353,6 @@ function Example() {
                         {doc.category}
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedDocument({ ...doc, global: true });
-                        setSearchType("document");
-                      }}
-                      className="ml-2 p-1 text-gray-400 hover:text-blue-600"
-                      title="Search this document"
-                    >
-                      🔍
-                    </button>
                   </div>
                 </div>
               ))}
@@ -374,7 +378,16 @@ function Example() {
               {userDocuments?.page?.map((doc) => (
                 <div
                   key={doc._id}
-                  className="p-2 border border-gray-200 rounded bg-gray-50"
+                  onClick={() => {
+                    setSelectedDocument({ ...doc, global: false });
+                    setSearchType("document");
+                  }}
+                  className={`p-2 border rounded cursor-pointer transition-colors ${
+                    selectedDocument?.filename === doc.filename &&
+                    selectedDocument?.global === false
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -382,7 +395,8 @@ function Example() {
                         {doc.filename}
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedCategory(doc.category);
                           setSearchType("category");
                         }}
@@ -391,16 +405,6 @@ function Example() {
                         {doc.category}
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedDocument({ ...doc, global: false });
-                        setSearchType("document");
-                      }}
-                      className="ml-2 p-1 text-gray-400 hover:text-blue-600"
-                      title="Search this document"
-                    >
-                      🔍
-                    </button>
                   </div>
                 </div>
               ))}
@@ -408,7 +412,7 @@ function Example() {
           </div>
         </div>
       </div>
-      ;{/* Right Panel - Search */}
+      {/* Right Panel - Search */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
@@ -525,7 +529,7 @@ function Example() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm font-medium text-gray-900">
-                        Document: {result.documentId || "Unknown"}
+                        Document: {result.title || result.key || "Unknown"}
                       </div>
                       <div className="text-sm text-gray-500">
                         Overall Score: {result.score.toFixed(3)}
@@ -549,7 +553,7 @@ function Example() {
                             key={contentIndex}
                             className={`p-3 rounded border ${
                               isHighlighted
-                                ? "border-yellow-300 bg-yellow-50"
+                                ? "border-blue-300 bg-blue-50"
                                 : "border-gray-200 bg-gray-50"
                             }`}
                           >
@@ -584,7 +588,7 @@ function Example() {
                               <div className="ml-3 text-xs text-gray-500">
                                 Position: {contentIndex + result.startOrder}
                                 {isHighlighted && (
-                                  <div className="text-yellow-700 font-medium mt-1">
+                                  <div className="text-blue-700 font-medium mt-1">
                                     Score: {result.score.toFixed(3)}
                                   </div>
                                 )}
@@ -607,7 +611,6 @@ function Example() {
           )}
         </div>
       </div>
-      ;
     </div>
   );
 }

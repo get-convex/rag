@@ -190,7 +190,7 @@ export const searchCategory = action({
     if (!userId) {
       throw new Error("Unauthorized");
     }
-    const { sources } = await documentSearch.search(ctx, {
+    const results = await documentSearch.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
@@ -201,7 +201,7 @@ export const searchCategory = action({
         },
       ],
     });
-    return {};
+    return results;
   },
 });
 
