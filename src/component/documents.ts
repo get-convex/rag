@@ -158,9 +158,21 @@ function documentIsSame(
   newDocument: UpsertDocumentArgs
 ) {
   if (
-    existing.contentHash !== newDocument.contentHash &&
-    !!existing.contentHash
+    !!existing.contentHash &&
+    !!newDocument.contentHash &&
+    existing.contentHash !== newDocument.contentHash
   ) {
+    return false;
+  }
+  if (
+    (!!existing.contentHash || !!newDocument.contentHash) &&
+    !(
+      existing.source.kind === "_storage" &&
+      newDocument.source.kind === "_storage"
+    )
+  ) {
+    // if we are adding/removing a content hash, that's only ok if we are using
+    // the same storageId, as those are immutable.
     return false;
   }
   if (existing.importance !== newDocument.importance) {
