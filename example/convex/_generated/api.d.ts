@@ -250,10 +250,10 @@ export declare const components: {
         "action",
         "internal",
         {
+          chunkContext?: { after: number; before: number };
           embedding: Array<number>;
           filters: Array<{ name: string; value: any }>;
           limit: number;
-          messageRange?: { after: number; before: number };
           modelId: string;
           namespace: string;
           vectorScoreThreshold?: number;

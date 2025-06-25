@@ -250,10 +250,10 @@ export type Mounts = {
       "action",
       "public",
       {
+        chunkContext?: { after: number; before: number };
         embedding: Array<number>;
         filters: Array<{ name: string; value: any }>;
         limit: number;
-        chunkContext?: { after: number; before: number };
         modelId: string;
         namespace: string;
         vectorScoreThreshold?: number;
