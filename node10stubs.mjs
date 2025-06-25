@@ -68,15 +68,15 @@ async function main() {
 
     await processSubPackages(packageJsonPath, packageJson.exports, isCleanup);
 
-    if (isCleanup) {
-      console.log(
-        "Node10 module resolution compatibility stub directories removed.",
-      );
-    } else {
-      console.log(
-        "Node10 module resolution compatibility stub directories created",
-      );
-    }
+    // if (isCleanup) {
+    //   console.log(
+    //     "Node10 module resolution compatibility stub directories removed.",
+    //   );
+    // } else {
+    //   console.log(
+    //     "Node10 module resolution compatibility stub directories created",
+    //   );
+    // }
   } catch (error) {
     console.error("Error:", error.message);
   }
