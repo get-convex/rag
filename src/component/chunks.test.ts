@@ -57,7 +57,7 @@ describe("chunks", () => {
 
   test("inserting chunks when there's no document throws error", async () => {
     const t = convexTest(schema, modules);
-    const namespaceId = await setupTestNamespace(t);
+    await setupTestNamespace(t);
 
     // Try to insert chunks for a non-existent document
     const nonExistentDocId = "j57c3xc4x6j3c4x6j3c4x6j3c4x6" as Id<"documents">;
