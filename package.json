@@ -1,5 +1,5 @@
 {
-  "name": "document-search",
+  "name": "@convex-dev/document-search",
   "description": "A document search component for Convex.",
   "repository": "github:get-convex/document-search",
   "homepage": "https://github.com/get-convex/document-search#readme",
