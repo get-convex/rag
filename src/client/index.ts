@@ -1,4 +1,4 @@
-import { v, type Validator, type Value, type VString } from "convex/values";
+import { v, type Value, type VString } from "convex/values";
 import {
   type ActionCtx,
   type DocumentSearchComponent,
@@ -118,6 +118,9 @@ export class DocumentSearch<
       });
       namespaceId = namespace.namespaceId;
     }
+
+    validateUpsertFilterValues(args.filterValues, this.options.filterNames);
+
     let source: Source;
     if ("storageId" in args.source) {
       source = { kind: "_storage", storageId: args.source.storageId };
@@ -239,6 +242,9 @@ export class DocumentSearch<
       });
       namespaceId = namespace.namespaceId;
     }
+
+    validateUpsertFilterValues(args.filterValues, this.options.filterNames);
+
     let source: Source;
     if ("storageId" in args.source) {
       source = { kind: "_storage", storageId: args.source.storageId };
@@ -509,5 +515,35 @@ export class DocumentSearch<
         }
       },
     });
+  }
+}
+
+function validateUpsertFilterValues<FilterNames extends string = string>(
+  filterValues: NamedFilter<FilterNames>[] | undefined,
+  filterNames: FilterNames[] | undefined
+) {
+  if (!filterValues) {
+    return;
+  }
+  if (!filterNames) {
+    throw new Error(
+      "You must provide filter names to DocumentSearch to upsert documents with filters."
+    );
+  }
+  const seen = new Set<FilterNames>();
+  for (const filterValue of filterValues) {
+    if (seen.has(filterValue.name)) {
+      throw new Error(
+        `You cannot provide the same filter name twice: ${filterValue.name}.`
+      );
+    }
+    seen.add(filterValue.name);
+  }
+  for (const filterName of filterNames) {
+    if (!seen.has(filterName)) {
+      throw new Error(
+        `Filter name ${filterName} is not valid (one of ${filterNames.join(", ")}).`
+      );
+    }
   }
 }
