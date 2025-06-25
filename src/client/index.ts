@@ -104,6 +104,7 @@ export class DocumentSearch<
     ctx: RunActionCtx,
     args: {
       key: string;
+      title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
       filterValues?: NamedFilter<FilterNames>[];
@@ -159,6 +160,7 @@ export class DocumentSearch<
           key: args.key,
           namespaceId,
           source,
+          title: args.title,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
           contentHash: args.contentHash,
@@ -205,6 +207,7 @@ export class DocumentSearch<
     ctx: RunActionCtx,
     args: {
       key: string;
+      title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
       filterValues?: NamedFilter<FilterNames>[];
@@ -260,6 +263,7 @@ export class DocumentSearch<
         document: {
           key: args.key,
           namespaceId,
+          title: args.title,
           source,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
@@ -339,11 +343,12 @@ export class DocumentSearch<
       results,
       text: results.map((r) => r.content.map((c) => c.text).join("\n")),
       sources: documents.map((d) => ({
+        ...d.source,
         documentId: d.documentId,
+        title: d.title,
         key: d.key,
         importance: d.importance,
         filterValues: d.filterValues,
-        source: d.source,
         score: results.find((r) => r.documentId === d.documentId)?.score ?? 0,
       })),
     };

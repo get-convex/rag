@@ -109,6 +109,7 @@ export type Mounts = {
           | { kind: "_storage"; storageId: string }
           | { kind: "url"; url: string };
         status: "pending" | "ready" | "replaced";
+        title?: string;
       } | null
     >;
     list: FunctionReference<
@@ -139,6 +140,7 @@ export type Mounts = {
             | { kind: "_storage"; storageId: string }
             | { kind: "url"; url: string };
           status: "pending" | "ready" | "replaced";
+          title?: string;
         }>;
         pageStatus?: "SplitRecommended" | "SplitRequired" | null;
         splitCursor?: string | null;
@@ -167,6 +169,7 @@ export type Mounts = {
           source:
             | { kind: "_storage"; storageId: string }
             | { kind: "url"; url: string };
+          title?: string;
         };
         onComplete?: string;
       },
@@ -186,6 +189,7 @@ export type Mounts = {
           source:
             | { kind: "_storage"; storageId: string }
             | { kind: "url"; url: string };
+          title?: string;
         };
         onComplete?: string;
       },
@@ -269,6 +273,7 @@ export type Mounts = {
             | { kind: "_storage"; storageId: string }
             | { kind: "url"; url: string };
           status: "pending" | "ready" | "replaced";
+          title?: string;
         }>;
         results: Array<{
           content: Array<{ metadata?: Record<string, any>; text: string }>;

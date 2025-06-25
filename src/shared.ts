@@ -31,6 +31,7 @@ export type Namespace = Infer<typeof vNamespace>;
 
 export const vDocument = v.object({
   key: v.string(),
+  title: v.optional(v.string()),
   documentId: vDocumentId,
   importance: v.number(),
   filterValues: v.array(vNamedFilter),
@@ -46,6 +47,8 @@ const _2: Infer<typeof vDocument> = {} as Document;
 export type Document = {
   // User-defined key. You can re-use a key to replace it with new contents.
   key: string;
+  // User-defined title
+  title?: string | undefined;
   // The document's id, uniquely identifying the key + contents + namespace etc.
   documentId: DocumentId;
   // How important this document is. Defaults to 1.

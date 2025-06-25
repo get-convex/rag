@@ -59,6 +59,7 @@ export const schema = defineSchema({
     // e.g. a hash of the list of chunk content hashes.
     contentHash: v.optional(v.string()),
     // conveneient metadata
+    title: v.optional(v.string()),
     source: vSource,
     // mimeType: v.string(),
     // metadata: v.optional(v.record(v.string(), v.any())),

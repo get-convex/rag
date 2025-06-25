@@ -155,11 +155,12 @@ export const search = action({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const paginatedDocuments = await documentSearch.search(ctx, {
+    const results = await documentSearch.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
+      limit: 10,
     });
-    return paginatedDocuments;
+    return results;
   },
 });
 
