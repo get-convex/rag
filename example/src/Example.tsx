@@ -6,13 +6,14 @@ import { useCallback, useState, useEffect } from "react";
 type SearchType = "global" | "user" | "category" | "document";
 
 interface Source {
-  url?: string;
   title?: string;
-  key?: string;
+  key: string;
   importance?: number;
   filterValues?: { [x: string]: any };
   documentId?: string;
   storageId?: string;
+  url?: string;
+  score: number;
 }
 interface SearchResult {
   results: {
@@ -682,28 +683,31 @@ function Example() {
             <div className="space-y-6">
               {/* Sources */}
               {searchResults.sources && searchResults.sources.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Sources</h3>
-                  <div className="space-y-2">
-                    {searchResults.sources.map((source, index) => (
-                      <div key={index} className="flex items-center">
-                        {source.url ? (
-                          <a
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            {source.title || source.url}
-                          </a>
-                        ) : (
-                          <span className="text-gray-700">
-                            {source.title || source.key || source.storageId}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {searchResults.sources.map((source, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                    >
+                      {source.url ? (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-700 hover:text-gray-900"
+                        >
+                          {source.title || source.url}
+                        </a>
+                      ) : (
+                        <span className="text-gray-700">
+                          {source.title || source.key || source.storageId}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full font-mono">
+                        {source.score.toFixed(3)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
