@@ -112,7 +112,6 @@ export class DocumentSearch<
       filterValues?: NamedFilter<FilterNames>[];
       importance?: number;
       contentHash?: string;
-      splitAndEmbedAction?: undefined;
     }
   ): Promise<{ documentId: DocumentId; status: Status }> {
     let namespaceId: NamespaceId;

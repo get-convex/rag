@@ -448,7 +448,6 @@ describe("chunks", () => {
           .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
           .collect();
       });
-      console.log(chunkDocs);
       assert(chunkDocs.length === 5);
       assert(chunkDocs[2].state.kind === "ready");
 

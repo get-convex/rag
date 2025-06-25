@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import { defineSchema } from "convex/server";
 import { components, initConvexTest } from "./setup.test.js";
 import { openai } from "@ai-sdk/openai";
+import { vNamedFilter, vSource } from "../component/schema.js";
 
 // The schema for the tests
 const schema = defineSchema({});
@@ -27,8 +28,9 @@ const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
 const documentSearch = new DocumentSearch(components.documentSearch, {
-  filterNames: ["kind"],
+  embeddingDimension: 1536,
   textEmbeddingModel: openai.textEmbeddingModel("text-embedding-3-small"),
+  filterNames: ["simpleString", "arrayOfStrings", "customObject"],
 });
 
 export const testQuery = query({
@@ -45,10 +47,43 @@ export const testMutation = mutation({
   },
 });
 
-export const testAction = action({
-  args: { name: v.string(), count: v.number() },
+export const upsertDocument = action({
+  args: {
+    key: v.string(),
+    chunks: v.array(
+      v.object({
+        text: v.string(),
+        metadata: v.record(v.string(), v.any()),
+        embedding: v.array(v.number()),
+      })
+    ),
+    namespace: v.string(),
+    source: vSource,
+    title: v.optional(v.string()),
+    filterValues: v.optional(
+      v.array(
+        v.union(
+          v.object({
+            name: v.literal("simpleString"),
+            value: v.string(),
+          }),
+          v.object({
+            name: v.literal("arrayOfStrings"),
+            value: v.array(v.string()),
+          }),
+          v.object({
+            name: v.literal("customObject"),
+            value: v.record(v.string(), v.any()),
+          })
+        )
+      )
+    ),
+    importance: v.optional(v.number()),
+    contentHash: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    // return await documentSearch.add(ctx, args.name, args.count);
+    console.log("upserting document", args);
+    return documentSearch.upsertDocument(ctx, args);
   },
 });
 
@@ -56,18 +91,42 @@ const testApi: ApiFromModules<{
   fns: {
     testQuery: typeof testQuery;
     testMutation: typeof testMutation;
-    testAction: typeof testAction;
+    upsertDocument: typeof upsertDocument;
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["index.test"] as any;
 
+function dummyEmbeddings(text: string) {
+  return Array.from({ length: 1536 }, (_, i) =>
+    i === 0 ? text.charCodeAt(0) / 256 : 0.1
+  );
+}
+
 describe("DocumentSearch thick client", () => {
-  test("should make thick client", async () => {
-    const c = new DocumentSearch(components.documentSearch);
+  test("should upsert a document and be able to list it", async () => {
     const t = initConvexTest(schema);
+    const { documentId, status } = await t.action(testApi.upsertDocument, {
+      key: "test",
+      chunks: [
+        { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
+        { text: "B", metadata: {}, embedding: dummyEmbeddings("B") },
+        { text: "C", metadata: {}, embedding: dummyEmbeddings("C") },
+      ],
+      namespace: "test",
+      source: { kind: "url", url: "https://www.google.com" },
+    });
+    expect(documentId).toBeDefined();
+    expect(status).toBe("ready");
     await t.run(async (ctx) => {
-      // await c.add(ctx, "beans", 1);
-      // expect(await c.count(ctx, "beans")).toBe(1);
+      const { isDone, page } = await documentSearch.listChunks(ctx, {
+        documentId,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(page.length).toBe(3);
+      expect(isDone).toBe(true);
+      expect(page[0].order).toBe(0);
+      expect(page[1].order).toBe(1);
+      expect(page[2].order).toBe(2);
     });
   });
   test("should work from a test function", async () => {
