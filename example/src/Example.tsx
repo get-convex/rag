@@ -48,6 +48,7 @@ function Example() {
   const [expandedResults, setExpandedResults] = useState<Set<number>>(
     new Set()
   );
+  const [showChunks, setShowChunks] = useState(true);
 
   // Actions and queries
   const uploadFile = useAction(api.example.uploadFile);
@@ -64,6 +65,16 @@ function Example() {
     globalNamespace: false,
     paginationOpts: { numItems: 50, cursor: null },
   });
+
+  const documentChunks = useQuery(
+    api.example.listChunks,
+    selectedDocument?.documentId
+      ? {
+          documentId: selectedDocument.documentId,
+          paginationOpts: { numItems: 100, cursor: null },
+        }
+      : "skip"
+  );
 
   const handleFileSelect = useCallback(
     (file: File) => {
@@ -513,8 +524,27 @@ function Example() {
           {/* Document Info for Document Search */}
           {searchType === "document" && selectedDocument && (
             <div className="mb-4 p-3 bg-blue-50 rounded-md">
-              <div className="text-sm text-blue-800">
-                Searching in: {selectedDocument.filename}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-blue-800">
+                  Searching in: {selectedDocument.filename}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-blue-700">Chunks</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowChunks(!showChunks)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      showChunks ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        showChunks ? "translate-x-1" : "translate-x-5"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs text-blue-700">Results</span>
+                </div>
               </div>
             </div>
           )}
@@ -541,7 +571,37 @@ function Example() {
 
         {/* Search Results */}
         <div className="flex-1 overflow-y-auto p-4">
-          {searchResults && (
+          {/* Document Chunks for Document Search */}
+          {searchType === "document" &&
+            selectedDocument &&
+            documentChunks &&
+            showChunks && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 h-full">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Document Chunks ({documentChunks.page?.length || 0})
+                </h3>
+                <div
+                  className="overflow-y-auto space-y-2"
+                  style={{ height: "calc(100% - 3rem)" }}
+                >
+                  {documentChunks.page?.map((chunk, index) => (
+                    <div
+                      key={chunk.order}
+                      className="flex items-start space-x-2"
+                    >
+                      <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                        {chunk.order}
+                      </div>
+                      <div className="text-sm bg-gray-50 p-3 rounded border border-gray-200 flex-1">
+                        <div className="text-gray-800">{chunk.text}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          {searchResults && (searchType !== "document" || !showChunks) && (
             <div className="space-y-6">
               {/* Sources */}
               {searchResults.sources && searchResults.sources.length > 0 && (
@@ -576,83 +636,77 @@ function Example() {
                   Results ({searchResults.results.length})
                 </h3>
                 {searchResults.results.map((result, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-lg border border-gray-200 p-4"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-sm font-medium text-gray-900">
-                        Document:{" "}
-                        {result.document.title ||
-                          result.document.key ||
-                          result.document.storageId}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Overall Score: {result.score.toFixed(3)}
-                      </div>
+                  <div key={index} className="flex items-start space-x-2">
+                    <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                      {index + 1}
                     </div>
+                    <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          Document:{" "}
+                          {result.document.title ||
+                            result.document.key ||
+                            result.document.storageId}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Score: {result.score.toFixed(3)}
+                        </div>
+                      </div>
 
-                    <div className="space-y-2">
-                      {result.content.map((content, contentIndex) => {
-                        const isHighlighted =
-                          contentIndex + result.startOrder === result.order;
-                        const isExpanded = expandedResults.has(
-                          index * 1000 + contentIndex
-                        );
-                        const displayText = isExpanded
-                          ? content.text
-                          : content.text.slice(0, 150) +
-                            (content.text.length > 150 ? "..." : "");
+                      <div className="space-y-2">
+                        {result.content.map((content, contentIndex) => {
+                          const isHighlighted =
+                            contentIndex + result.startOrder === result.order;
+                          const isExpanded = expandedResults.has(
+                            index * 1000 + contentIndex
+                          );
+                          const displayText = isExpanded
+                            ? content.text
+                            : content.text.slice(0, 150) +
+                              (content.text.length > 150 ? "..." : "");
 
-                        return (
-                          <div
-                            key={contentIndex}
-                            className={`p-3 rounded border ${
-                              isHighlighted
-                                ? "border-blue-300 bg-blue-50"
-                                : "border-gray-200 bg-gray-50"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <textarea
-                                  value={displayText}
-                                  readOnly
-                                  rows={
-                                    isExpanded
-                                      ? Math.min(
-                                          displayText.split("\n").length,
-                                          10
-                                        )
-                                      : 3
-                                  }
-                                  className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
-                                />
-                                {content.text.length > 150 && (
-                                  <button
-                                    onClick={() =>
-                                      toggleResultExpansion(
-                                        index * 1000 + contentIndex
-                                      )
+                          return (
+                            <div
+                              key={contentIndex}
+                              className={`p-3 rounded border ${
+                                isHighlighted
+                                  ? "border-blue-300 bg-blue-50"
+                                  : "border-gray-200 bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <textarea
+                                    value={displayText}
+                                    readOnly
+                                    rows={
+                                      isExpanded
+                                        ? Math.min(
+                                            displayText.split("\n").length,
+                                            10
+                                          )
+                                        : 3
                                     }
-                                    className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                                  >
-                                    {isExpanded ? "Show less" : "Show more"}
-                                  </button>
-                                )}
-                              </div>
-                              <div className="ml-3 text-xs text-gray-500">
-                                Position: {contentIndex + result.startOrder}
-                                {isHighlighted && (
-                                  <div className="text-blue-700 font-medium mt-1">
-                                    Score: {result.score.toFixed(3)}
-                                  </div>
-                                )}
+                                    className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
+                                  />
+                                  {content.text.length > 150 && (
+                                    <button
+                                      onClick={() =>
+                                        toggleResultExpansion(
+                                          index * 1000 + contentIndex
+                                        )
+                                      }
+                                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                    >
+                                      {isExpanded ? "Show less" : "Show more"}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -660,11 +714,17 @@ function Example() {
             </div>
           )}
 
-          {!searchResults && (
-            <div className="text-center text-gray-500 mt-8">
-              Enter a search query to see results
-            </div>
-          )}
+          {!searchResults &&
+            !(
+              searchType === "document" &&
+              selectedDocument &&
+              documentChunks &&
+              showChunks
+            ) && (
+              <div className="text-center text-gray-500 mt-8">
+                Enter a search query to see results
+              </div>
+            )}
         </div>
       </div>
     </div>
