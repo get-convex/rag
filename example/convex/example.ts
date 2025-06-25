@@ -17,6 +17,7 @@ import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import schema from "./schema";
 
 const documentSearch = new DocumentSearch(components.documentSearch, {
   filterNames: ["documentKey", "documentMimeType", "category"],
@@ -84,14 +85,7 @@ export const uploadFile = action({
 
 // You can track other file metadata in your own tables.
 export const recordUploadMetadata = internalMutation({
-  args: {
-    global: v.boolean(),
-    filename: v.string(),
-    storageId: v.id("_storage"),
-    documentId: vDocumentId,
-    uploadedBy: v.string(),
-    category: v.string(),
-  },
+  args: schema.tables.files.validator,
   handler: async (ctx, args) => {
     await ctx.db.insert("files", args);
   },
