@@ -55,25 +55,26 @@ export const uploadFile = action({
     const chunks = await textSplitter.splitText(
       new TextDecoder().decode(bytes)
     );
-    const documentId = await documentSearch.upsertDocument(ctx, {
+    const { documentId } = await documentSearch.upsertDocument(ctx, {
       namespace: globalNamespace ? "global" : userId,
       chunks,
       key: filename,
-      source: { storageId },
+      title: filename,
+      source: { kind: "_storage", storageId },
       filterValues: [
         { name: "documentKey", value: filename },
         { name: "documentMimeType", value: mimeType },
         { name: "category", value: category },
       ],
     });
-    // await ctx.runMutation(internal.example.recordUploadMetadata, {
-    //   filename,
-    //   storageId,
-    //   documentId,
-    //   mimeType,
-    //   category,
-    //   uploadedBy: userId,
-    // });
+    await ctx.runMutation(internal.example.recordUploadMetadata, {
+      global: args.globalNamespace,
+      filename,
+      storageId,
+      documentId,
+      category,
+      uploadedBy: userId,
+    });
     return {
       url: (await ctx.storage.getUrl(storageId))!,
       documentId,
@@ -84,13 +85,12 @@ export const uploadFile = action({
 // You can track other file metadata in your own tables.
 export const recordUploadMetadata = internalMutation({
   args: {
+    global: v.boolean(),
     filename: v.string(),
     storageId: v.id("_storage"),
     documentId: vDocumentId,
-    mimeType: v.string(),
-    category: v.string(),
     uploadedBy: v.string(),
-    global: v.boolean(),
+    category: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("files", args);
