@@ -102,21 +102,18 @@ export class DocumentSearch<
 
   async upsertDocument(
     ctx: RunActionCtx,
-    args: {
+    args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
+      chunks: InputChunk[];
+      source: Source;
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
       filterValues?: NamedFilter<FilterNames>[];
       importance?: number;
       contentHash?: string;
-      chunks: InputChunk[];
       splitAndEmbedAction?: undefined;
-    } & ({ namespace: string } | { namespaceId: NamespaceId }) &
-      (
-        | { source: { storageId: GenericId<"_storage"> } }
-        | { source: { url: string } }
-      )
+    }
   ): Promise<{ documentId: DocumentId; status: Status }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -205,15 +202,9 @@ export class DocumentSearch<
 
   async upsertDocumentAsync(
     ctx: RunActionCtx,
-    args: {
+    args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
-      title?: string;
-      // mimeType: string;
-      // metadata?: Record<string, Value>;
-      filterValues?: NamedFilter<FilterNames>[];
-      importance?: number;
-      contentHash?: string;
-      onComplete?: OnCompleteDocument;
+      source: Source;
       /**
        * A function that splits the document into chunks and embeds them.
        * This should be passed as internal.foo.myChunkerAction
@@ -230,11 +221,14 @@ export class DocumentSearch<
        *   });
        */
       chunkerAction: ChunkerAction;
-    } & ({ namespace: string } | { namespaceId: NamespaceId }) &
-      (
-        | { source: { storageId: GenericId<"_storage"> } }
-        | { source: { url: string } }
-      )
+      title?: string;
+      // mimeType: string;
+      // metadata?: Record<string, Value>;
+      filterValues?: NamedFilter<FilterNames>[];
+      importance?: number;
+      contentHash?: string;
+      onComplete?: OnCompleteDocument;
+    }
   ): Promise<{ documentId: DocumentId; status: Status }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
