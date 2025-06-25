@@ -135,6 +135,13 @@ export const deleteDocument = mutation({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
+    const file = await ctx.db
+      .query("files")
+      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
+      .first();
+    if (file) {
+      await ctx.db.delete(file._id);
+    }
     await documentSearch.deleteDocument(ctx, {
       documentId: args.documentId,
     });

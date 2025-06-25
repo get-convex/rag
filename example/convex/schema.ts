@@ -10,6 +10,8 @@ export default defineSchema({
     documentId: vDocumentId,
     uploadedBy: v.string(),
     category: v.string(),
-  }).index("global_category", ["global", "category"]),
+  })
+    .index("global_category", ["global", "category"])
+    .index("documentId", ["documentId"]),
   // Any tables used by the example app go here.
 });

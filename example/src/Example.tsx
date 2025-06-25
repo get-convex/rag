@@ -1,5 +1,5 @@
 import "./Example.css";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
 
@@ -56,6 +56,7 @@ function Example() {
   const search = useAction(api.example.search);
   const searchDocument = useAction(api.example.searchDocument);
   const searchCategory = useAction(api.example.searchCategory);
+  const deleteDocument = useMutation(api.example.deleteDocument);
 
   const globalDocuments = useQuery(api.example.listDocuments, {
     globalNamespace: true,
@@ -165,13 +166,6 @@ function Example() {
             globalNamespace: categorySearchGlobal,
             category: selectedCategory,
           });
-          // Filter results by category on the client side for now
-          if (results && results.results) {
-            results.results = results.results.filter(
-              (result: any) =>
-                result.document && result.document.category === selectedCategory
-            );
-          }
           break;
         case "document":
           results = await searchDocument({
@@ -224,6 +218,32 @@ function Example() {
     userDocuments?.page?.forEach((doc) => categories.add(doc.category));
     return Array.from(categories).sort();
   };
+
+  const handleDelete = useCallback(
+    async (doc: any, isGlobal: boolean) => {
+      const documentType = isGlobal ? "global" : "user";
+      const confirmMessage = `Are you sure you want to delete "${doc.filename}" from ${documentType} documents? This action cannot be undone.`;
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      try {
+        await deleteDocument({
+          documentId: doc.documentId,
+        });
+
+        // Clear selected document if it was the one being deleted
+        if (selectedDocument?.documentId === doc.documentId) {
+          setSelectedDocument(null);
+        }
+      } catch (error) {
+        console.error("Delete failed:", error);
+        alert("Failed to delete document. Please try again.");
+      }
+    },
+    [deleteDocument, selectedDocument]
+  );
 
   useEffect(() => {
     setSearchResults(null);
@@ -390,11 +410,7 @@ function Example() {
               {globalDocuments?.page?.map((doc) => (
                 <div
                   key={doc._id}
-                  onClick={() => {
-                    setSelectedDocument({ ...doc, global: true });
-                    setSearchType("document");
-                  }}
-                  className={`p-2 border rounded cursor-pointer transition-colors ${
+                  className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === true
                       ? "border-blue-500 bg-blue-50"
@@ -402,7 +418,13 @@ function Example() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => {
+                        setSelectedDocument({ ...doc, global: true });
+                        setSearchType("document");
+                      }}
+                    >
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {doc.filename}
                       </div>
@@ -417,6 +439,16 @@ function Example() {
                         {doc.category}
                       </button>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(doc, true);
+                      }}
+                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete document"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               ))}
@@ -442,11 +474,7 @@ function Example() {
               {userDocuments?.page?.map((doc) => (
                 <div
                   key={doc._id}
-                  onClick={() => {
-                    setSelectedDocument({ ...doc, global: false });
-                    setSearchType("document");
-                  }}
-                  className={`p-2 border rounded cursor-pointer transition-colors ${
+                  className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === false
                       ? "border-blue-500 bg-blue-50"
@@ -454,7 +482,13 @@ function Example() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => {
+                        setSelectedDocument({ ...doc, global: false });
+                        setSearchType("document");
+                      }}
+                    >
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {doc.filename}
                       </div>
@@ -469,6 +503,16 @@ function Example() {
                         {doc.category}
                       </button>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(doc, false);
+                      }}
+                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete document"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               ))}
