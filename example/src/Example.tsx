@@ -49,6 +49,7 @@ function Example() {
     new Set()
   );
   const [showChunks, setShowChunks] = useState(true);
+  const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
 
   // Actions and queries
   const uploadFile = useAction(api.example.uploadFile);
@@ -161,7 +162,7 @@ function Example() {
         case "category":
           results = await searchCategory({
             query: searchQuery,
-            globalNamespace: true,
+            globalNamespace: categorySearchGlobal,
             category: selectedCategory,
           });
           // Filter results by category on the client side for now
@@ -204,6 +205,7 @@ function Example() {
     search,
     searchDocument,
     searchCategory,
+    categorySearchGlobal,
   ]);
 
   const toggleResultExpansion = (index: number) => {
@@ -503,21 +505,52 @@ function Example() {
           {/* Category Selector for Category Search */}
           {searchType === "category" && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a category</option>
-                {getUniqueCategories().map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a category</option>
+                    {getUniqueCategories().map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col items-end">
+                  <label className="text-sm text-gray-700 mb-1">
+                    Search Scope
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-600">User</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCategorySearchGlobal(!categorySearchGlobal)
+                      }
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        categorySearchGlobal ? "bg-blue-600" : "bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          categorySearchGlobal
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-xs text-gray-600">Global</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
