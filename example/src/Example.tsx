@@ -5,6 +5,15 @@ import { useCallback, useState } from "react";
 
 type SearchType = "global" | "user" | "category" | "document";
 
+interface Source {
+  url?: string;
+  title?: string;
+  key?: string;
+  importance?: number;
+  filterValues?: { [x: string]: any };
+  documentId?: string;
+  storageId?: string;
+}
 interface SearchResult {
   results: {
     content: Array<{
@@ -12,21 +21,13 @@ interface SearchResult {
       text: string;
     }>;
     documentId: string;
-    title?: string;
-    key?: string;
-    importance?: number;
-    filterValues?: { [x: string]: any };
+    document: Source;
     order: number;
     score: number;
     startOrder: number;
   }[];
   text: string[];
-  sources: Array<{
-    url?: string;
-    title?: string;
-    documentId?: string;
-    storageId?: string;
-  }>;
+  sources: Array<Source>;
 }
 
 function Example() {
@@ -167,8 +168,17 @@ function Example() {
             filename: selectedDocument.filename || "",
           });
           break;
+        default:
+          throw new Error(`Unknown search type: ${searchType}`);
       }
-      setSearchResults(results || null);
+      const sources = results?.sources || [];
+      setSearchResults({
+        ...results,
+        results: results.results.map((result) => ({
+          ...result,
+          document: sources.find((s) => s.documentId === result.documentId)!,
+        })),
+      });
     } catch (error) {
       console.error("Search failed:", error);
       alert("Search failed. Please try again.");
@@ -509,7 +519,9 @@ function Example() {
                             {source.title || source.url}
                           </a>
                         ) : (
-                          <span className="text-gray-700">{source.title}</span>
+                          <span className="text-gray-700">
+                            {source.title || source.key || source.storageId}
+                          </span>
                         )}
                       </div>
                     ))}
@@ -529,7 +541,10 @@ function Example() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm font-medium text-gray-900">
-                        Document: {result.title || result.key || "Unknown"}
+                        Document:{" "}
+                        {result.document.title ||
+                          result.document.key ||
+                          result.document.storageId}
                       </div>
                       <div className="text-sm text-gray-500">
                         Overall Score: {result.score.toFixed(3)}
