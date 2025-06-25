@@ -274,10 +274,9 @@ export class DocumentSearch<
 
   async search(
     ctx: RunActionCtx,
-    args: (
-      | { query: string; embedding?: undefined }
-      | { embedding: number[]; query?: undefined }
-    ) & {
+    args: {
+      /** The search query. */
+      query: string;
       /** The namespace to search in. e.g. a userId if documents are per-user. */
       namespace: string;
       /**
@@ -321,16 +320,14 @@ export class DocumentSearch<
       limit = DEFAULT_SEARCH_LIMIT,
       chunkContext = { before: 0, after: 0 },
     } = args;
-    const embedding =
-      args.embedding ??
-      embed({
-        model: this.options.textEmbeddingModel,
-        value: args.query,
-      }).then(({ embedding }) => embedding);
+    const { embedding } = await embed({
+      model: this.options.textEmbeddingModel,
+      value: args.query,
+    });
     const { results, documents } = await ctx.runAction(
       this.component.search.search,
       {
-        embedding: [],
+        embedding,
         namespace,
         modelId: this.options.textEmbeddingModel.modelId,
         filters,
