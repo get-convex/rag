@@ -130,14 +130,20 @@ export class DocumentSearch<
     } else {
       source = { kind: "url", url: args.source.url };
     }
+
+    const chunksWithArgs = await Promise.all(
+      args.chunks.map(async (chunk) => {
+        // TODO: batch the embedding calls
+        return this._chunkToCreateChunkArgs(chunk);
+      })
+    );
     // break chunks up into batches, respecting soft limit
     const batches: CreateChunkArgs[][] = []; //chunk(args.chunks, this.component.chunks.insert.softLimit);
     let batchBytes = 0;
     let batch: CreateChunkArgs[] = [];
-    for (const chunk of args.chunks ?? []) {
-      const createChunkArgs = await this._chunkToCreateChunkArgs(chunk);
-      batch.push(createChunkArgs);
-      const size = estimateCreateChunkSize(createChunkArgs);
+    for (const chunk of chunksWithArgs) {
+      batch.push(chunk);
+      const size = estimateCreateChunkSize(chunk);
       batchBytes += size;
       if (batchBytes > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
         batches.push(batch);
