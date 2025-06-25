@@ -169,7 +169,19 @@ export const searchDocument = action({
     globalNamespace: v.boolean(),
     filename: v.string(),
   },
-  handler: async (ctx, args) => {},
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+    const results = await documentSearch.search(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+      query: args.query,
+      chunkContext: { before: 1, after: 1 },
+      limit: 10,
+    });
+    return results;
+  },
 });
 
 export const searchCategory = action({
@@ -178,7 +190,24 @@ export const searchCategory = action({
     globalNamespace: v.boolean(),
     category: v.string(),
   },
-  handler: async (ctx, args) => {},
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+    const { sources } = await documentSearch.search(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+      query: args.query,
+      limit: 10,
+      filters: [
+        {
+          name: "category",
+          value: args.category,
+        },
+      ],
+    });
+    return {};
+  },
 });
 
 /**
