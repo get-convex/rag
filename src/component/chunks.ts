@@ -1,8 +1,8 @@
-import { assert, nullThrows } from "convex-helpers";
+import { assert } from "convex-helpers";
 import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
-import { convexToJson, type Infer } from "convex/values";
+import { convexToJson, type Infer, type Value } from "convex/values";
 import {
   BANDWIDTH_PER_TRANSACTION_HARD_LIMIT,
   BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
@@ -541,7 +541,7 @@ async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
 // Helper function to convert named filters to numbered filters
 // This makes a single filter item for use in inserting embeddings.
 function namedFiltersToNumberedFilter(
-  namedFilters: Array<{ name: string; value: any }>,
+  namedFilters: Array<{ name: string; value: Value }>,
   namespace: Doc<"namespaces">
 ): NumberedFilter {
   const numberedFilter: NumberedFilter = {};

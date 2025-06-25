@@ -1,10 +1,4 @@
-import {
-  v,
-  type GenericId,
-  type Validator,
-  type Value,
-  type VString,
-} from "convex/values";
+import { v, type Validator, type Value, type VString } from "convex/values";
 import {
   type ActionCtx,
   type DocumentSearchComponent,
@@ -83,10 +77,10 @@ type NamedFilter<FilterNames extends string = string, ValueType = Value> = {
 };
 
 export class DocumentSearch<
-  FitlerSchemas extends Record<
-    FilterNames,
-    Validator<Value, "required", string>
-  > = Record<string, never>,
+  // FitlerSchemas extends Record<
+  //   FilterNames,
+  //   Validator<Value, "required", string>
+  // > = Record<string, never>,
   FilterNames extends string = string,
 > {
   constructor(
@@ -110,7 +104,7 @@ export class DocumentSearch<
       // mimeType: string;
       // metadata?: Record<string, Value>;
       filterValues?: NamedFilter<FilterNames>[];
-      importance?: number;
+      importance?: Importance;
       contentHash?: string;
     }
   ): Promise<{ documentId: DocumentId; status: Status }> {
@@ -230,7 +224,7 @@ export class DocumentSearch<
       // mimeType: string;
       // metadata?: Record<string, Value>;
       filterValues?: NamedFilter<FilterNames>[];
-      importance?: number;
+      importance?: Importance;
       contentHash?: string;
       onComplete?: OnCompleteDocument;
     }

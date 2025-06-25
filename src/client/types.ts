@@ -8,7 +8,7 @@ import type {
   StorageActionWriter,
   StorageReader,
 } from "convex/server";
-import type { GenericId, Infer, Value } from "convex/values";
+import type { GenericId, Infer } from "convex/values";
 import type { Mounts } from "../component/_generated/api.js";
 import { brandedString } from "convex-helpers/validators";
 import type { Source } from "../component/schema.js";

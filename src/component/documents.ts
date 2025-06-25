@@ -131,7 +131,7 @@ export const upsert = mutation({
         : { kind: "pending", onComplete: args.onComplete },
     });
     if (args.allChunks) {
-      const chunkIds = await insertChunks(ctx, {
+      await insertChunks(ctx, {
         documentId,
         startOrder: 0,
         chunks: args.allChunks,

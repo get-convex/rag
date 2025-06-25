@@ -17,7 +17,7 @@ import { v } from "convex/values";
 import { defineSchema } from "convex/server";
 import { components, initConvexTest } from "./setup.test.js";
 import { openai } from "@ai-sdk/openai";
-import { vNamedFilter, vSource } from "../component/schema.js";
+import { vSource } from "../component/schema.js";
 
 // The schema for the tests
 const schema = defineSchema({});

@@ -3,7 +3,6 @@
 import { describe, expect, test } from "vitest";
 import { convexTest } from "convex-test";
 import schema, { v } from "../schema.js";
-import { api } from "../_generated/api.js";
 import { modules } from "../setup.test.js";
 import { insertEmbedding, searchEmbeddings } from "./index.js";
 import { vectorWithImportanceDimension } from "./importance.js";

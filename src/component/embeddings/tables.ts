@@ -17,7 +17,6 @@ import {
   type VObject,
   type VUnion,
 } from "convex/values";
-import type { QueryCtx } from "../_generated/server.js";
 import { vectorWithImportanceDimension } from "./importance.js";
 import type { Id } from "../_generated/dataModel.js";
 

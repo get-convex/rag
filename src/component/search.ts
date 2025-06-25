@@ -44,7 +44,10 @@ export const search = action({
     results: {
       documentId: Id<"documents">;
       order: number;
-      content: { metadata?: Record<string, any> | undefined; text: string }[];
+      content: {
+        metadata?: Record<string, unknown> | undefined;
+        text: string;
+      }[];
       startOrder: number;
       score: number;
     }[];

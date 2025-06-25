@@ -2,11 +2,12 @@
 
 import { describe, expect, test } from "vitest";
 import { convexTest, type TestConvex } from "convex-test";
-import schema, { v } from "./schema.js";
+import schema from "./schema.js";
 import { api } from "./_generated/api.js";
 import { modules } from "./setup.test.js";
 import { insertChunks } from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
+import type { Value } from "convex/values";
 
 type ConvexTest = TestConvex<typeof schema>;
 
@@ -34,7 +35,7 @@ describe("search", () => {
     namespaceId: Id<"namespaces">,
     key = "test-doc",
     version = 0,
-    filterValues: Array<{ name: string; value: any }> = []
+    filterValues: Array<{ name: string; value: Value }> = []
   ) {
     return await t.run(async (ctx) => {
       return ctx.db.insert("documents", {

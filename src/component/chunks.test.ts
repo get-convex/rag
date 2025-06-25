@@ -2,15 +2,10 @@
 
 import { describe, expect, test } from "vitest";
 import { convexTest, type TestConvex } from "convex-test";
-import schema, { v } from "./schema.js";
+import schema from "./schema.js";
 import { api, internal } from "./_generated/api.js";
 import { modules } from "./setup.test.js";
-import {
-  insertChunks,
-  deleteChunksPage,
-  getRangesOfChunks,
-  replaceChunksPage,
-} from "./chunks.js";
+import { insertChunks, deleteChunksPage } from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
 import { assert } from "convex-helpers";
 
