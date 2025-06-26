@@ -7,3 +7,4 @@
 - You can also gracefully transition between models,
   embedding lengths, chunking strategies, and document
   versions, with automatically versioned namespaces.
+- See the example for injesting pdfs, images, audio, and text!
