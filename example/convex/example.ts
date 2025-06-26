@@ -18,6 +18,8 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
+import { generateText, experimental_transcribe as transcribe } from "ai";
+import { assert } from "convex-helpers";
 
 const documentSearch = new DocumentSearch(components.documentSearch, {
   filterNames: ["documentKey", "documentMimeType", "category"],
@@ -31,6 +33,10 @@ export const chunkerAction = documentSearch.defineChunkerAction(
     return { chunks };
   }
 );
+
+const describeImage = openai.chat("o4-mini");
+const describeAudio = openai.transcription("whisper-1");
+const describePdf = openai.chat("gpt-4.1");
 
 export const uploadFile = action({
   args: {
@@ -49,13 +55,50 @@ export const uploadFile = action({
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
+    const url = await ctx.storage.getUrl(storageId);
+    assert(url);
+    let text: string;
+    if (mimeType.startsWith("image/")) {
+      const imageResult = await generateText({
+        model: describeImage,
+        system:
+          "You turn images into text. If it is a photo of a document, transcribe it. If it is not a document, describe it.",
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "image", image: new URL(url) }],
+          },
+        ],
+      });
+      text = imageResult.text;
+    } else if (mimeType.startsWith("audio/")) {
+      const audioResult = await transcribe({
+        model: describeAudio,
+        audio: new URL(url),
+      });
+      text = audioResult.text;
+    } else if (mimeType.toLowerCase().includes("pdf")) {
+      const pdfResult = await generateText({
+        model: describePdf,
+        system: "You transform PDF files into text.",
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "file", data: new URL(url), mimeType, filename }],
+          },
+        ],
+      });
+      text = pdfResult.text;
+    } else if (mimeType.toLowerCase().includes("text")) {
+      text = new TextDecoder().decode(bytes);
+    } else {
+      throw new Error(`Unsupported mime type: ${mimeType}`);
+    }
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 500,
       chunkOverlap: 100,
     });
-    const chunks = await textSplitter.splitText(
-      new TextDecoder().decode(bytes)
-    );
+    const chunks = await textSplitter.splitText(text);
     const { documentId } = await documentSearch.upsertDocument(ctx, {
       namespace: globalNamespace ? "global" : userId,
       chunks,

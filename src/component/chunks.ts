@@ -4,9 +4,6 @@ import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
 import { convexToJson, type Infer, type Value } from "convex/values";
 import {
-  BANDWIDTH_PER_TRANSACTION_HARD_LIMIT,
-  BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
-  KB,
   vChunk,
   vCreateChunkArgs,
   vDocument,
@@ -27,6 +24,11 @@ import { vVectorId } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
 import { publicDocument } from "./documents.js";
 import type { NumberedFilter } from "./embeddings/tables.js";
+
+export const KB = 1_024;
+export const MB = 1_024 * KB;
+export const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
+export const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
 
 export const vInsertChunksArgs = v.object({
   documentId: v.id("documents"),

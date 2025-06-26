@@ -14,14 +14,9 @@ import {
   type ChunkerAction,
 } from "./types.js";
 import type { EmbeddingModelV1 } from "@ai-sdk/provider";
-import { embed } from "ai";
+import { embed, embedMany } from "ai";
 import { vSource, type Source } from "../component/schema.js";
-import {
-  BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT,
-  estimateCreateChunkSize,
-  type Chunk,
-  type Status,
-} from "../shared.js";
+import { CHUNK_BATCH_SIZE, type Chunk, type Status } from "../shared.js";
 import {
   createFunctionHandle,
   internalActionGeneric,
@@ -128,28 +123,12 @@ export class DocumentSearch<
       source = { kind: "url", url: args.source.url };
     }
 
-    const chunksWithArgs = await Promise.all(
-      args.chunks.map(async (chunk) => {
-        // TODO: batch the embedding calls
-        return this._chunkToCreateChunkArgs(chunk);
-      })
-    );
-    // break chunks up into batches, respecting soft limit
-    const batches: CreateChunkArgs[][] = []; //chunk(args.chunks, this.component.chunks.insert.softLimit);
-    let batchBytes = 0;
-    let batch: CreateChunkArgs[] = [];
-    for (const chunk of chunksWithArgs) {
-      batch.push(chunk);
-      const size = estimateCreateChunkSize(chunk);
-      batchBytes += size;
-      if (batchBytes > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
-        batches.push(batch);
-        batch = [];
-        batchBytes = 0;
-      }
-    }
-    if (batch.length > 0) {
-      batches.push(batch);
+    let allChunks: CreateChunkArgs[] | undefined;
+    if (args.chunks.length < CHUNK_BATCH_SIZE) {
+      allChunks = await createChunkArgsBatch(
+        this.options.textEmbeddingModel,
+        args.chunks
+      );
     }
 
     const { documentId, status } = await ctx.runMutation(
@@ -164,41 +143,49 @@ export class DocumentSearch<
           importance: args.importance ?? 1,
           contentHash: args.contentHash,
         },
-        allChunks: batches.length === 1 ? batches[0] : undefined,
+        allChunks,
       }
     );
-    if (status !== "ready" && batches.length > 1) {
-      let startOrder = 0;
-      let isPending = false;
-      for (const batch of batches) {
-        const { status } = await ctx.runMutation(this.component.chunks.insert, {
-          documentId,
-          startOrder,
-          chunks: batch,
-        });
-        if (status === "pending") {
-          isPending = true;
-        }
-        startOrder += batch.length;
-      }
-      if (isPending) {
-        startOrder = 0;
-        // replace any older version of the document with the new one
-        while (true) {
-          const { isDone, nextStartOrder } = await ctx.runMutation(
-            this.component.chunks.replaceChunksPage,
-            { documentId, startOrder }
-          );
-          if (isDone) {
-            break;
-          }
-          startOrder = nextStartOrder;
-        }
-      }
-      await ctx.runMutation(this.component.documents.promoteToReady, {
-        documentId,
-      });
+    if (status === "ready") {
+      return { documentId: documentId as DocumentId, status };
     }
+
+    // break chunks up into batches, respecting soft limit
+    const batches: InputChunk[][] = makeBatches(args.chunks, CHUNK_BATCH_SIZE);
+    let startOrder = 0;
+    let isPending = false;
+    for (const batch of batches) {
+      const createChunkArgs = await createChunkArgsBatch(
+        this.options.textEmbeddingModel,
+        batch
+      );
+      const { status } = await ctx.runMutation(this.component.chunks.insert, {
+        documentId,
+        startOrder,
+        chunks: createChunkArgs,
+      });
+      startOrder += createChunkArgs.length;
+      if (status === "pending") {
+        isPending = true;
+      }
+    }
+    if (isPending) {
+      let startOrder = 0;
+      // replace any older version of the document with the new one
+      while (true) {
+        const { isDone, nextStartOrder } = await ctx.runMutation(
+          this.component.chunks.replaceChunksPage,
+          { documentId, startOrder }
+        );
+        if (isDone) {
+          break;
+        }
+        startOrder = nextStartOrder;
+      }
+    }
+    await ctx.runMutation(this.component.documents.promoteToReady, {
+      documentId,
+    });
     return { documentId: documentId as DocumentId, status: "ready" as const };
   }
 
@@ -424,31 +411,6 @@ export class DocumentSearch<
     });
   }
 
-  async _chunkToCreateChunkArgs(chunk: InputChunk): Promise<CreateChunkArgs> {
-    const text =
-      typeof chunk === "string"
-        ? chunk
-        : "text" in chunk
-          ? chunk.text
-          : chunk.pageContent;
-    let embedding: number[];
-    if (typeof chunk !== "string" && chunk.embedding) {
-      embedding = chunk.embedding;
-    } else {
-      ({ embedding } = await embed({
-        model: this.options.textEmbeddingModel,
-        value: text,
-      }));
-    }
-    const metadata =
-      typeof chunk === "string"
-        ? {}
-        : "metadata" in chunk
-          ? chunk.metadata
-          : {};
-    return { embedding, content: { text, metadata } };
-  }
-
   defineChunkerAction(
     // TODO: make this optional if you want to use the default chunker
     fn: (
@@ -477,7 +439,6 @@ export class DocumentSearch<
           >
         >,
         importance: v.number(),
-        chunkBatchSize: v.number(),
       }),
       handler: async (ctx, args) => {
         const { namespace, namespaceId, key, documentId, source } = args;
@@ -499,22 +460,41 @@ export class DocumentSearch<
         } else {
           chunkIterator = chunksPromise;
         }
-        let batch: CreateChunkArgs[] = [];
         let batchOrder = 0;
-        for await (const chunk of chunkIterator) {
-          batch.push(await this._chunkToCreateChunkArgs(chunk));
-          if (batch.length >= args.chunkBatchSize) {
-            await ctx.runMutation(args.insertChunksHandle, {
-              documentId,
-              startOrder: batchOrder,
-              chunks: batch,
-            });
-            batch = [];
-            batchOrder += args.chunkBatchSize;
-          }
+        for await (const batch of batchIterator(
+          chunkIterator,
+          CHUNK_BATCH_SIZE
+        )) {
+          const createChunkArgs = await createChunkArgsBatch(
+            this.options.textEmbeddingModel,
+            batch
+          );
+          await ctx.runMutation(args.insertChunksHandle, {
+            documentId,
+            startOrder: batchOrder,
+            chunks: createChunkArgs,
+          });
+          batchOrder += createChunkArgs.length;
         }
       },
     });
+  }
+}
+
+async function* batchIterator<T>(
+  iterator: AsyncIterable<T>,
+  batchSize: number
+): AsyncIterable<T[]> {
+  let batch: T[] = [];
+  for await (const item of iterator) {
+    batch.push(item);
+    if (batch.length >= batchSize) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) {
+    yield batch;
   }
 }
 
@@ -546,4 +526,62 @@ function validateUpsertFilterValues<FilterNames extends string = string>(
       );
     }
   }
+}
+
+function makeBatches<T>(items: T[], batchSize: number): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
+  }
+  return batches;
+}
+
+async function createChunkArgsBatch(
+  embedModel: EmbeddingModelV1<string>,
+  chunks: InputChunk[]
+): Promise<CreateChunkArgs[]> {
+  const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
+    embedding?: number[];
+  })[] = chunks.map((chunk) => {
+    if (typeof chunk === "string") {
+      return { content: { text: chunk } };
+    } else if ("text" in chunk) {
+      return {
+        content: { text: chunk.text, metadata: chunk.metadata },
+        embedding: chunk.embedding,
+      };
+    } else if ("pageContent" in chunk) {
+      return {
+        content: { text: chunk.pageContent, metadata: chunk.metadata },
+        embedding: chunk.embedding,
+      };
+    } else {
+      throw new Error("Invalid chunk");
+    }
+  });
+  const missingEmbeddingsWithIndex = argsMaybeMissingEmbeddings
+    .map((arg, index) =>
+      arg.embedding
+        ? null
+        : {
+            text: arg.content.text,
+            index,
+          }
+    )
+    .filter((b) => b !== null);
+  for (const batch of makeBatches(missingEmbeddingsWithIndex, 100)) {
+    const { embeddings } = await embedMany({
+      model: embedModel,
+      values: batch.map((b) => b.text),
+    });
+    for (const [index, embedding] of embeddings.entries()) {
+      argsMaybeMissingEmbeddings[batch[index].index].embedding = embedding;
+    }
+  }
+  return argsMaybeMissingEmbeddings.filter((a) => {
+    if (a.embedding === undefined) {
+      throw new Error("Embedding is undefined for chunk " + a.content.text);
+    }
+    return true;
+  }) as CreateChunkArgs[];
 }

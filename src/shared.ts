@@ -4,10 +4,9 @@ import { vNamedFilter, vSource, type Source } from "./component/schema.js";
 import { vDocumentId, type DocumentId } from "./client/index.js";
 import type { NamedFilter } from "./component/embeddings/index.js";
 
-export const KB = 1_024;
-export const MB = 1_024 * KB;
-export const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
-export const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
+// A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
+// Also a reasonable number of writes to the DB.
+export const CHUNK_BATCH_SIZE = 100;
 
 export const vStatus = v.union(
   v.literal("pending"),
@@ -83,13 +82,6 @@ export const vCreateChunkArgs = v.object({
   embedding: v.array(v.number()),
 });
 export type CreateChunkArgs = Infer<typeof vCreateChunkArgs>;
-
-export function estimateCreateChunkSize(chunk: CreateChunkArgs) {
-  const embeddingDataSize = chunk.embedding.length * 8;
-  const textDataSize = chunk.content.text.length;
-  const metadataDataSize = JSON.stringify(chunk.content.metadata).length;
-  return embeddingDataSize + textDataSize + metadataDataSize;
-}
 
 export function vPaginationResult<
   T extends Validator<Value, "required", string>,

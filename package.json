@@ -21,10 +21,11 @@
   ],
   "type": "module",
   "scripts": {
-    "example": "npm run setup && cd example && npm run dev",
+    "example": "cd example && npm run dev",
     "dashboard": "cd example && npx convex dashboard",
     "dev": "run-p -r 'example' 'build:watch'",
-    "setup": "npm run build && cd example && npm i",
+    "all": "run-p -r 'example' 'build:watch' 'test:watch'",
+    "setup": "npm i && npm run build && cd example && npm i && npx convex dev --once",
     "build": "run-p build:esm build:cjs",
     "build:watch": "cd src && npx chokidar -d 1000 '../tsconfig.json' '*.ts' 'react/**/*.ts' 'component/**/*.ts' 'client/**/*.ts' -c 'npm run build' --initial",
     "build:esm": "tsc --project ./esm.json && npm run copy:dts:esm && echo '{\\n  \"type\": \"module\"\\n}' > dist/esm/package.json",
