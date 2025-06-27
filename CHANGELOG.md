@@ -2,7 +2,7 @@
 
 ## 0.1.1 alpha
 
-- Document search with upserting documents with chunks.
+- Document search with upserting chunked documents.
   Embedding, namespaces, search filters, etc.
 - You can also gracefully transition between models,
   embedding lengths, chunking strategies, and document
