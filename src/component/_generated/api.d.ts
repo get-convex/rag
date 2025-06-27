@@ -118,8 +118,8 @@ export type Mounts = {
       "query",
       "public",
       {
-        key?: string;
         namespaceId: string;
+        order?: "desc" | "asc";
         paginationOpts: {
           cursor: string | null;
           endCursor?: string | null;
@@ -128,6 +128,7 @@ export type Mounts = {
           maximumRowsRead?: number;
           numItems: number;
         };
+        status: "pending" | "ready" | "replaced";
       },
       {
         continueCursor: string;
@@ -232,6 +233,7 @@ export type Mounts = {
           maximumRowsRead?: number;
           numItems: number;
         };
+        status: "pending" | "ready" | "replaced";
       },
       {
         continueCursor: string;
@@ -249,6 +251,17 @@ export type Mounts = {
         pageStatus?: "SplitRecommended" | "SplitRequired" | null;
         splitCursor?: string | null;
       }
+    >;
+    lookup: FunctionReference<
+      "query",
+      "public",
+      {
+        dimension: number;
+        filterNames: Array<string>;
+        modelId: string;
+        namespace: string;
+      },
+      null | string
     >;
   };
   search: {

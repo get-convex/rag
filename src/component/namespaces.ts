@@ -1,5 +1,10 @@
 import type { Doc } from "./_generated/dataModel.js";
-import { internalQuery, mutation, query } from "./_generated/server.js";
+import {
+  internalQuery,
+  mutation,
+  query,
+  type QueryCtx,
+} from "./_generated/server.js";
 import { schema, v, vStatusWithOnComplete } from "./schema.js";
 import {
   vNamespace,
@@ -9,6 +14,7 @@ import {
 } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
+import type { ObjectType } from "convex/values";
 
 export const get = query({
   args: {
@@ -57,28 +63,52 @@ function namespaceIsCompatible(
   return true;
 }
 
+const vNamespaceLookupArgs = {
+  namespace: v.string(),
+  modelId: v.string(),
+  dimension: v.number(),
+  filterNames: v.array(v.string()),
+};
+
 export const getCompatibleNamespace = internalQuery({
+  args: vNamespaceLookupArgs,
+  returns: v.union(v.null(), v.doc("namespaces")),
+  handler: getCompatibleNamespaceHandler,
+});
+
+async function getCompatibleNamespaceHandler(
+  ctx: QueryCtx,
+  args: ObjectType<typeof vNamespaceLookupArgs>
+) {
+  const iter = ctx.db
+    .query("namespaces")
+    .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
+    .filter((q) => q.eq(q.field("status.kind"), "ready"))
+    .order("desc");
+  let first: Doc<"namespaces"> | null = null;
+  for await (const existing of iter) {
+    if (!first) first = existing;
+    if (namespaceIsCompatible(existing, args)) {
+      return existing;
+    }
+  }
+  return null;
+}
+
+export const lookup = query({
   args: {
     namespace: v.string(),
     modelId: v.string(),
     dimension: v.number(),
     filterNames: v.array(v.string()),
   },
-  returns: v.union(v.null(), v.doc("namespaces")),
+  returns: v.union(v.null(), v.id("namespaces")),
   handler: async (ctx, args) => {
-    const iter = ctx.db
-      .query("namespaces")
-      .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
-      .filter((q) => q.eq(q.field("status.kind"), "ready"))
-      .order("desc");
-    let first: Doc<"namespaces"> | null = null;
-    for await (const existing of iter) {
-      if (!first) first = existing;
-      if (namespaceIsCompatible(existing, args)) {
-        return existing;
-      }
+    const namespace = await getCompatibleNamespaceHandler(ctx, args);
+    if (!namespace) {
+      return null;
     }
-    return null;
+    return namespace._id;
   },
 });
 

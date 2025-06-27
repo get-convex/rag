@@ -116,8 +116,8 @@ export declare const components: {
         "query",
         "internal",
         {
-          key?: string;
           namespaceId: string;
+          order?: "desc" | "asc";
           paginationOpts: {
             cursor: string | null;
             endCursor?: string | null;
@@ -126,6 +126,7 @@ export declare const components: {
             maximumRowsRead?: number;
             numItems: number;
           };
+          status: "pending" | "ready" | "replaced";
         },
         {
           continueCursor: string;
@@ -230,6 +231,7 @@ export declare const components: {
             maximumRowsRead?: number;
             numItems: number;
           };
+          status: "pending" | "ready" | "replaced";
         },
         {
           continueCursor: string;
@@ -247,6 +249,17 @@ export declare const components: {
           pageStatus?: "SplitRecommended" | "SplitRequired" | null;
           splitCursor?: string | null;
         }
+      >;
+      lookup: FunctionReference<
+        "query",
+        "internal",
+        {
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+        },
+        null | string
       >;
     };
     search: {
