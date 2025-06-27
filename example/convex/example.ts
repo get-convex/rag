@@ -20,6 +20,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
 import { generateText, experimental_transcribe as transcribe } from "ai";
 import { assert } from "convex-helpers";
+import { Id } from "./_generated/dataModel";
 
 const documentSearch = new DocumentSearch(components.documentSearch, {
   filterNames: ["documentKey", "documentMimeType", "category"],
@@ -55,45 +56,7 @@ export const uploadFile = action({
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
-    const url = await ctx.storage.getUrl(storageId);
-    assert(url);
-    let text: string;
-    if (mimeType.startsWith("image/")) {
-      const imageResult = await generateText({
-        model: describeImage,
-        system:
-          "You turn images into text. If it is a photo of a document, transcribe it. If it is not a document, describe it.",
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "image", image: new URL(url) }],
-          },
-        ],
-      });
-      text = imageResult.text;
-    } else if (mimeType.startsWith("audio/")) {
-      const audioResult = await transcribe({
-        model: describeAudio,
-        audio: new URL(url),
-      });
-      text = audioResult.text;
-    } else if (mimeType.toLowerCase().includes("pdf")) {
-      const pdfResult = await generateText({
-        model: describePdf,
-        system: "You transform PDF files into text.",
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "file", data: new URL(url), mimeType, filename }],
-          },
-        ],
-      });
-      text = pdfResult.text;
-    } else if (mimeType.toLowerCase().includes("text")) {
-      text = new TextDecoder().decode(bytes);
-    } else {
-      throw new Error(`Unsupported mime type: ${mimeType}`);
-    }
+    const text = await getText(ctx, { storageId, mimeType, filename, bytes });
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 500,
       chunkOverlap: 100,
@@ -254,6 +217,60 @@ export const searchCategory = action({
     return results;
   },
 });
+
+async function getText(
+  ctx: ActionCtx,
+  {
+    storageId,
+    mimeType,
+    filename,
+    bytes,
+  }: {
+    storageId: Id<"_storage">;
+    mimeType: string;
+    filename: string;
+    bytes: ArrayBuffer;
+  }
+) {
+  const url = await ctx.storage.getUrl(storageId);
+  assert(url);
+  if (mimeType.startsWith("image/")) {
+    const imageResult = await generateText({
+      model: describeImage,
+      system:
+        "You turn images into text. If it is a photo of a document, transcribe it. If it is not a document, describe it.",
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "image", image: new URL(url) }],
+        },
+      ],
+    });
+    return imageResult.text;
+  } else if (mimeType.startsWith("audio/")) {
+    const audioResult = await transcribe({
+      model: describeAudio,
+      audio: new URL(url),
+    });
+    return audioResult.text;
+  } else if (mimeType.toLowerCase().includes("pdf")) {
+    const pdfResult = await generateText({
+      model: describePdf,
+      system: "You transform PDF files into text.",
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "file", data: new URL(url), mimeType, filename }],
+        },
+      ],
+    });
+    return pdfResult.text;
+  } else if (mimeType.toLowerCase().includes("text")) {
+    return new TextDecoder().decode(bytes);
+  } else {
+    throw new Error(`Unsupported mime type: ${mimeType}`);
+  }
+}
 
 /**
  * ==============================
