@@ -15,6 +15,8 @@ import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { deleteChunksPage, insertChunks } from "./chunks.js";
 import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
+import { mergedStream } from "convex-helpers/server/stream";
+import { stream } from "convex-helpers/server/stream";
 
 export const upsertAsync = mutation({
   args: {
@@ -76,18 +78,27 @@ type UpsertDocumentArgs = Pick<
   "key" | "contentHash" | "importance" | "source" | "filterValues"
 >;
 
+const statusNames = vStatus.members.map((s) => s.value);
+
 async function findExistingDocument(
   ctx: MutationCtx,
   namespaceId: Id<"namespaces">,
   key: string
 ) {
-  const existing = await ctx.db
-    .query("documents")
-    .withIndex("namespaceId_key_version", (q) =>
-      q.eq("namespaceId", namespaceId).eq("key", key)
-    )
-    .order("desc")
-    .first();
+  const existing = await mergedStream(
+    statusNames.map((status) =>
+      stream(ctx.db, schema)
+        .query("documents")
+        .withIndex("namespaceId_key_status_version", (q) =>
+          q
+            .eq("namespaceId", namespaceId)
+            .eq("key", key)
+            .eq("status.kind", status)
+        )
+        .order("desc")
+    ),
+    ["version"]
+  ).first();
   return existing;
 }
 
@@ -225,19 +236,18 @@ function sourceMatches(existing: Source, newSource: Source) {
 export const list = query({
   args: {
     namespaceId: v.id("namespaces"),
-    key: v.optional(v.string()),
+    order: v.optional(v.union(v.literal("desc"), v.literal("asc"))),
     paginationOpts: paginationOptsValidator,
   },
   returns: vPaginationResult(vDocument),
   handler: async (ctx, args) => {
-    const results = await paginator(ctx.db, schema)
+    const results = await stream(ctx.db, schema)
       .query("documents")
-      .withIndex("namespaceId_key_version", (q) =>
-        args.key === undefined
-          ? q.eq("namespaceId", args.namespaceId)
-          : q.eq("namespaceId", args.namespaceId).eq("key", args.key)
+      .withIndex("namespaceId_key_status_version", (q) =>
+        q.eq("namespaceId", args.namespaceId)
       )
-      .order("desc")
+      .order(args.order ?? "desc")
+      .distinct(["key"])
       .paginate(args.paginationOpts);
     return {
       ...results,
@@ -270,10 +280,12 @@ export const promoteToReady = mutation({
     assert(document, `Document ${args.documentId} not found`);
     const previousDocument = await ctx.db
       .query("documents")
-      .withIndex("namespaceId_key_version", (q) =>
-        q.eq("namespaceId", document.namespaceId).eq("key", document.key)
+      .withIndex("namespaceId_key_status_version", (q) =>
+        q
+          .eq("namespaceId", document.namespaceId)
+          .eq("key", document.key)
+          .eq("status.kind", "pending")
       )
-      .filter((q) => q.neq(q.field("status"), { kind: "pending" }))
       .order("desc")
       .first();
     if (previousDocument) {

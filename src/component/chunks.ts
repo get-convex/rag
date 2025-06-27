@@ -62,10 +62,11 @@ export async function insertChunks(
 
   const previousDocument = await ctx.db
     .query("documents")
-    .withIndex("namespaceId_key_version", (q) =>
+    .withIndex("namespaceId_key_status_version", (q) =>
       q
         .eq("namespaceId", document.namespaceId)
         .eq("key", document.key)
+        .eq("status.kind", "ready")
         .lt("version", document.version)
     )
     .order("desc")
@@ -137,19 +138,26 @@ export async function insertChunks(
   };
 }
 
+const statusNames = vStatus.members.map((s) => s.value);
+
 async function ensureLatestDocumentVersion(
   ctx: QueryCtx,
   document: Doc<"documents">
 ) {
-  const newerDocument = await ctx.db
-    .query("documents")
-    .withIndex("namespaceId_key_version", (q) =>
-      q
-        .eq("namespaceId", document.namespaceId)
-        .eq("key", document.key)
-        .gt("version", document.version)
-    )
-    .first();
+  const newerDocument = await mergedStream(
+    statusNames.map((status) =>
+      stream(ctx.db, schema)
+        .query("documents")
+        .withIndex("namespaceId_key_status_version", (q) =>
+          q
+            .eq("namespaceId", document.namespaceId)
+            .eq("key", document.key)
+            .eq("status.kind", status)
+            .gt("version", document.version)
+        )
+    ),
+    ["version"]
+  ).first();
   if (newerDocument) {
     throw new Error(
       `Bailing from inserting chunks for document ${document.key} at version ${document.version} since there's a newer version ${newerDocument.version} (status ${newerDocument.status}) creation time difference ${(newerDocument._creationTime - document._creationTime).toFixed(0)}ms`
@@ -181,22 +189,23 @@ export const replaceChunksPage = mutation({
 
     const previousDocument = await ctx.db
       .query("documents")
-      .withIndex("namespaceId_key_version", (q) =>
+      .withIndex("namespaceId_key_status_version", (q) =>
         q
           .eq("namespaceId", document.namespaceId)
           .eq("key", document.key)
+          .eq("status.kind", "ready")
           .lt("version", document.version)
       )
-      .filter((q) => q.eq(q.field("status"), { kind: "ready" }))
       .order("desc")
       .first();
     const pendingDocuments = previousDocument
       ? await ctx.db
           .query("documents")
-          .withIndex("namespaceId_key_version", (q) =>
+          .withIndex("namespaceId_key_status_version", (q) =>
             q
               .eq("namespaceId", document.namespaceId)
               .eq("key", document.key)
+              .eq("status.kind", "pending")
               .gt("version", previousDocument.version)
               .lt("version", document.version)
           )

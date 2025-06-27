@@ -64,7 +64,12 @@ export const schema = defineSchema({
     // mimeType: v.string(),
     // metadata: v.optional(v.record(v.string(), v.any())),
     status: vStatusWithOnComplete,
-  }).index("namespaceId_key_version", ["namespaceId", "key", "version"]),
+  }).index("namespaceId_key_status_version", [
+    "namespaceId",
+    "key",
+    "status.kind",
+    "version",
+  ]),
   chunks: defineTable({
     documentId: v.id("documents"),
     order: v.number(),
