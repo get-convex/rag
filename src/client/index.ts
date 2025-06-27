@@ -116,7 +116,7 @@ export class DocumentSearch<
       importance?: Importance;
       contentHash?: string;
     }
-  ): Promise<{ documentId: DocumentId; status: Status }> {
+  ): Promise<{ documentId: DocumentId; status: Status; created: boolean }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -140,7 +140,7 @@ export class DocumentSearch<
       );
     }
 
-    const { documentId, status } = await ctx.runMutation(
+    const { documentId, status, created } = await ctx.runMutation(
       this.component.documents.upsert,
       {
         document: {
@@ -156,7 +156,7 @@ export class DocumentSearch<
       }
     );
     if (status === "ready") {
-      return { documentId: documentId as DocumentId, status };
+      return { documentId: documentId as DocumentId, status, created };
     }
 
     // break chunks up into batches, respecting soft limit
@@ -191,6 +191,7 @@ export class DocumentSearch<
           return {
             documentId: documentId as DocumentId,
             status: "replaced" as const,
+            created: true,
           };
         }
         startOrder = nextStartOrder;
@@ -199,7 +200,11 @@ export class DocumentSearch<
     await ctx.runMutation(this.component.documents.promoteToReady, {
       documentId,
     });
-    return { documentId: documentId as DocumentId, status: "ready" as const };
+    return {
+      documentId: documentId as DocumentId,
+      status: "ready" as const,
+      created: true,
+    };
   }
 
   async upsertDocumentAsync(
