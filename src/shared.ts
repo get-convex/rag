@@ -1,12 +1,38 @@
 import { v } from "convex/values";
 import type { Infer, Validator, Value } from "convex/values";
 import { vSource, type Source } from "./component/schema.js";
-import { vDocumentId, type DocumentId } from "./client/index.js";
 import { vNamedFilter, type NamedFilter } from "./component/filters.js";
+import { brandedString } from "convex-helpers/validators";
 
 // A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
 // Also a reasonable number of writes to the DB.
 export const CHUNK_BATCH_SIZE = 100;
+
+// Branded types for IDs, as components don't expose the internal ID types.
+export const vNamespaceId = brandedString("NamespaceId");
+export const vDocumentId = brandedString("DocumentId");
+export type NamespaceId = Infer<typeof vNamespaceId>;
+export type DocumentId = Infer<typeof vDocumentId>;
+
+export const vSearchResultInner = v.object({
+  documentId: v.id("documents"),
+  order: v.number(),
+  content: v.array(
+    v.object({
+      text: v.string(),
+      metadata: v.optional(v.record(v.string(), v.any())),
+    })
+  ),
+  startOrder: v.number(),
+  score: v.number(),
+});
+export type SearchResultInner = Infer<typeof vSearchResultInner>;
+
+export const vSearchResult = v.object({
+  ...vSearchResultInner.fields,
+  documentId: vDocumentId,
+});
+export type SearchResult = Infer<typeof vSearchResult>;
 
 export const vStatus = v.union(
   v.literal("pending"),

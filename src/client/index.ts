@@ -1,22 +1,6 @@
-import { v, type Value, type VString } from "convex/values";
-import {
-  type ActionCtx,
-  type DocumentSearchComponent,
-  type RunMutationCtx,
-  type RunQueryCtx,
-  type OnCompleteNamespace,
-  type NamespaceId,
-  type DocumentId,
-  type RunActionCtx,
-  type OnCompleteDocument,
-  vDocumentId,
-  vNamespaceId,
-  type ChunkerAction,
-} from "./types.js";
 import type { EmbeddingModelV1 } from "@ai-sdk/provider";
 import { embed, embedMany } from "ai";
-import { vSource, type Source } from "../component/schema.js";
-import { CHUNK_BATCH_SIZE, type Chunk, type Status } from "../shared.js";
+import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
   internalActionGeneric,
@@ -25,21 +9,45 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import type { CreateChunkArgs, Document } from "../shared.js";
-import { assert } from "convex-helpers";
-import type { SearchResult } from "../component/search.js";
+import { v, type Value, type VString } from "convex/values";
+import { vSource, type Source } from "../component/schema.js";
+import {
+  CHUNK_BATCH_SIZE,
+  vDocumentId,
+  vNamespaceId,
+  type Chunk,
+  type CreateChunkArgs,
+  type Document,
+  type DocumentId,
+  type NamespaceId,
+  type SearchResult,
+  type Status,
+} from "../shared.js";
+import {
+  type ActionCtx,
+  type ChunkerAction,
+  type DocumentSearchComponent,
+  type OnCompleteDocument,
+  type OnCompleteNamespace,
+  type RunActionCtx,
+  type RunMutationCtx,
+  type RunQueryCtx,
+} from "./types.js";
 
-export { vNamespaceId, vDocumentId } from "./types.js";
+export { vSearchResult } from "../shared.js";
+export { vDocumentId, vNamespaceId };
 
 export type {
+  ChunkerAction,
   Document,
+  DocumentId,
   DocumentSearchComponent,
+  NamespaceId,
+  OnCompleteDocument,
+  OnCompleteNamespace,
   SearchResult,
   Source,
   Status,
-  NamespaceId,
-  DocumentId,
-  OnCompleteNamespace,
 };
 
 const DEFAULT_SEARCH_LIMIT = 10;

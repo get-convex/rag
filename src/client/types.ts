@@ -8,16 +8,10 @@ import type {
   StorageActionWriter,
   StorageReader,
 } from "convex/server";
-import type { GenericId, Infer } from "convex/values";
+import { type GenericId } from "convex/values";
 import type { Mounts } from "../component/_generated/api.js";
-import { brandedString } from "convex-helpers/validators";
 import type { Source } from "../component/schema.js";
-
-// Branded types for IDs, as components don't expose the internal ID types.
-export const vNamespaceId = brandedString("NamespaceId");
-export const vDocumentId = brandedString("DocumentId");
-export type NamespaceId = Infer<typeof vNamespaceId>;
-export type DocumentId = Infer<typeof vDocumentId>;
+import type { DocumentId, NamespaceId } from "../shared.js";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause

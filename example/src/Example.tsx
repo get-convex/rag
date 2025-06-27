@@ -2,6 +2,7 @@ import "./Example.css";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
+import type { DocumentId, Document, SearchResult } from "@convex-dev/document-search";
 
 type SearchType = "global" | "user" | "category" | "document";
 
@@ -10,23 +11,12 @@ interface Source {
   key: string;
   importance?: number;
   filterValues?: { [x: string]: any };
-  documentId?: string;
-  storageId?: string;
-  url?: string;
-  score: number;
+  documentId?: DocumentId;
 }
-interface SearchResult {
-  results: {
-    content: Array<{
-      metadata?: { [x: string]: any };
-      text: string;
-    }>;
-    documentId: string;
-    document: Source;
-    order: number;
-    score: number;
-    startOrder: number;
-  }[];
+interface UISearchResult {
+  results: (SearchResult & {
+    document: Document;
+  })[];
   text: string[];
   sources: Array<Source>;
 }
@@ -42,9 +32,9 @@ function Example() {
 
   const [searchType, setSearchType] = useState<SearchType>("global");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document & {global: boolean} | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [searchResults, setSearchResults] = useState<UISearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedResults, setExpandedResults] = useState<Set<number>>(
     new Set()
@@ -171,14 +161,14 @@ function Example() {
         case "document":
           results = await searchDocument({
             query: searchQuery,
-            globalNamespace: selectedDocument.global || false,
-            filename: selectedDocument.filename || "",
+            globalNamespace: selectedDocument!.global || false,
+            filename: selectedDocument!.key || "",
           });
           break;
         default:
           throw new Error(`Unknown search type: ${searchType}`);
       }
-      const sources = results?.sources || [];
+      const sources = results?.documents || [];
       setSearchResults({
         ...results,
         results: results.results.map((result) => ({

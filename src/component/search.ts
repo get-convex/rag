@@ -1,5 +1,5 @@
-import { v, type Infer } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel.js";
+import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel.js";
 import { action } from "./_generated/server.js";
 import { searchEmbeddings } from "./embeddings/index.js";
 import {
@@ -8,21 +8,12 @@ import {
   type NumberedFilter,
 } from "./filters.js";
 import { internal } from "./_generated/api.js";
-import { vDocument, type Document } from "../shared.js";
-
-export const vSearchResult = v.object({
-  documentId: v.id("documents"),
-  order: v.number(),
-  content: v.array(
-    v.object({
-      text: v.string(),
-      metadata: v.optional(v.record(v.string(), v.any())),
-    })
-  ),
-  startOrder: v.number(),
-  score: v.number(),
-});
-export type SearchResult = Infer<typeof vSearchResult>;
+import {
+  vDocument,
+  type Document,
+  vSearchResultInner as vSearchResult,
+  type SearchResultInner as SearchResult,
+} from "../shared.js";
 
 export const search = action({
   args: {
