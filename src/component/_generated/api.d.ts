@@ -178,7 +178,11 @@ export type Mounts = {
         };
         onComplete?: string;
       },
-      { documentId: string; status: "pending" | "ready" | "replaced" }
+      {
+        created: boolean;
+        documentId: string;
+        status: "pending" | "ready" | "replaced";
+      }
     >;
     upsertAsync: FunctionReference<
       "mutation",
@@ -198,7 +202,11 @@ export type Mounts = {
         };
         onComplete?: string;
       },
-      { documentId: string; status: "pending" | "ready" | "replaced" }
+      {
+        created: boolean;
+        documentId: string;
+        status: "pending" | "ready" | "replaced";
+      }
     >;
   };
   namespaces: {

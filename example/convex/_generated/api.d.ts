@@ -176,7 +176,11 @@ export declare const components: {
           };
           onComplete?: string;
         },
-        { documentId: string; status: "pending" | "ready" | "replaced" }
+        {
+          created: boolean;
+          documentId: string;
+          status: "pending" | "ready" | "replaced";
+        }
       >;
       upsertAsync: FunctionReference<
         "mutation",
@@ -196,7 +200,11 @@ export declare const components: {
           };
           onComplete?: string;
         },
-        { documentId: string; status: "pending" | "ready" | "replaced" }
+        {
+          created: boolean;
+          documentId: string;
+          status: "pending" | "ready" | "replaced";
+        }
       >;
     };
     namespaces: {

@@ -30,6 +30,7 @@ export const upsertAsync = mutation({
   returns: v.object({
     documentId: v.id("documents"),
     status: vStatus,
+    created: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.document;
@@ -44,7 +45,11 @@ export const upsertAsync = mutation({
       if (args.onComplete) {
         await enqueueOnComplete(ctx, args.onComplete, existing._id);
       }
-      return { documentId: existing._id, status: existing.status.kind };
+      return {
+        documentId: existing._id,
+        status: existing.status.kind,
+        created: false,
+      };
     }
     const version = existing ? existing.version + 1 : 0;
     const status: StatusWithOnComplete = {
@@ -60,7 +65,7 @@ export const upsertAsync = mutation({
       documentId,
       chunker: args.chunker,
     });
-    return { documentId, status: status.kind };
+    return { documentId, status: status.kind, created: true };
   },
 });
 
@@ -113,6 +118,7 @@ export const upsert = mutation({
   returns: v.object({
     documentId: v.id("documents"),
     status: vStatus,
+    created: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.document;
@@ -130,6 +136,7 @@ export const upsert = mutation({
       return {
         documentId: existing._id,
         status: existing.status.kind,
+        created: false,
       };
     }
     const version = existing ? existing.version + 1 : 0;
@@ -149,9 +156,9 @@ export const upsert = mutation({
       if (args.onComplete) {
         await enqueueOnComplete(ctx, args.onComplete, documentId);
       }
-      return { documentId, status: "ready" as const };
+      return { documentId, status: "ready" as const, created: true };
     }
-    return { documentId, status: "pending" as const };
+    return { documentId, status: "pending" as const, created: true };
   },
 });
 
