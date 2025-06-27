@@ -7,22 +7,11 @@
  * This file takes in numbered filters (0-3) to translate without knowing about
  * user names.
  */
-import { type Value } from "convex/values";
 import type { Id } from "../_generated/dataModel.js";
 import { type ActionCtx, type MutationCtx } from "../_generated/server.js";
-import {
-  getVectorTableName,
-  filterFieldNames,
-  validateVectorDimension,
-  type NumberedFilter,
-  type NamedFilterField,
-} from "./tables.js";
+import { getVectorTableName, validateVectorDimension } from "./tables.js";
+import { filterFieldsFromNumbers, type NumberedFilter } from "../filters.js";
 import { searchVector, vectorWithImportance } from "./importance.js";
-
-export type NamedFilter = {
-  name: string;
-  value: Value;
-};
 
 // TODO: see if this is needed.
 // export const insertBatch = mutation({
@@ -53,22 +42,6 @@ export type NamedFilter = {
 //   },
 // });
 
-function filterFieldsFromNumbers(
-  namespace: Id<"namespaces">,
-  filters: NumberedFilter | undefined
-): NamedFilterField {
-  const filterFields: NamedFilterField = {};
-  if (!filters) return filterFields;
-  for (const [i, filter] of Object.entries(filters)) {
-    const index = Number(i);
-    if (index >= filterFieldNames.length) {
-      console.warn(`Unknown filter name: ${index}`);
-      break;
-    }
-    filterFields[filterFieldNames[index]] = [namespace, filter];
-  }
-  return filterFields;
-}
 
 export async function insertEmbedding(
   ctx: MutationCtx,

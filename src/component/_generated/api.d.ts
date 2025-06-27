@@ -13,6 +13,7 @@ import type * as documents from "../documents.js";
 import type * as embeddings_importance from "../embeddings/importance.js";
 import type * as embeddings_index from "../embeddings/index.js";
 import type * as embeddings_tables from "../embeddings/tables.js";
+import type * as filters from "../filters.js";
 import type * as namespaces from "../namespaces.js";
 import type * as search from "../search.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "embeddings/importance": typeof embeddings_importance;
   "embeddings/index": typeof embeddings_index;
   "embeddings/tables": typeof embeddings_tables;
+  filters: typeof filters;
   namespaces: typeof namespaces;
   search: typeof search;
 }>;

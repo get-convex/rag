@@ -7,55 +7,26 @@ import {
 } from "convex/server";
 import {
   type GenericId,
-  type Infer,
   type ObjectType,
   v,
-  type Value,
-  type VAny,
-  type VArray,
   type VId,
   type VObject,
   type VUnion,
 } from "convex/values";
 import { vectorWithImportanceDimension } from "./importance.js";
-import type { Id } from "../_generated/dataModel.js";
-
-const filterField = v.array(v.any()) as unknown as VArray<
-  [Id<"namespaces">, Value],
-  VId<"namespaces"> | VAny
->;
-export type FilterField = Infer<typeof filterField>;
-
-export const filterFieldNames = [
-  "filter0" as const,
-  "filter1" as const,
-  "filter2" as const,
-  "filter3" as const,
-];
-
-export type NumberedFilter = Record<number, Value>;
-export type NamedFilterField = {
-  [K in (typeof filterFieldNames)[number]]?: FilterField;
-};
+import { allFilterFieldNames, vAllFilterFields } from "../filters.js";
 
 // We only generate embeddings for non-tool, non-system messages
 const embeddingsFields = {
   vector: v.array(v.number()),
-  // [model, namespace, namespace version, document version]
-  namespaceId: v.id("namespaces"),
-  filter0: v.optional(filterField),
-  filter1: v.optional(filterField),
-  filter2: v.optional(filterField),
-  filter3: v.optional(filterField),
+  ...vAllFilterFields,
 };
-
-const filterFields = ["namespaceId" as const, ...filterFieldNames];
 
 function table(dimensions: VectorDimension): Table {
   return defineTable(embeddingsFields).vectorIndex("vector", {
     vectorField: "vector",
     dimensions: vectorWithImportanceDimension(dimensions),
-    filterFields,
+    filterFields: allFilterFieldNames,
   });
 }
 

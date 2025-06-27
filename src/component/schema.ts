@@ -2,11 +2,11 @@ import { defineSchema, defineTable } from "convex/server";
 import { v, type Infer } from "convex/values";
 import embeddingsTables, { vVectorId } from "./embeddings/tables.js";
 import { typedV } from "convex-helpers/validators";
-
-export const vNamedFilter = v.object({
-  name: v.string(),
-  value: v.any(),
-});
+import {
+  allFilterFieldNames,
+  vAllFilterFields,
+  vNamedFilter,
+} from "./filters.js";
 
 export const vSource = v.union(
   v.object({
@@ -96,6 +96,10 @@ export const schema = defineSchema({
     text: v.string(),
     // convenient metadata
     metadata: v.optional(v.record(v.string(), v.any())),
+    ...vAllFilterFields,
+  }).searchIndex("text", {
+    searchField: "text",
+    filterFields: allFilterFieldNames,
   }),
   // TODO: text search
 

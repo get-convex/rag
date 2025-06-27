@@ -2,7 +2,7 @@ import { assert } from "convex-helpers";
 import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
-import { convexToJson, type Infer, type Value } from "convex/values";
+import { convexToJson, type Infer } from "convex/values";
 import {
   vChunk,
   vCreateChunkArgs,
@@ -23,12 +23,15 @@ import { insertEmbedding } from "./embeddings/index.js";
 import { vVectorId } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
 import { publicDocument } from "./documents.js";
-import type { NumberedFilter } from "./embeddings/tables.js";
+import {
+  filterFieldsFromNumbers,
+  namedFiltersToNumberedFilter,
+} from "./filters.js";
 
-export const KB = 1_024;
-export const MB = 1_024 * KB;
-export const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
-export const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
+const KB = 1_024;
+const MB = 1_024 * KB;
+const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
+const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
 
 export const vInsertChunksArgs = v.object({
   documentId: v.id("documents"),
@@ -93,10 +96,16 @@ export async function insertChunks(
       await ctx.db.delete(c._id);
     })
   );
+  const numberedFilter = namedFiltersToNumberedFilter(
+    document.filterValues,
+    namespace!.filterNames
+  );
   for (const chunk of chunks) {
     const contentId = await ctx.db.insert("content", {
       text: chunk.content.text,
       metadata: chunk.content.metadata,
+      namespaceId: document.namespaceId,
+      ...filterFieldsFromNumbers(document.namespaceId, numberedFilter),
     });
     let state: Doc<"chunks">["state"] = {
       kind: "pending",
@@ -109,7 +118,7 @@ export async function insertChunks(
         chunk.embedding,
         document.namespaceId,
         document.importance,
-        namedFiltersToNumberedFilter(document.filterValues, namespace!)
+        numberedFilter
       );
       state = { kind: "ready", embeddingId };
     }
@@ -207,6 +216,10 @@ export const replaceChunksPage = mutation({
       ["order"]
     );
     const namespaceId = document.namespaceId;
+    const namedFilters = namedFiltersToNumberedFilter(
+      document.filterValues,
+      namespace!.filterNames
+    );
     async function addChunk(
       chunk: Doc<"chunks"> & { state: { kind: "pending" } }
     ) {
@@ -215,7 +228,7 @@ export const replaceChunksPage = mutation({
         chunk.state.embedding,
         namespaceId,
         document.importance,
-        namedFiltersToNumberedFilter(document.filterValues, namespace!)
+        namedFilters
       );
       await ctx.db.patch(chunk._id, {
         state: { kind: "ready", embeddingId },
@@ -538,23 +551,4 @@ async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
     ).length;
   }
   return dataUsedSoFar;
-}
-
-// Helper function to convert named filters to numbered filters
-// This makes a single filter item for use in inserting embeddings.
-function namedFiltersToNumberedFilter(
-  namedFilters: Array<{ name: string; value: Value }>,
-  namespace: Doc<"namespaces">
-): NumberedFilter {
-  const numberedFilter: NumberedFilter = {};
-  for (const namedFilter of namedFilters) {
-    const index = namespace.filterNames.indexOf(namedFilter.name);
-    if (index === -1) {
-      throw new Error(
-        `Unknown filter name: ${namedFilter.name} for namespace ${namespace._id} (${namespace.namespace} version ${namespace.version})`
-      );
-    }
-    numberedFilter[index] = namedFilter.value;
-  }
-  return numberedFilter;
 }

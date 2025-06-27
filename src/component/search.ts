@@ -1,9 +1,12 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { action } from "./_generated/server.js";
-import { searchEmbeddings, type NamedFilter } from "./embeddings/index.js";
-import type { NumberedFilter } from "./embeddings/tables.js";
-import { vNamedFilter } from "./schema.js";
+import { searchEmbeddings } from "./embeddings/index.js";
+import {
+  vNamedFilter,
+  type NamedFilter,
+  type NumberedFilter,
+} from "./filters.js";
 import { internal } from "./_generated/api.js";
 import { vDocument, type Document } from "../shared.js";
 

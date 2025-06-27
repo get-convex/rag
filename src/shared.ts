@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import type { Infer, Validator, Value } from "convex/values";
-import { vNamedFilter, vSource, type Source } from "./component/schema.js";
+import { vSource, type Source } from "./component/schema.js";
 import { vDocumentId, type DocumentId } from "./client/index.js";
-import type { NamedFilter } from "./component/embeddings/index.js";
+import { vNamedFilter, type NamedFilter } from "./component/filters.js";
 
 // A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
 // Also a reasonable number of writes to the DB.
