@@ -90,7 +90,7 @@ export class DocumentSearch<
   ) {}
 
   async upsertDocument(
-    ctx: RunActionCtx,
+    ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       chunks: InputChunk[];
@@ -116,12 +116,7 @@ export class DocumentSearch<
 
     validateUpsertFilterValues(args.filterValues, this.options.filterNames);
 
-    let source: Source;
-    if ("storageId" in args.source) {
-      source = { kind: "_storage", storageId: args.source.storageId };
-    } else {
-      source = { kind: "url", url: args.source.url };
-    }
+    const { source, contentHash } = await getSource(ctx, args.source);
 
     let allChunks: CreateChunkArgs[] | undefined;
     if (args.chunks.length < CHUNK_BATCH_SIZE) {
@@ -141,7 +136,7 @@ export class DocumentSearch<
           title: args.title,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
-          contentHash: args.contentHash,
+          contentHash,
         },
         allChunks,
       }
@@ -195,7 +190,7 @@ export class DocumentSearch<
   }
 
   async upsertDocumentAsync(
-    ctx: RunActionCtx,
+    ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       source: Source;
@@ -237,12 +232,7 @@ export class DocumentSearch<
 
     validateUpsertFilterValues(args.filterValues, this.options.filterNames);
 
-    let source: Source;
-    if ("storageId" in args.source) {
-      source = { kind: "_storage", storageId: args.source.storageId };
-    } else {
-      source = { kind: "url", url: args.source.url };
-    }
+    const { source, contentHash } = await getSource(ctx, args.source);
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
       : undefined;
@@ -258,7 +248,7 @@ export class DocumentSearch<
           source,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
-          contentHash: args.contentHash,
+          contentHash,
         },
         onComplete,
         chunker,
@@ -590,3 +580,25 @@ async function createChunkArgsBatch(
     return true;
   }) as CreateChunkArgs[];
 }
+
+  async function getSource(
+    ctx: ActionCtx,
+    {
+      storageId,
+      url,
+      contentHash,
+    }: { storageId?: string; url?: string; contentHash?: string }
+  ): Promise<{ source: Source; contentHash: string }> {
+    assert(storageId || url, "Either storageId or url must be provided");
+    if (storageId) {
+      const metadata = await ctx.storage.getMetadata(storageId);
+      assert(metadata, "Storage metadata not found for storageId " + storageId);
+      return {
+        source: { kind: "_storage", storageId },
+        contentHash: metadata.sha256,
+      };
+    } else {
+      assert(url);
+      return { source: { kind: "url", url }, contentHash: contentHash ?? url };
+    }
+  }

@@ -164,7 +164,7 @@ export type Mounts = {
           embedding: Array<number>;
         }>;
         document: {
-          contentHash?: string;
+          contentHash: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -184,7 +184,7 @@ export type Mounts = {
       {
         chunker: string;
         document: {
-          contentHash?: string;
+          contentHash: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;

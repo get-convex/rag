@@ -162,7 +162,7 @@ export declare const components: {
             embedding: Array<number>;
           }>;
           document: {
-            contentHash?: string;
+            contentHash: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
@@ -182,7 +182,7 @@ export declare const components: {
         {
           chunker: string;
           document: {
-            contentHash?: string;
+            contentHash: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;

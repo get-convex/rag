@@ -57,7 +57,7 @@ export const schema = defineSchema({
     // To avoid re-creating/ updating the same document
     // This is a hash that ideally encompasses the content AND chunking strategy
     // e.g. a hash of the list of chunk content hashes.
-    contentHash: v.optional(v.string()),
+    contentHash: v.string(),
     // conveneient metadata
     title: v.optional(v.string()),
     source: vSource,
