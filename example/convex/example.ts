@@ -10,6 +10,8 @@ import {
 import { components, internal } from "./_generated/api";
 import {
   DocumentSearch,
+  guessMimeTypeFromContents,
+  guessMimeTypeFromExtension,
   InputChunk,
   vDocumentId,
 } from "@convex-dev/document-search";
@@ -51,8 +53,19 @@ export const uploadFile = action({
     const userId = await getUserId(ctx);
     // Maybe rate limit how often a user can upload a file / attribute?
     if (!userId) throw new Error("Unauthorized");
-    const { globalNamespace, bytes, mimeType, filename, category } = args;
+    const { globalNamespace, bytes, filename, category } = args;
 
+    const mimeType =
+      args.mimeType ||
+      guessMimeTypeFromExtension(filename) ||
+      guessMimeTypeFromContents(bytes);
+    console.debug(
+      "mimeType",
+      mimeType,
+      args.mimeType,
+      guessMimeTypeFromExtension(filename),
+      guessMimeTypeFromContents(bytes)
+    );
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
