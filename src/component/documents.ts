@@ -18,6 +18,10 @@ import { deleteChunksPage, insertChunks } from "./chunks.js";
 import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
 import { mergedStream } from "convex-helpers/server/stream";
 import { stream } from "convex-helpers/server/stream";
+import {
+  getCompatibleNamespaceHandler,
+  vNamespaceLookupArgs,
+} from "./namespaces.js";
 
 export const upsertAsync = mutation({
   args: {
@@ -153,9 +157,7 @@ export const upsert = mutation({
         startOrder: 0,
         chunks: args.allChunks,
       });
-      if (args.onComplete) {
-        await enqueueOnComplete(ctx, args.onComplete, documentId);
-      }
+      await promoteToReadyHandler(ctx, { documentId });
       return { documentId, status: "ready" as const, created: true };
     }
     return { documentId, status: "pending" as const, created: true };
@@ -283,29 +285,41 @@ export const promoteToReady = mutation({
   args: v.object({
     documentId: v.id("documents"),
   }),
-  handler: async (ctx, args) => {
-    const document = await ctx.db.get(args.documentId);
-    assert(document, `Document ${args.documentId} not found`);
-    const previousDocument = await ctx.db
-      .query("documents")
-      .withIndex("namespaceId_status_key_version", (q) =>
-        q
-          .eq("namespaceId", document.namespaceId)
-          .eq("status.kind", "pending")
-          .eq("key", document.key)
-      )
-      .order("desc")
-      .first();
-    if (previousDocument) {
-      await ctx.db.patch(previousDocument._id, {
-        status: { kind: "replaced", replacedAt: Date.now() },
-      });
-    }
-    await ctx.db.patch(args.documentId, {
-      status: { kind: "ready" },
-    });
-  },
+  handler: promoteToReadyHandler,
 });
+
+async function promoteToReadyHandler(
+  ctx: MutationCtx,
+  args: { documentId: Id<"documents"> }
+) {
+  const document = await ctx.db.get(args.documentId);
+  assert(document, `Document ${args.documentId} not found`);
+  if (document.status.kind === "ready") {
+    console.debug(`Document ${args.documentId} is already ready, skipping...`);
+    return;
+  }
+  const previousDocument = await ctx.db
+    .query("documents")
+    .withIndex("namespaceId_status_key_version", (q) =>
+      q
+        .eq("namespaceId", document.namespaceId)
+        .eq("status.kind", "ready")
+        .eq("key", document.key)
+    )
+    .order("desc")
+    .unique();
+  if (previousDocument) {
+    await ctx.db.patch(previousDocument._id, {
+      status: { kind: "replaced", replacedAt: Date.now() },
+    });
+  }
+  await ctx.db.patch(args.documentId, {
+    status: { kind: "ready" },
+  });
+  if (document.status.kind === "pending" && document.status.onComplete) {
+    await enqueueOnComplete(ctx, document.status.onComplete, args.documentId);
+  }
+}
 
 export function publicDocument(document: Doc<"documents">): Document {
   const { key, importance, filterValues, contentHash, source, title } =
