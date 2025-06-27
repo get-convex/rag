@@ -292,6 +292,59 @@ export const get = query({
   },
 });
 
+export const findByContentHash = query({
+  args: {
+    ...vNamespaceLookupArgs,
+    key: v.string(),
+    contentHash: v.string(),
+    url: v.optional(v.string()),
+  },
+  returns: v.union(vDocument, v.null()),
+  handler: async (ctx, args) => {
+    const namespace = await getCompatibleNamespaceHandler(ctx, args);
+    if (!namespace) {
+      return null;
+    }
+    let attempts = 0;
+    for await (const doc of mergedStream(
+      statuses.map((status) =>
+        stream(ctx.db, schema)
+          .query("documents")
+          .withIndex("namespaceId_status_key_version", (q) =>
+            q
+              .eq("namespaceId", namespace._id)
+              .eq("status.kind", status)
+              .eq("key", args.key)
+          )
+          .order("desc")
+      ),
+      ["version"]
+    )) {
+      attempts++;
+      if (attempts > 20) {
+        console.debug(
+          `Giving up after checking ${attempts} documents for ${args.key}, returning null`
+        );
+        return null;
+      }
+      if (
+        documentIsSame(doc, {
+          key: args.key,
+          contentHash: args.contentHash,
+          source: args.url
+            ? { kind: "url", url: args.url }
+            : { kind: "_storage", storageId: "" },
+          filterValues: doc.filterValues,
+          importance: doc.importance,
+        })
+      ) {
+        return publicDocument(doc);
+      }
+    }
+    return null;
+  },
+});
+
 export const promoteToReady = mutation({
   args: v.object({
     documentId: v.id("documents"),

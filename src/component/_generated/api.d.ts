@@ -98,6 +98,31 @@ export type Mounts = {
       { documentId: string; startOrder: number },
       any
     >;
+    findByContentHash: FunctionReference<
+      "query",
+      "public",
+      {
+        contentHash: string;
+        dimension: number;
+        filterNames: Array<string>;
+        key: string;
+        modelId: string;
+        namespace: string;
+        url?: string;
+      },
+      {
+        contentHash?: string;
+        documentId: string;
+        filterValues: Array<{ name: string; value: any }>;
+        importance: number;
+        key: string;
+        source:
+          | { kind: "_storage"; storageId: string }
+          | { kind: "url"; url: string };
+        status: "pending" | "ready" | "replaced";
+        title?: string;
+      } | null
+    >;
     get: FunctionReference<
       "query",
       "public",

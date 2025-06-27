@@ -65,7 +65,7 @@ function namespaceIsCompatible(
   return true;
 }
 
-const vNamespaceLookupArgs = {
+export const vNamespaceLookupArgs = {
   namespace: v.string(),
   modelId: v.string(),
   dimension: v.number(),
@@ -78,7 +78,7 @@ export const getCompatibleNamespace = internalQuery({
   handler: getCompatibleNamespaceHandler,
 });
 
-async function getCompatibleNamespaceHandler(
+export async function getCompatibleNamespaceHandler(
   ctx: QueryCtx,
   args: ObjectType<typeof vNamespaceLookupArgs>
 ) {
@@ -151,10 +151,6 @@ export const getOrCreate = mutation({
       }
       // see if it's compatible
       if (namespaceIsCompatible(existing, args)) {
-        console.debug(
-          `Namespace ${args.namespace} is compatible, returning existing version ${existing.version}`,
-          existing
-        );
         return {
           namespaceId: existing._id,
           status: existing.status.kind,
