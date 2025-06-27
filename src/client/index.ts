@@ -25,13 +25,16 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import type { CreateChunkArgs } from "../shared.js";
+import type { CreateChunkArgs, Document } from "../shared.js";
 import { assert } from "convex-helpers";
+import type { SearchResult } from "../component/search.js";
 
 export { vNamespaceId, vDocumentId } from "./types.js";
 
 export type {
+  Document,
   DocumentSearchComponent,
+  SearchResult,
   Source,
   Status,
   NamespaceId,
@@ -297,7 +300,11 @@ export class DocumentSearch<
        */
       chunkContext?: { before: number; after: number };
     }
-  ) {
+  ): Promise<{
+    results: SearchResult[];
+    text: string[];
+    documents: Document[];
+  }> {
     const {
       namespace,
       filters = [],
@@ -320,17 +327,9 @@ export class DocumentSearch<
       }
     );
     return {
-      results,
+      results: results as SearchResult[],
       text: results.map((r) => r.content.map((c) => c.text).join("\n")),
-      sources: documents.map((d) => ({
-        ...d.source,
-        documentId: d.documentId,
-        title: d.title,
-        key: d.key,
-        importance: d.importance,
-        filterValues: d.filterValues,
-        score: results.find((r) => r.documentId === d.documentId)?.score ?? 0,
-      })),
+      documents: documents as Document[],
     };
   }
 

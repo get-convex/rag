@@ -301,11 +301,13 @@ export const promoteToReady = mutation({
 });
 
 export function publicDocument(document: Doc<"documents">): Document {
-  const { key, importance, filterValues, contentHash, source } = document;
+  const { key, importance, filterValues, contentHash, source, title } =
+    document;
 
   return {
     documentId: document._id as unknown as DocumentId,
     key,
+    title,
     importance,
     filterValues,
     contentHash,
