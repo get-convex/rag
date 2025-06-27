@@ -1,5 +1,4 @@
 import { assert, omit } from "convex-helpers";
-import { paginator } from "convex-helpers/server/pagination";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { DocumentId } from "../client/index.js";
@@ -176,69 +175,81 @@ function documentIsSame(
   existing: Doc<"documents">,
   newDocument: UpsertDocumentArgs
 ) {
+  console.debug("documentIsSame", existing, newDocument);
   if (
     !!existing.contentHash &&
     !!newDocument.contentHash &&
     existing.contentHash !== newDocument.contentHash
   ) {
-    return false;
-  }
-  if (
-    (!!existing.contentHash || !!newDocument.contentHash) &&
-    !(
-      existing.source.kind === "_storage" &&
-      newDocument.source.kind === "_storage"
-    )
-  ) {
-    // if we are adding/removing a content hash, that's only ok if we are using
-    // the same storageId, as those are immutable.
+    console.debug(
+      `Document ${newDocument.key} content hash is different, replacing...`
+    );
     return false;
   }
   if (existing.importance !== newDocument.importance) {
     console.debug(
-      `Document ${newDocument.key} importance is different, skipping...`
+      `Document ${newDocument.key} importance is different, replacing...`
     );
     return false;
   }
   if (newDocument.filterValues.length !== existing.filterValues.length) {
     console.debug(
-      `Document ${newDocument.key} has a different number of filter values, skipping...`
+      `Document ${newDocument.key} has a different number of filter values, replacing...`
     );
     return false;
   }
   if (
-    existing.filterValues.every((filter) =>
+    !existing.filterValues.every((filter) =>
       newDocument.filterValues.some(
         (f) => f.name === filter.name && f.value === filter.value
       )
     )
   ) {
     console.debug(
-      `Document ${newDocument.key} filter values are different, skipping...`
+      `Document ${newDocument.key} filter values are different, replacing...`
     );
     return false;
   }
-  if (!sourceMatches(existing.source, newDocument.source)) {
+  if (existing.source.kind !== newDocument.source.kind) {
     console.debug(
-      `Document ${newDocument.key} source is different, skipping...`
+      `Document ${newDocument.key} source kind is different, replacing...`
     );
+    return false;
+  }
+  if (
+    existing.source.kind === "url" &&
+    newDocument.source.kind === "url" &&
+    existing.source.url !== newDocument.source.url
+  ) {
+    console.debug(
+      `Document ${newDocument.key} source url is different, replacing...`
+    );
+    return false;
+  }
+  // At this point we check for the contents to be the same.
+  if (existing.contentHash && newDocument.contentHash) {
+    if (existing.contentHash === newDocument.contentHash) {
+      // Return early, even if the storageIds are different.
+      return true;
+    }
+    console.debug(
+      `Document ${newDocument.key} content hash is different, replacing...`
+    );
+    return false;
+  }
+  if (
+    existing.source.kind === "_storage" &&
+    newDocument.source.kind === "_storage" &&
+    existing.contentHash !== newDocument.contentHash
+  ) {
+    console.debug(
+      `Document ${newDocument.key} source storageId is different, replacing...`
+    );
+    // if we are adding/removing a content hash, that's only ok if we are using
+    // the same storageId, as those are immutable.
     return false;
   }
   return true;
-}
-
-function sourceMatches(existing: Source, newSource: Source) {
-  switch (existing.kind) {
-    case "url":
-      return newSource.kind === "url" && existing.url === newSource.url;
-    case "_storage":
-      return (
-        newSource.kind === "_storage" &&
-        existing.storageId === newSource.storageId
-      );
-    default:
-      throw new Error(`Unknown source kind: ${existing}`);
-  }
 }
 
 export const list = query({
