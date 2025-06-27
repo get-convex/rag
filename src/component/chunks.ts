@@ -111,6 +111,7 @@ export async function insertChunks(
       kind: "pending",
       embedding: chunk.embedding,
       importance: document.importance,
+      pendingSearchableText: chunk.searchableText,
     };
     if (!previousDocument) {
       const embeddingId = await insertEmbedding(
@@ -120,7 +121,11 @@ export async function insertChunks(
         document.importance,
         numberedFilter
       );
-      state = { kind: "ready", embeddingId };
+      state = {
+        kind: "ready",
+        embeddingId,
+        searchableText: chunk.searchableText,
+      };
     }
     chunkIds.push(
       await ctx.db.insert("chunks", {
@@ -267,6 +272,7 @@ export const replaceChunksPage = mutation({
               kind: "replaced",
               embeddingId: chunk.state.embeddingId,
               vector: vector.vector,
+              pendingSearchableText: chunk.state.searchableText,
             },
           });
         })

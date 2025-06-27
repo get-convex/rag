@@ -64,6 +64,9 @@ type LangChainChunk = {
 export type InputChunk =
   | string
   | ((MastraChunk | LangChainChunk) & {
+      // Space-delimited keywords to text search on.
+      // TODO: implement text search
+      keywords?: string;
       // In the future we can add per-chunk metadata if it's useful.
       // importance?: Importance;
       // filters?: NamedFilter<FitlerNames>[];
@@ -529,6 +532,31 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
   return batches;
 }
 
+export function splitFilename(title: string | undefined): string | undefined {
+  if (!title) {
+    return undefined;
+  }
+  if (title.search(/\.[a-zA-Z0-9]+$/) === -1) {
+    return title;
+  }
+  const parts = title.split(".");
+  // split up camelCase into "camel Case"
+  return parts
+    .map((part) => {
+      const words = part.split(" ");
+      const camelCaseWords = words.map((word) => {
+        const pieces = word.split(/(?=[A-Z])/);
+        if (pieces.length === 1) {
+          return word;
+        }
+        // include the full word and the split pieces
+        return [word, ...pieces].join(" ");
+      });
+      return camelCaseWords.join(" ");
+    })
+    .join(" ");
+}
+
 async function createChunkArgsBatch(
   embedModel: EmbeddingModelV1<string>,
   chunks: InputChunk[]
@@ -539,17 +567,21 @@ async function createChunkArgsBatch(
     if (typeof chunk === "string") {
       return { content: { text: chunk } };
     } else if ("text" in chunk) {
+      const { text, metadata, keywords: searchableText } = chunk;
       return {
-        content: { text: chunk.text, metadata: chunk.metadata },
+        content: { text, metadata },
         embedding: chunk.embedding,
+        searchableText,
       };
     } else if ("pageContent" in chunk) {
+      const { pageContent: text, metadata, keywords: searchableText } = chunk;
       return {
-        content: { text: chunk.pageContent, metadata: chunk.metadata },
+        content: { text, metadata },
         embedding: chunk.embedding,
+        searchableText,
       };
     } else {
-      throw new Error("Invalid chunk");
+      throw new Error("Invalid chunk: " + JSON.stringify(chunk));
     }
   });
   const missingEmbeddingsWithIndex = argsMaybeMissingEmbeddings

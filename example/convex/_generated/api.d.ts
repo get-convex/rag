@@ -48,6 +48,7 @@ export declare const components: {
           chunks: Array<{
             content: { metadata?: Record<string, any>; text: string };
             embedding: Array<number>;
+            searchableText?: string;
           }>;
           documentId: string;
           startOrder: number;
@@ -160,6 +161,7 @@ export declare const components: {
           allChunks?: Array<{
             content: { metadata?: Record<string, any>; text: string };
             embedding: Array<number>;
+            searchableText?: string;
           }>;
           document: {
             contentHash: string;

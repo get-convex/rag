@@ -81,6 +81,7 @@ export const vCreateChunkArgs = v.object({
     metadata: v.optional(v.record(v.string(), v.any())),
   }),
   embedding: v.array(v.number()),
+  searchableText: v.optional(v.string()),
 });
 export type CreateChunkArgs = Infer<typeof vCreateChunkArgs>;
 
