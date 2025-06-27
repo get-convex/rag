@@ -62,11 +62,11 @@ export async function insertChunks(
 
   const previousDocument = await ctx.db
     .query("documents")
-    .withIndex("namespaceId_key_status_version", (q) =>
+    .withIndex("namespaceId_status_key_version", (q) =>
       q
         .eq("namespaceId", document.namespaceId)
-        .eq("key", document.key)
         .eq("status.kind", "ready")
+        .eq("key", document.key)
         .lt("version", document.version)
     )
     .order("desc")
@@ -148,11 +148,11 @@ async function ensureLatestDocumentVersion(
     statusNames.map((status) =>
       stream(ctx.db, schema)
         .query("documents")
-        .withIndex("namespaceId_key_status_version", (q) =>
+        .withIndex("namespaceId_status_key_version", (q) =>
           q
             .eq("namespaceId", document.namespaceId)
-            .eq("key", document.key)
             .eq("status.kind", status)
+            .eq("key", document.key)
             .gt("version", document.version)
         )
     ),
@@ -189,11 +189,11 @@ export const replaceChunksPage = mutation({
 
     const previousDocument = await ctx.db
       .query("documents")
-      .withIndex("namespaceId_key_status_version", (q) =>
+      .withIndex("namespaceId_status_key_version", (q) =>
         q
           .eq("namespaceId", document.namespaceId)
-          .eq("key", document.key)
           .eq("status.kind", "ready")
+          .eq("key", document.key)
           .lt("version", document.version)
       )
       .order("desc")
@@ -201,11 +201,11 @@ export const replaceChunksPage = mutation({
     const pendingDocuments = previousDocument
       ? await ctx.db
           .query("documents")
-          .withIndex("namespaceId_key_status_version", (q) =>
+          .withIndex("namespaceId_status_key_version", (q) =>
             q
               .eq("namespaceId", document.namespaceId)
-              .eq("key", document.key)
               .eq("status.kind", "pending")
+              .eq("key", document.key)
               .gt("version", previousDocument.version)
               .lt("version", document.version)
           )

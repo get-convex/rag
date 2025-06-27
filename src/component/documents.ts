@@ -89,11 +89,11 @@ async function findExistingDocument(
     statusNames.map((status) =>
       stream(ctx.db, schema)
         .query("documents")
-        .withIndex("namespaceId_key_status_version", (q) =>
+        .withIndex("namespaceId_status_key_version", (q) =>
           q
             .eq("namespaceId", namespaceId)
-            .eq("key", key)
             .eq("status.kind", status)
+            .eq("key", key)
         )
         .order("desc")
     ),
@@ -243,11 +243,10 @@ export const list = query({
   handler: async (ctx, args) => {
     const results = await stream(ctx.db, schema)
       .query("documents")
-      .withIndex("namespaceId_key_status_version", (q) =>
-        q.eq("namespaceId", args.namespaceId)
+      .withIndex("namespaceId_status_key_version", (q) =>
+        q.eq("namespaceId", args.namespaceId).eq("status.kind", "ready")
       )
-      .order(args.order ?? "desc")
-      .distinct(["key"])
+      .order(args.order ?? "asc")
       .paginate(args.paginationOpts);
     return {
       ...results,
@@ -280,11 +279,11 @@ export const promoteToReady = mutation({
     assert(document, `Document ${args.documentId} not found`);
     const previousDocument = await ctx.db
       .query("documents")
-      .withIndex("namespaceId_key_status_version", (q) =>
+      .withIndex("namespaceId_status_key_version", (q) =>
         q
           .eq("namespaceId", document.namespaceId)
-          .eq("key", document.key)
           .eq("status.kind", "pending")
+          .eq("key", document.key)
       )
       .order("desc")
       .first();
