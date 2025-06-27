@@ -7,6 +7,7 @@ import {
 } from "./_generated/server.js";
 import { schema, v, vStatusWithOnComplete } from "./schema.js";
 import {
+  statuses,
   vNamespace,
   vPaginationResult,
   vStatus,
@@ -15,6 +16,7 @@ import {
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { ObjectType } from "convex/values";
+import { mergedStream, stream } from "convex-helpers/server/stream";
 
 export const get = query({
   args: {
@@ -82,8 +84,9 @@ async function getCompatibleNamespaceHandler(
 ) {
   const iter = ctx.db
     .query("namespaces")
-    .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
-    .filter((q) => q.eq(q.field("status.kind"), "ready"))
+    .withIndex("status_namespace_version", (q) =>
+      q.eq("status.kind", "ready").eq("namespace", args.namespace)
+    )
     .order("desc");
   let first: Doc<"namespaces"> | null = null;
   for await (const existing of iter) {
@@ -125,10 +128,17 @@ export const getOrCreate = mutation({
     status: vStatus,
   }),
   handler: async (ctx, args) => {
-    const iter = ctx.db
-      .query("namespaces")
-      .withIndex("namespace_version", (q) => q.eq("namespace", args.namespace))
-      .order("desc");
+    const iter = mergedStream(
+      statuses.map((status) =>
+        stream(ctx.db, schema)
+          .query("namespaces")
+          .withIndex("status_namespace_version", (q) =>
+            q.eq("status.kind", status).eq("namespace", args.namespace)
+          )
+          .order("desc")
+      ),
+      ["version"]
+    );
 
     let version: number = 0;
     for await (const existing of iter) {
@@ -171,11 +181,15 @@ export const getOrCreate = mutation({
 export const list = query({
   args: v.object({
     paginationOpts: paginationOptsValidator,
+    status: vStatus,
   }),
   returns: vPaginationResult(vNamespace),
   handler: async (ctx, args) => {
     const namespaces = await paginator(ctx.db, schema)
       .query("namespaces")
+      .withIndex("status_namespace_version", (q) =>
+        q.eq("status.kind", args.status ?? "ready")
+      )
       .order("desc")
       .paginate(args.paginationOpts);
     return {

@@ -4,6 +4,7 @@ import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
 import { convexToJson, type Infer } from "convex/values";
 import {
+  statuses,
   vChunk,
   vCreateChunkArgs,
   vDocument,
@@ -138,14 +139,12 @@ export async function insertChunks(
   };
 }
 
-const statusNames = vStatus.members.map((s) => s.value);
-
 async function ensureLatestDocumentVersion(
   ctx: QueryCtx,
   document: Doc<"documents">
 ) {
   const newerDocument = await mergedStream(
-    statusNames.map((status) =>
+    statuses.map((status) =>
       stream(ctx.db, schema)
         .query("documents")
         .withIndex("namespaceId_status_key_version", (q) =>

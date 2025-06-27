@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { DocumentId } from "../client/index.js";
 import {
+  statuses,
   vCreateChunkArgs,
   vDocument,
   vPaginationResult,
@@ -78,15 +79,13 @@ type UpsertDocumentArgs = Pick<
   "key" | "contentHash" | "importance" | "source" | "filterValues"
 >;
 
-const statusNames = vStatus.members.map((s) => s.value);
-
 async function findExistingDocument(
   ctx: MutationCtx,
   namespaceId: Id<"namespaces">,
   key: string
 ) {
   const existing = await mergedStream(
-    statusNames.map((status) =>
+    statuses.map((status) =>
       stream(ctx.db, schema)
         .query("documents")
         .withIndex("namespaceId_status_key_version", (q) =>
@@ -237,6 +236,7 @@ export const list = query({
   args: {
     namespaceId: v.id("namespaces"),
     order: v.optional(v.union(v.literal("desc"), v.literal("asc"))),
+    status: vStatus,
     paginationOpts: paginationOptsValidator,
   },
   returns: vPaginationResult(vDocument),
@@ -244,7 +244,9 @@ export const list = query({
     const results = await stream(ctx.db, schema)
       .query("documents")
       .withIndex("namespaceId_status_key_version", (q) =>
-        q.eq("namespaceId", args.namespaceId).eq("status.kind", "ready")
+        q
+          .eq("namespaceId", args.namespaceId)
+          .eq("status.kind", args.status ?? "ready")
       )
       .order(args.order ?? "asc")
       .paginate(args.paginationOpts);

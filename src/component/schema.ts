@@ -46,7 +46,7 @@ export const schema = defineSchema({
     dimension: v.number(),
     filterNames: v.array(v.string()),
     status: vStatusWithOnComplete,
-  }).index("namespace_version", ["namespace", "version"]),
+  }).index("status_namespace_version", ["status.kind", "namespace", "version"]),
   documents: defineTable({
     // user-specified id, eg. storage ID or "myfile.txt". Used for upserting.
     key: v.string(),
