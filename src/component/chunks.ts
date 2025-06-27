@@ -243,9 +243,15 @@ export const replaceChunksPage = mutation({
       await Promise.all(
         chunksToDeleteEmbeddings.map(async (chunk) => {
           assert(chunk.state.kind === "ready");
+          const vector = await ctx.db.get(chunk.state.embeddingId);
+          assert(vector, `Vector ${chunk.state.embeddingId} not found`);
           await ctx.db.delete(chunk.state.embeddingId);
           await ctx.db.patch(chunk._id, {
-            state: { kind: "replaced", embeddingId: chunk.state.embeddingId },
+            state: {
+              kind: "replaced",
+              embeddingId: chunk.state.embeddingId,
+              vector: vector.vector,
+            },
           });
         })
       );
