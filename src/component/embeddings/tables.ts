@@ -74,8 +74,8 @@ export function validateVectorDimension(dimension: number): VectorDimension {
 }
 export type VectorDimension = (typeof VectorDimensions)[number];
 export const VectorTableNames = VectorDimensions.map(
-  (d) => `embeddings_${d}`
-) as `embeddings_${(typeof VectorDimensions)[number]}`[];
+  (d) => `vectors_${d}`
+) as `vectors_${(typeof VectorDimensions)[number]}`[];
 export type VectorTableName = (typeof VectorTableNames)[number];
 export type VectorTableId = GenericId<(typeof VectorTableNames)[number]>;
 
@@ -89,7 +89,7 @@ export const vVectorId = v.union(
 >;
 
 export function getVectorTableName(dimension: VectorDimension) {
-  return `embeddings_${dimension}` as VectorTableName;
+  return `vectors_${dimension}` as VectorTableName;
 }
 // export function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId) {
 //   for (const dimension of VectorDimensions) {
@@ -103,12 +103,12 @@ export function getVectorTableName(dimension: VectorDimension) {
 
 const tables: {
   [K in keyof typeof VectorDimensions &
-    number as `embeddings_${(typeof VectorDimensions)[K]}`]: Table;
+    number as `vectors_${(typeof VectorDimensions)[K]}`]: Table;
 } = Object.fromEntries(
   VectorDimensions.map((dimensions) => [
-    `embeddings_${dimensions}`,
+    `vectors_${dimensions}`,
     table(dimensions),
   ])
-) as Record<`embeddings_${(typeof VectorDimensions)[number]}`, Table>;
+) as Record<`vectors_${(typeof VectorDimensions)[number]}`, Table>;
 
 export default tables;

@@ -1,5 +1,5 @@
 /**
- * This file is the interface for interacting with embeddings.
+ * This file is the interface for interacting with vectors.
  * It translates from embeddings to the underlying vector storage and search.
  * It modifies embeddings to include importance.
  * The outer world deals with filters with user names.
@@ -13,7 +13,7 @@ import { getVectorTableName, validateVectorDimension } from "./tables.js";
 import { filterFieldsFromNumbers, type NumberedFilter } from "../filters.js";
 import { searchVector, vectorWithImportance } from "./importance.js";
 
-// TODO: see if this is needed.
+// TODO: wait to see if this is needed.
 // export const insertBatch = mutation({
 //   args: {
 //     vectorDimension: vVectorDimension,
