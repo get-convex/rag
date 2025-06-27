@@ -93,7 +93,7 @@ export class DocumentSearch<
     ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
-      chunks: InputChunk[];
+      chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
       source: Source;
       title?: string;
       // mimeType: string;
@@ -119,7 +119,7 @@ export class DocumentSearch<
     const { source, contentHash } = await getSource(ctx, args.source);
 
     let allChunks: CreateChunkArgs[] | undefined;
-    if (args.chunks.length < CHUNK_BATCH_SIZE) {
+    if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
       allChunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         args.chunks
@@ -146,10 +146,9 @@ export class DocumentSearch<
     }
 
     // break chunks up into batches, respecting soft limit
-    const batches: InputChunk[][] = makeBatches(args.chunks, CHUNK_BATCH_SIZE);
     let startOrder = 0;
     let isPending = false;
-    for (const batch of batches) {
+    for await (const batch of batchIterator(args.chunks, CHUNK_BATCH_SIZE)) {
       const createChunkArgs = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         batch
@@ -477,7 +476,7 @@ export class DocumentSearch<
 }
 
 async function* batchIterator<T>(
-  iterator: AsyncIterable<T>,
+  iterator: Iterable<T> | AsyncIterable<T>,
   batchSize: number
 ): AsyncIterable<T[]> {
   let batch: T[] = [];
