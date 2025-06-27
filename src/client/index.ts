@@ -173,12 +173,17 @@ export class DocumentSearch<
       let startOrder = 0;
       // replace any older version of the document with the new one
       while (true) {
-        const { isDone, nextStartOrder } = await ctx.runMutation(
+        const { status, nextStartOrder } = await ctx.runMutation(
           this.component.chunks.replaceChunksPage,
           { documentId, startOrder }
         );
-        if (isDone) {
+        if (status === "ready") {
           break;
+        } else if (status === "replaced") {
+          return {
+            documentId: documentId as DocumentId,
+            status: "replaced" as const,
+          };
         }
         startOrder = nextStartOrder;
       }

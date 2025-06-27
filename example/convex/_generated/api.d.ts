@@ -85,7 +85,7 @@ export declare const components: {
         "mutation",
         "internal",
         { documentId: string; startOrder: number },
-        { isDone: boolean; nextStartOrder: number }
+        { nextStartOrder: number; status: "pending" | "ready" | "replaced" }
       >;
     };
     documents: {

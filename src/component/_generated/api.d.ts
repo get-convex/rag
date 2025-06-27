@@ -87,7 +87,7 @@ export type Mounts = {
       "mutation",
       "public",
       { documentId: string; startOrder: number },
-      { isDone: boolean; nextStartOrder: number }
+      { nextStartOrder: number; status: "pending" | "ready" | "replaced" }
     >;
   };
   documents: {

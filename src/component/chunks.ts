@@ -158,10 +158,12 @@ async function ensureLatestDocumentVersion(
     ["version"]
   ).first();
   if (newerDocument) {
-    throw new Error(
+    console.warn(
       `Bailing from inserting chunks for document ${document.key} at version ${document.version} since there's a newer version ${newerDocument.version} (status ${newerDocument.status}) creation time difference ${(newerDocument._creationTime - document._creationTime).toFixed(0)}ms`
     );
+    return false;
   }
+  return true;
 }
 
 export const replaceChunksPage = mutation({
@@ -170,7 +172,7 @@ export const replaceChunksPage = mutation({
     startOrder: v.number(),
   }),
   returns: v.object({
-    isDone: v.boolean(),
+    status: vStatus,
     nextStartOrder: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -180,7 +182,13 @@ export const replaceChunksPage = mutation({
       throw new Error(`Document ${documentId} not found`);
     }
     const document = documentOrNull;
-    await ensureLatestDocumentVersion(ctx, document);
+    const isLatest = await ensureLatestDocumentVersion(ctx, document);
+    if (!isLatest) {
+      return {
+        status: "replaced" as const,
+        nextStartOrder: startOrder,
+      };
+    }
 
     // Get the namespace for filter conversion
     const namespace = await ctx.db.get(document.namespaceId);
@@ -283,14 +291,14 @@ export const replaceChunksPage = mutation({
         // if so, bail and pick up on this chunk.order.
         if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
           return {
-            isDone: false,
+            status: "pending" as const,
             nextStartOrder: indexToDelete,
           };
         }
       }
       if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
         return {
-          isDone: false,
+          status: "pending" as const,
           nextStartOrder: indexToDelete,
         };
       }
@@ -318,7 +326,7 @@ export const replaceChunksPage = mutation({
     await handleBatch();
 
     return {
-      isDone: true,
+      status: "ready" as const,
       nextStartOrder: 0,
     };
   },
