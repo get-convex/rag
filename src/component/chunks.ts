@@ -106,8 +106,6 @@ export async function insertChunks(
     const contentId = await ctx.db.insert("content", {
       text: chunk.content.text,
       metadata: chunk.content.metadata,
-      namespaceId: document.namespaceId,
-      ...filterFieldsFromNumbers(document.namespaceId, numberedFilter),
     });
     let state: Doc<"chunks">["state"] = {
       kind: "pending",
@@ -130,6 +128,8 @@ export async function insertChunks(
         order,
         state,
         contentId,
+        namespaceId: document.namespaceId,
+        ...filterFieldsFromNumbers(document.namespaceId, numberedFilter),
       })
     );
     order++;

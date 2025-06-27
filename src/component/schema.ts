@@ -78,32 +78,36 @@ export const schema = defineSchema({
         kind: v.literal("pending"),
         embedding: v.array(v.number()),
         importance: v.number(),
+        pendingSearchableText: v.optional(v.string()),
       }),
       v.object({
         kind: v.literal("ready"),
         embeddingId: vVectorId,
+        // TODO: text search
+        searchableText: v.optional(v.string()),
       }),
       v.object({
         kind: v.literal("replaced"),
         embeddingId: vVectorId,
         vector: v.array(v.number()),
+        pendingSearchableText: v.optional(v.string()),
       })
     ),
     // TODO: should content be inline?
     contentId: v.id("content"),
+    ...vAllFilterFields,
   })
     .index("documentId_order", ["documentId", "order"])
-    .index("embeddingId", ["state.embeddingId"]),
+    .index("embeddingId", ["state.embeddingId"])
+    .searchIndex("searchableText", {
+      searchField: "state.searchableText",
+      filterFields: allFilterFieldNames,
+    }),
   content: defineTable({
     text: v.string(),
     // convenient metadata
     metadata: v.optional(v.record(v.string(), v.any())),
-    ...vAllFilterFields,
-  }).searchIndex("text", {
-    searchField: "text",
-    filterFields: allFilterFieldNames,
   }),
-  // TODO: text search
 
   ...embeddingsTables,
 });
