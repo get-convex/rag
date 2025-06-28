@@ -192,7 +192,7 @@ describe("chunks", () => {
         documentId: docV2Id,
         startOrder,
       });
-      isDone = result.isDone;
+      isDone = result.status !== "pending";
       startOrder = result.nextStartOrder;
     }
 
@@ -582,7 +582,7 @@ describe("chunks", () => {
           documentId: docV2Id,
           startOrder: 0,
         });
-        if (result.isDone) {
+        if (result.status !== "pending") {
           break;
         }
       }
