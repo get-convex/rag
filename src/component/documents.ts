@@ -254,12 +254,12 @@ function documentIsSame(
   if (
     existing.source.kind === "_storage" &&
     newDocument.source.kind === "_storage" &&
-    existing.contentHash !== newDocument.contentHash
+    existing.source.storageId !== newDocument.source.storageId
   ) {
     console.debug(
       `Document ${newDocument.key} source storageId is different, replacing...`
     );
-    // if we are adding/removing a content hash, that's only ok if we are using
+    // If we are adding/removing a content hash, that's only ok if we are using
     // the same storageId, as those are immutable.
     return false;
   }
