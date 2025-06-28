@@ -209,9 +209,7 @@ export class DocumentSearch<
     }
     const promoted = await ctx.runMutation(
       this.component.documents.promoteToReady,
-      {
-        documentId,
-      }
+      { documentId }
     );
     return {
       documentId: documentId as DocumentId,

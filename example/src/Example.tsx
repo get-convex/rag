@@ -3,26 +3,20 @@ import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
 import type { DocumentId, Document, SearchResult } from "@convex-dev/document-search";
+import { Doc } from "../convex/_generated/dataModel";
 
 type SearchType = "global" | "user" | "category" | "document";
 
-interface Source {
-  title?: string;
-  key: string;
-  importance?: number;
-  filterValues?: { [x: string]: any };
-  documentId?: DocumentId;
-}
 interface UISearchResult {
   results: (SearchResult & {
     document: Document;
   })[];
   text: string[];
-  sources: Array<Source>;
+  documents: Array<Document>;
 }
 
 function Example() {
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUpserting, setIsUpserting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState({
     globalNamespace: false,
@@ -32,9 +26,13 @@ function Example() {
 
   const [searchType, setSearchType] = useState<SearchType>("global");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDocument, setSelectedDocument] = useState<Document & {global: boolean} | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<
+    (Doc<"files"> & { url: string | null; isImage: boolean }) | null
+  >(null);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchResults, setSearchResults] = useState<UISearchResult | null>(null);
+  const [searchResults, setSearchResults] = useState<UISearchResult | null>(
+    null
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [expandedResults, setExpandedResults] = useState<Set<number>>(
     new Set()
@@ -43,7 +41,7 @@ function Example() {
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
 
   // Actions and queries
-  const uploadFile = useAction(api.example.uploadFile);
+  const upsertFile = useAction(api.example.upsertFile);
   const search = useAction(api.example.search);
   const searchDocument = useAction(api.example.searchDocument);
   const searchCategory = useAction(api.example.searchCategory);
@@ -91,22 +89,21 @@ function Example() {
       return;
     }
 
-    setIsUploading(true);
+    setIsUpserting(true);
     try {
-      const result = await uploadFile({
+      await upsertFile({
         bytes: await selectedFile.arrayBuffer(),
         filename: uploadForm.filename || selectedFile.name,
-        mimeType: selectedFile.type,
+        mimeType: selectedFile.type || "text/plain",
         category: uploadForm.category,
         globalNamespace: uploadForm.globalNamespace,
       });
 
       // Reset form and file
-      setUploadForm({
-        globalNamespace: false,
-        category: "",
+      setUploadForm((prev) => ({
+        ...prev,
         filename: "",
-      });
+      }));
       setSelectedFile(null);
 
       // Clear file input
@@ -116,11 +113,13 @@ function Example() {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Upload failed. Please try again.");
+      alert(
+        `Upload failed. ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
-      setIsUploading(false);
+      setIsUpserting(false);
     }
-  }, [uploadFile, uploadForm, selectedFile]);
+  }, [upsertFile, uploadForm, selectedFile]);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -162,7 +161,7 @@ function Example() {
           results = await searchDocument({
             query: searchQuery,
             globalNamespace: selectedDocument!.global || false,
-            filename: selectedDocument!.key || "",
+            filename: selectedDocument!.filename || "",
           });
           break;
         default:
@@ -178,7 +177,9 @@ function Example() {
       });
     } catch (error) {
       console.error("Search failed:", error);
-      alert("Search failed. Please try again.");
+      alert(
+        `Search failed. ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setIsSearching(false);
     }
@@ -212,13 +213,6 @@ function Example() {
 
   const handleDelete = useCallback(
     async (doc: any, isGlobal: boolean) => {
-      const documentType = isGlobal ? "global" : "user";
-      const confirmMessage = `Are you sure you want to delete "${doc.filename}" from ${documentType} documents? This action cannot be undone.`;
-
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-
       try {
         await deleteDocument({
           documentId: doc.documentId,
@@ -230,7 +224,9 @@ function Example() {
         }
       } catch (error) {
         console.error("Delete failed:", error);
-        alert("Failed to delete document. Please try again.");
+        alert(
+          `Failed to delete document. ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     },
     [deleteDocument, selectedDocument]
@@ -255,6 +251,7 @@ function Example() {
                 Category
               </label>
               <input
+                id="category"
                 type="text"
                 value={uploadForm.category}
                 onChange={(e) =>
@@ -263,9 +260,14 @@ function Example() {
                     category: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter category"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+              {selectedFile && !uploadForm.category.trim() && (
+                <label htmlFor="category" className="text-sm text-red-500">
+                  Category is required
+                </label>
+              )}
             </div>
 
             <div>
@@ -322,13 +324,13 @@ function Example() {
                     handleFileSelect(file);
                   }
                 }}
-                disabled={isUploading}
+                disabled={isUpserting}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
               <label
                 htmlFor="file-upload"
                 className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                  isUploading
+                  isUpserting
                     ? "border-gray-300 bg-gray-50 cursor-not-allowed"
                     : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
                 }`}
@@ -359,20 +361,24 @@ function Example() {
             {selectedFile && (
               <div className="text-sm text-gray-600 p-2 bg-gray-50 rounded">
                 Selected: {selectedFile.name}
+                <br />
+                Mime type: {selectedFile.type}
               </div>
             )}
 
             <button
               onClick={handleFileUpload}
               disabled={
-                isUploading || !selectedFile || !uploadForm.category.trim()
+                isUpserting || !selectedFile || !uploadForm.category.trim()
               }
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isUploading ? "Uploading..." : "Upload Document"}
+              {isUpserting
+                ? "Creating or updating document..."
+                : "Add Document"}
             </button>
 
-            {isUploading && (
+            {isUpserting && (
               <div className="text-sm text-blue-600 flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
                 Uploading...
@@ -412,7 +418,7 @@ function Example() {
                     <div
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
-                        setSelectedDocument({ ...doc, global: true });
+                        setSelectedDocument(doc);
                         setSearchType("document");
                       }}
                     >
@@ -648,6 +654,22 @@ function Example() {
                 <h3 className="font-semibold text-gray-900 mb-3">
                   Document Chunks ({documentChunks.page?.length || 0})
                 </h3>
+                {selectedDocument.url &&
+                  (selectedDocument.isImage ? (
+                    <img
+                      src={selectedDocument.url}
+                      alt={selectedDocument.filename}
+                      className="w-full h-auto"
+                    />
+                  ) : (
+                    <a
+                      href={selectedDocument.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      🔗 {selectedDocument.filename}
+                    </a>
+                  ))}
                 <div
                   className="overflow-y-auto space-y-2"
                   style={{ height: "calc(100% - 3rem)" }}
@@ -672,34 +694,32 @@ function Example() {
           {searchResults && (searchType !== "document" || !showChunks) && (
             <div className="space-y-6">
               {/* Sources */}
-              {searchResults.sources && searchResults.sources.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {searchResults.sources.map((source, index) => (
-                    <div
-                      key={index}
-                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
-                    >
-                      {source.url ? (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-700 hover:text-gray-900"
-                        >
-                          {source.title || source.url}
-                        </a>
-                      ) : (
-                        <span className="text-gray-700">
-                          {source.title || source.key || source.storageId}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full font-mono">
-                        {source.score.toFixed(3)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {searchResults.documents &&
+                searchResults.documents.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {searchResults.documents.map((doc, index) => (
+                      <div
+                        key={index}
+                        className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                      >
+                        {doc.source.kind === "url" ? (
+                          <a
+                            href={doc.source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-700 hover:text-gray-900"
+                          >
+                            {doc.title || doc.source.url}
+                          </a>
+                        ) : (
+                          <span className="text-gray-700">
+                            {doc.title || doc.key || doc.source.storageId}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
               {/* Results */}
               <div className="space-y-4">
@@ -715,9 +735,7 @@ function Example() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium text-gray-900">
                           Document:{" "}
-                          {result.document.title ||
-                            result.document.key ||
-                            result.document.storageId}
+                          {result.document.title || result.document.key}
                         </div>
                         <div className="text-sm text-gray-500">
                           Score: {result.score.toFixed(3)}

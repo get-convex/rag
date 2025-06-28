@@ -243,6 +243,7 @@ export const searchDocument = action({
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       chunkContext: { before: 1, after: 1 },
+      filters: [{ name: "documentKey", value: args.filename }],
       limit: 10,
     });
     return results;
@@ -264,12 +265,7 @@ export const searchCategory = action({
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
-      filters: [
-        {
-          name: "category",
-          value: args.category,
-        },
-      ],
+      filters: [{ name: "category", value: args.category }],
     });
     return results;
   },
@@ -291,7 +287,9 @@ async function getText(
 ) {
   const url = await ctx.storage.getUrl(storageId);
   assert(url);
-  if (mimeType.startsWith("image/")) {
+  if (
+    ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType)
+  ) {
     const imageResult = await generateText({
       model: describeImage,
       system:
@@ -317,7 +315,13 @@ async function getText(
       messages: [
         {
           role: "user",
-          content: [{ type: "file", data: new URL(url), mimeType, filename }],
+          content: [
+            { type: "file", data: new URL(url), mimeType, filename },
+            {
+              type: "text",
+              text: "Extract the text from the PDF and print it without explaining that you'll do so.",
+            },
+          ],
         },
       ],
     });
