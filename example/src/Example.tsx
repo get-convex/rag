@@ -2,17 +2,17 @@ import "./Example.css";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { DocumentId, Document, SearchResult } from "@convex-dev/document-search";
-import { Doc } from "../convex/_generated/dataModel";
+import type { SearchResult } from "@convex-dev/document-search";
+import type { PublicFile } from "../convex/example";
 
 type SearchType = "global" | "user" | "category" | "document";
 
 interface UISearchResult {
   results: (SearchResult & {
-    document: Document;
+    document: PublicFile;
   })[];
   text: string[];
-  documents: Array<Document>;
+  documents: Array<PublicFile>;
 }
 
 function Example() {
@@ -26,9 +26,9 @@ function Example() {
 
   const [searchType, setSearchType] = useState<SearchType>("global");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDocument, setSelectedDocument] = useState<
-    (Doc<"files"> & { url: string | null; isImage: boolean }) | null
-  >(null);
+  const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
+    null
+  );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchResults, setSearchResults] = useState<UISearchResult | null>(
     null
@@ -206,7 +206,7 @@ function Example() {
   };
 
   const handleDelete = useCallback(
-    async (doc: any, isGlobal: boolean) => {
+    async (doc: PublicFile, isGlobal: boolean) => {
       try {
         await deleteDocument({
           documentId: doc.documentId,
@@ -400,7 +400,7 @@ function Example() {
             <div className="space-y-2">
               {globalDocuments?.page?.map((doc) => (
                 <div
-                  key={doc._id}
+                  key={doc.documentId}
                   className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === true
@@ -464,7 +464,7 @@ function Example() {
             <div className="space-y-2">
               {userDocuments?.page?.map((doc) => (
                 <div
-                  key={doc._id}
+                  key={doc.documentId}
                   className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === false
@@ -696,18 +696,18 @@ function Example() {
                         key={index}
                         className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
                       >
-                        {doc.source.kind === "url" ? (
+                        {doc.url ? (
                           <a
-                            href={doc.source.url}
+                            href={doc.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-gray-700 hover:text-gray-900"
                           >
-                            {doc.title || doc.source.url}
+                            {doc.title || doc.url}
                           </a>
                         ) : (
                           <span className="text-gray-700">
-                            {doc.title || doc.key || doc.source.storageId}
+                            {doc.title || doc.filename}
                           </span>
                         )}
                       </div>
@@ -729,7 +729,7 @@ function Example() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium text-gray-900">
                           Document:{" "}
-                          {result.document.title || result.document.key}
+                          {result.document.title || result.document.filename}
                         </div>
                         <div className="text-sm text-gray-500">
                           Score: {result.score.toFixed(3)}

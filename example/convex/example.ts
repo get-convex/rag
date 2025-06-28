@@ -163,28 +163,64 @@ export const listDocuments = query({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const results = await ctx.db
-      .query("files")
-      .withIndex("global_category", (q) =>
-        args.category === undefined
-          ? q.eq("global", args.globalNamespace)
-          : q.eq("global", args.globalNamespace).eq("category", args.category)
-      )
-      .paginate(args.paginationOpts);
+    const namespace = await documentSearch.getNamespace(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+    });
+    if (!namespace) {
+      return {
+        page: [],
+        isDone: true,
+        cursor: null,
+      };
+    }
+    const results = await documentSearch.listDocuments(ctx, {
+      namespaceId: namespace.namespaceId,
+      paginationOpts: args.paginationOpts,
+    });
     return {
       ...results,
       page: await Promise.all(
-        results.page.map(async (file) => ({
-          ...file,
-          isImage: await ctx.db.system
-            .get(file.storageId)
-            .then((m) => !!m?.contentType?.startsWith("image/")),
-          url: await ctx.storage.getUrl(file.storageId),
-        }))
+        results.page.map(async (file) =>
+          publicDocument(ctx, file, args.globalNamespace)
+        )
       ),
     };
   },
 });
+
+export type PublicFile = {
+  documentId: DocumentId;
+  filename: string;
+  global: boolean;
+  category: string;
+  title: string | undefined;
+  isImage: boolean;
+  url: string | null;
+};
+
+async function publicDocument(
+  ctx: QueryCtx | ActionCtx,
+  doc: Document<DocumentFilterValues>,
+  global: boolean
+): Promise<PublicFile> {
+  return {
+    documentId: doc.documentId,
+    filename: doc.key,
+    global,
+    category: doc.filterValues.find((f) => f.name === "category")!.value,
+    title: doc.title,
+    isImage:
+      doc.source.kind === "_storage"
+        ? await ctx.storage
+            .getMetadata(doc.source.storageId)
+            .then((m) => !!m?.contentType?.startsWith("image/"))
+        : false,
+    url:
+      doc.source.kind === "_storage"
+        ? await ctx.storage.getUrl(doc.source.storageId)
+        : doc.source.url,
+  };
+}
 
 export const listChunks = query({
   args: {
@@ -236,7 +272,14 @@ export const search = action({
       query: args.query,
       limit: 10,
     });
-    return results;
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
   },
 });
 
@@ -258,7 +301,14 @@ export const searchDocument = action({
       filters: [{ name: "documentKey", value: args.filename }],
       limit: 10,
     });
-    return results;
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
   },
 });
 
@@ -279,7 +329,14 @@ export const searchCategory = action({
       limit: 10,
       filters: [{ name: "category", value: args.category }],
     });
-    return results;
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
   },
 });
 
