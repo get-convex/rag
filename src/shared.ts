@@ -43,7 +43,7 @@ export type Status = Infer<typeof vStatus>;
 export const statuses = vStatus.members.map((s) => s.value);
 
 export const vNamespace = v.object({
-  namespaceId: v.id("namespaces"),
+  namespaceId: vNamespaceId,
   createdAt: v.number(),
   namespace: v.string(),
   status: vStatus,

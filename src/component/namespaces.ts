@@ -12,31 +12,12 @@ import {
   vPaginationResult,
   vStatus,
   type Namespace,
+  type NamespaceId,
 } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { ObjectType } from "convex/values";
 import { mergedStream, stream } from "convex-helpers/server/stream";
-
-export const get = query({
-  args: {
-    namespaceId: v.id("namespaces"),
-  },
-  returns: v.object({
-    namespace: v.string(),
-    status: vStatus,
-  }),
-  handler: async (ctx, args) => {
-    const namespace = await ctx.db.get(args.namespaceId);
-    if (!namespace) {
-      throw new Error(`Namespace ${args.namespaceId} not found`);
-    }
-    return {
-      namespace: namespace.namespace,
-      status: namespace.status.kind,
-    };
-  },
-});
 
 function namespaceIsCompatible(
   existing: Doc<"namespaces">,
@@ -71,6 +52,18 @@ export const vNamespaceLookupArgs = {
   dimension: v.number(),
   filterNames: v.array(v.string()),
 };
+
+export const get = query({
+  args: vNamespaceLookupArgs,
+  returns: v.union(v.null(), vNamespace),
+  handler: async (ctx, args) => {
+    const namespace = await getCompatibleNamespaceHandler(ctx, args);
+    if (!namespace) {
+      return null;
+    }
+    return publicNamespace(namespace);
+  },
+});
 
 export const getCompatibleNamespace = internalQuery({
   args: vNamespaceLookupArgs,
@@ -198,7 +191,7 @@ export const list = query({
 function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   const { _id, _creationTime, status, ...rest } = namespace;
   return {
-    namespaceId: _id,
+    namespaceId: _id as unknown as NamespaceId,
     createdAt: _creationTime,
     ...rest,
     status: status.kind,

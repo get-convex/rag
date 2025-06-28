@@ -261,8 +261,22 @@ export declare const components: {
       get: FunctionReference<
         "query",
         "internal",
-        { namespaceId: string },
-        { namespace: string; status: "pending" | "ready" | "replaced" }
+        {
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+        },
+        null | {
+          createdAt: number;
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+          namespaceId: string;
+          status: "pending" | "ready" | "replaced";
+          version: number;
+        }
       >;
       getOrCreate: FunctionReference<
         "mutation",

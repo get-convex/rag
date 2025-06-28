@@ -18,7 +18,9 @@ import {
   type Chunk,
   type CreateChunkArgs,
   type Document,
+  type DocumentFilterValues,
   type DocumentId,
+  type Namespace,
   type NamespaceId,
   type SearchResult,
   type Status,
@@ -455,16 +457,18 @@ export class DocumentSearch<
     return { namespaceId: namespaceId as NamespaceId, status };
   }
 
-  async getNamespaceStatus(
+  async getNamespace(
     ctx: RunQueryCtx,
     args: {
-      namespaceId: NamespaceId;
+      namespace: string;
     }
-  ): Promise<{ status: Status }> {
-    const { status } = await ctx.runQuery(this.component.namespaces.get, {
-      namespaceId: args.namespaceId,
-    });
-    return { status };
+  ): Promise<Namespace | null> {
+    return ctx.runQuery(this.component.namespaces.get, {
+      namespace: args.namespace,
+      modelId: this.options.textEmbeddingModel.modelId,
+      dimension: this.options.embeddingDimension,
+      filterNames: this.options.filterNames ?? [],
+    }) as Promise<Namespace | null>;
   }
 
   async listChunks(
