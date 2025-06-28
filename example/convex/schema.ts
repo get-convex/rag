@@ -3,7 +3,8 @@ import { v } from "convex/values";
 import { vDocumentId } from "@convex-dev/document-search";
 
 export default defineSchema({
-  files: defineTable({
+  // We can use a table with extra metadata to track extra things
+  fileMetadata: defineTable({
     global: v.boolean(),
     filename: v.string(),
     storageId: v.id("_storage"),

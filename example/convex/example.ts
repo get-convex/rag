@@ -15,17 +15,14 @@ import {
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   InputChunk,
-  SearchResult,
   vDocumentId,
 } from "@convex-dev/document-search";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
-import { paginationOptsValidator, PaginationResult } from "convex/server";
+import { paginationOptsValidator } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
-import { generateText, experimental_transcribe as transcribe } from "ai";
-import { assert } from "convex-helpers";
-import { Id } from "./_generated/dataModel";
+import { getText } from "./getText";
 
 type DocumentFilterValues = {
   documentKey: string;
@@ -41,17 +38,6 @@ const documentSearch = new DocumentSearch<DocumentFilterValues>(
     embeddingDimension: 1536,
   }
 );
-
-export const chunkerAction = documentSearch.defineChunkerAction(
-  async (ctx, args) => {
-    const chunks: InputChunk[] = [];
-    return { chunks };
-  }
-);
-
-const describeImage = openai.chat("o4-mini");
-const describeAudio = openai.transcription("whisper-1");
-const describePdf = openai.chat("gpt-4.1");
 
 export const upsertFile = action({
   args: {
@@ -92,12 +78,6 @@ export const upsertFile = action({
           { name: "category", value: category },
         ],
       });
-    if (replacedVersion) {
-      console.debug("We replaced a document, deleting the old one");
-      await ctx.runMutation(internal.example.deleteFile, {
-        documentId: replacedVersion.documentId,
-      });
-    }
     if (created) {
       await ctx.runMutation(internal.example.recordUploadMetadata, {
         global: args.globalNamespace,
@@ -106,6 +86,7 @@ export const upsertFile = action({
         documentId,
         category,
         uploadedBy: userId,
+        previousDocumentId: replacedVersion?.documentId,
       });
     } else {
       console.debug("document already exists, skipping upload metadata");
@@ -118,40 +99,94 @@ export const upsertFile = action({
   },
 });
 
-// You can track other file metadata in your own tables.
-export const recordUploadMetadata = internalMutation({
-  args: schema.tables.files.validator,
+export const search = action({
+  args: {
+    query: v.string(),
+    globalNamespace: v.boolean(),
+  },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("files")
-      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
-      .unique();
-    if (existing) {
-      console.debug("replacing file", existing._id, args);
-      await ctx.db.replace(existing._id, args);
-    } else {
-      console.debug("inserting file", args);
-      await ctx.db.insert("files", args);
-    }
+    const userId = await getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const results = await documentSearch.search(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+      query: args.query,
+      limit: 10,
+    });
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
   },
 });
 
-export const deleteFile = internalMutation({
+export const searchDocument = action({
   args: {
-    documentId: vDocumentId,
+    query: v.string(),
+    globalNamespace: v.boolean(),
+    filename: v.string(),
   },
   handler: async (ctx, args) => {
-    const file = await ctx.db
-      .query("files")
-      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
-      .first();
-    if (file) {
-      await ctx.storage.delete(file.storageId);
-      await ctx.db.delete(file._id);
-    } else {
-      console.warn(`File ${args.documentId} not found...`);
+    const userId = await getUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
     }
+    const results = await documentSearch.search(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+      query: args.query,
+      chunkContext: { before: 1, after: 1 },
+      filters: [{ name: "documentKey", value: args.filename }],
+      limit: 10,
+    });
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
   },
+});
+
+export const searchCategory = action({
+  args: {
+    query: v.string(),
+    globalNamespace: v.boolean(),
+    category: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+    const results = await documentSearch.search(ctx, {
+      namespace: args.globalNamespace ? "global" : userId,
+      query: args.query,
+      limit: 10,
+      filters: [{ name: "category", value: args.category }],
+    });
+    return {
+      ...results,
+      documents: await Promise.all(
+        results.documents.map((doc) =>
+          publicDocument(ctx, doc, args.globalNamespace)
+        )
+      ),
+    };
+  },
+});
+
+/**
+ * Uploading asynchronously
+ */
+export const chunkerAction = documentSearch.defineChunkerAction(async () => {
+  const chunks: InputChunk[] = [];
+  // TODO: do async chunking
+  return { chunks };
 });
 
 export const listDocuments = query({
@@ -238,170 +273,63 @@ export const listChunks = query({
   },
 });
 
+/**
+ * Document metadata handling
+ */
+
+// You can track other file metadata in your own tables.
+export const recordUploadMetadata = internalMutation({
+  args: {
+    ...schema.tables.fileMetadata.validator.fields,
+    previousDocumentId: v.optional(vDocumentId),
+  },
+  handler: async (ctx, args) => {
+    const { previousDocumentId, ...doc } = args;
+    if (previousDocumentId) {
+      console.debug("deleting previous document", previousDocumentId);
+      const previous = await ctx.db
+        .query("fileMetadata")
+        .withIndex("documentId", (q) => q.eq("documentId", previousDocumentId))
+        .first();
+      if (previous) {
+        await ctx.db.delete(previous._id);
+        await deleteFile(ctx, previousDocumentId);
+      }
+    }
+    const existing = await ctx.db
+      .query("fileMetadata")
+      .withIndex("documentId", (q) => q.eq("documentId", doc.documentId))
+      .unique();
+    if (existing) {
+      console.debug("replacing file", existing._id, doc);
+      await ctx.db.replace(existing._id, doc);
+    } else {
+      console.debug("inserting file", doc);
+      await ctx.db.insert("fileMetadata", doc);
+    }
+  },
+});
+
 export const deleteDocument = mutation({
-  args: {
-    documentId: vDocumentId,
-  },
+  args: { documentId: vDocumentId },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-
-    const file = await ctx.db
-      .query("files")
-      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
-      .first();
-    if (file) {
-      await ctx.db.delete(file._id);
-    }
-    await documentSearch.deleteDocument(ctx, {
-      documentId: args.documentId,
-    });
+    await deleteFile(ctx, args.documentId);
   },
 });
 
-export const search = action({
-  args: {
-    query: v.string(),
-    globalNamespace: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
-    const results = await documentSearch.search(ctx, {
-      namespace: args.globalNamespace ? "global" : userId,
-      query: args.query,
-      limit: 10,
-    });
-    return {
-      ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
-    };
-  },
-});
-
-export const searchDocument = action({
-  args: {
-    query: v.string(),
-    globalNamespace: v.boolean(),
-    filename: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-    const results = await documentSearch.search(ctx, {
-      namespace: args.globalNamespace ? "global" : userId,
-      query: args.query,
-      chunkContext: { before: 1, after: 1 },
-      filters: [{ name: "documentKey", value: args.filename }],
-      limit: 10,
-    });
-    return {
-      ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
-    };
-  },
-});
-
-export const searchCategory = action({
-  args: {
-    query: v.string(),
-    globalNamespace: v.boolean(),
-    category: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-    const results = await documentSearch.search(ctx, {
-      namespace: args.globalNamespace ? "global" : userId,
-      query: args.query,
-      limit: 10,
-      filters: [{ name: "category", value: args.category }],
-    });
-    return {
-      ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
-    };
-  },
-});
-
-async function getText(
-  ctx: ActionCtx,
-  {
-    storageId,
-    mimeType,
-    filename,
-    bytes,
-  }: {
-    storageId: Id<"_storage">;
-    mimeType: string;
-    filename: string;
-    bytes: ArrayBuffer;
-  }
-) {
-  const url = await ctx.storage.getUrl(storageId);
-  assert(url);
-  if (
-    ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType)
-  ) {
-    const imageResult = await generateText({
-      model: describeImage,
-      system:
-        "You turn images into text. If it is a photo of a document, transcribe it. If it is not a document, describe it.",
-      messages: [
-        {
-          role: "user",
-          content: [{ type: "image", image: new URL(url) }],
-        },
-      ],
-    });
-    return imageResult.text;
-  } else if (mimeType.startsWith("audio/")) {
-    const audioResult = await transcribe({
-      model: describeAudio,
-      audio: new URL(url),
-    });
-    return audioResult.text;
-  } else if (mimeType.toLowerCase().includes("pdf")) {
-    const pdfResult = await generateText({
-      model: describePdf,
-      system: "You transform PDF files into text.",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "file", data: new URL(url), mimeType, filename },
-            {
-              type: "text",
-              text: "Extract the text from the PDF and print it without explaining that you'll do so.",
-            },
-          ],
-        },
-      ],
-    });
-    return pdfResult.text;
-  } else if (mimeType.toLowerCase().includes("text")) {
-    return new TextDecoder().decode(bytes);
-  } else {
-    throw new Error(`Unsupported mime type: ${mimeType}`);
+async function deleteFile(ctx: MutationCtx, documentId: DocumentId) {
+  const file = await ctx.db
+    .query("fileMetadata")
+    .withIndex("documentId", (q) => q.eq("documentId", documentId))
+    .unique();
+  if (file) {
+    await ctx.db.delete(file._id);
+    await ctx.storage.delete(file.storageId);
+    await documentSearch.deleteDocument(ctx, { documentId });
   }
 }
-
 /**
  * ==============================
  * Functions for demo purposes.

@@ -73,8 +73,8 @@ export const upsertAsync = mutation({
 });
 
 async function enqueueUpsert(
-  ctx: MutationCtx,
-  args: {
+  _ctx: MutationCtx,
+  _args: {
     documentId: Id<"documents">;
     chunker: string;
   }
@@ -178,9 +178,9 @@ export const upsert = mutation({
 });
 
 async function enqueueOnComplete(
-  ctx: MutationCtx,
-  onComplete: string,
-  documentId: Id<"documents">
+  _ctx: MutationCtx,
+  _onComplete: string,
+  _documentId: Id<"documents">
 ) {
   throw new Error("Not implemented");
 }

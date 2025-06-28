@@ -9,13 +9,7 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import {
-  v,
-  type GenericId,
-  type Validator,
-  type Value,
-  type VString,
-} from "convex/values";
+import { v, type GenericId, type Value, type VString } from "convex/values";
 import { vSource, type Source } from "../component/schema.js";
 import {
   CHUNK_BATCH_SIZE,
