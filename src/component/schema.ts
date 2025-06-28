@@ -11,7 +11,7 @@ import {
 export const vSource = v.union(
   v.object({
     kind: v.literal("_storage"),
-    storageId: v.string(),
+    storageId: v.id("_storage"),
   }),
   v.object({
     kind: v.literal("url"),

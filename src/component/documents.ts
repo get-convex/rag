@@ -347,7 +347,7 @@ export const findByContentHash = query({
           contentHash: args.contentHash,
           source: args.url
             ? { kind: "url", url: args.url }
-            : { kind: "_storage", storageId: "" },
+            : { kind: "_storage", storageId: "" as Id<"_storage"> },
           filterValues: doc.filterValues,
           importance: doc.importance,
         })

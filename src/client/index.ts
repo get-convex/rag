@@ -705,7 +705,7 @@ async function getSource(
     storageId,
     url,
     contentHash,
-  }: { storageId?: string; url?: string; contentHash?: string }
+  }: { storageId?: GenericId<"_storage">; url?: string; contentHash?: string }
 ): Promise<{ source: Source; contentHash: string }> {
   assert(storageId || url, "Either storageId or url must be provided");
   if (storageId) {
