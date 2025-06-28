@@ -361,11 +361,71 @@ export class DocumentSearch<
     };
   }
 
+  async listDocuments(
+    ctx: RunQueryCtx,
+    args: {
+      namespaceId: NamespaceId;
+      paginationOpts: PaginationOptions;
+      order?: "desc" | "asc";
+      status?: Status;
+    }
+  ): Promise<PaginationResult<Document>> {
+    const results = await ctx.runQuery(this.component.documents.list, {
+      namespaceId: args.namespaceId,
+      paginationOpts: args.paginationOpts,
+      order: args.order ?? "asc",
+      status: args.status ?? "ready",
+    });
+    return results as PaginationResult<Document>;
+  }
+
+  async getDocument(
+    ctx: RunQueryCtx,
+    args: {
+      documentId: DocumentId;
+    }
+  ): Promise<Document | null> {
+    const document = await ctx.runQuery(this.component.documents.get, {
+      documentId: args.documentId,
+    });
+    return document as Document | null;
+  }
+
+  async findExistingDocument(
+    ctx: RunQueryCtx,
+    args: {
+      namespace: string;
+      key: string;
+      contentHash: string;
+      /** If trying to find a document with a url, you must provide the same url too. */
+      url?: string;
+    }
+  ): Promise<Document | null> {
+    const document = await ctx.runQuery(
+      this.component.documents.findByContentHash,
+      {
+        namespace: args.namespace,
+        dimension: this.options.embeddingDimension,
+        filterNames: this.options.filterNames ?? [],
+        modelId: this.options.textEmbeddingModel.modelId,
+        key: args.key,
+        contentHash: args.contentHash,
+        url: args.url,
+      }
+    );
+    return document as Document | null;
+  }
+
   async getOrCreateNamespace(
     ctx: RunMutationCtx,
     args: {
       namespace: string;
       status?: Status;
+      /**
+       * This will be called when then namespace leaves the "pending" state.
+       * Either if the namespace is created or if the namespace is replaced
+       * along the way.
+       */
       onComplete?: OnCompleteNamespace;
     }
   ): Promise<{
