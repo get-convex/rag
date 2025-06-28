@@ -44,9 +44,9 @@ export const vNamedFilter = v.object({
   value: v.any(),
 });
 
-export type NamedFilter = {
-  name: string;
-  value: Value;
+export type NamedFilter<K extends string = string, V = Value> = {
+  name: K;
+  value: V;
 };
 
 /**

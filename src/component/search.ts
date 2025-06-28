@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc } from "./_generated/dataModel.js";
 import { action } from "./_generated/server.js";
 import { searchEmbeddings } from "./embeddings/index.js";
@@ -11,9 +11,11 @@ import { internal } from "./_generated/api.js";
 import {
   vDocument,
   type Document,
-  vSearchResultInner as vSearchResult,
-  type SearchResultInner as SearchResult,
+  vSearchResult,
+  type SearchResult,
+  type DocumentId,
 } from "../shared.js";
+import type { vRangeResult } from "./chunks.js";
 
 export const search = action({
   args: {
@@ -78,14 +80,26 @@ export const search = action({
     );
     return {
       results: ranges
-        .map((r, i) =>
-          r !== null ? { ...r, score: aboveThreshold[i]._score } : null
-        )
+        .map((r, i) => publicSearchResult(r, aboveThreshold[i]._score))
         .filter((r) => r !== null),
       documents,
     };
   },
 });
+
+function publicSearchResult(
+  r: Infer<typeof vRangeResult> | null,
+  score: number
+): SearchResult | null {
+  if (r === null) {
+    return null;
+  }
+  return {
+    ...r,
+    score,
+    documentId: r.documentId as unknown as DocumentId,
+  };
+}
 
 // This makes a list of filters with values into a list with their indices.
 // This is used for search, not inserting embeddings.

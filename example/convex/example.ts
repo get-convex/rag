@@ -9,26 +9,38 @@ import {
 } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import {
+  Document,
+  DocumentId,
   DocumentSearch,
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   InputChunk,
+  SearchResult,
   vDocumentId,
 } from "@convex-dev/document-search";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
 import { generateText, experimental_transcribe as transcribe } from "ai";
 import { assert } from "convex-helpers";
 import { Id } from "./_generated/dataModel";
 
-const documentSearch = new DocumentSearch(components.documentSearch, {
-  filterNames: ["documentKey", "documentMimeType", "category"],
-  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
-  embeddingDimension: 1536,
-});
+type DocumentFilterValues = {
+  documentKey: string;
+  documentMimeType: string;
+  category: string;
+};
+
+const documentSearch = new DocumentSearch<DocumentFilterValues>(
+  components.documentSearch,
+  {
+    filterNames: ["documentKey", "documentMimeType", "category"],
+    textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+    embeddingDimension: 1536,
+  }
+);
 
 export const chunkerAction = documentSearch.defineChunkerAction(
   async (ctx, args) => {

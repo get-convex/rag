@@ -14,7 +14,7 @@ import { api } from "./_generated/api.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { deleteChunksPage, insertChunks } from "./chunks.js";
-import schema, { type Source, type StatusWithOnComplete } from "./schema.js";
+import schema, { type StatusWithOnComplete } from "./schema.js";
 import { mergedStream } from "convex-helpers/server/stream";
 import { stream } from "convex-helpers/server/stream";
 import {

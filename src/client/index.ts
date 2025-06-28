@@ -9,7 +9,13 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import { v, type Value, type VString } from "convex/values";
+import {
+  v,
+  type GenericId,
+  type Validator,
+  type Value,
+  type VString,
+} from "convex/values";
 import { vSource, type Source } from "../component/schema.js";
 import {
   CHUNK_BATCH_SIZE,
@@ -35,6 +41,7 @@ import {
   type RunMutationCtx,
   type RunQueryCtx,
 } from "./types.js";
+import type { NamedFilter } from "../component/filters.js";
 
 export { vSearchResult } from "../shared.js";
 export { vDocumentId, vNamespaceId };
@@ -79,19 +86,11 @@ export type InputChunk =
       keywords?: string;
       // In the future we can add per-chunk metadata if it's useful.
       // importance?: Importance;
-      // filters?: NamedFilter<FitlerNames>[];
+      // filters?: DocumentFilterValues<FitlerSchemas>[];
     });
 
-type NamedFilter<FilterNames extends string = string, ValueType = Value> = {
-  name: FilterNames;
-  value: ValueType;
-};
-
 export class DocumentSearch<
-  // FitlerSchemas extends Record<
-  //   FilterNames,
-  //   Validator<Value, "required", string>
-  // > = Record<string, never>,
+  FitlerSchemas extends Record<FilterNames, Value> = Record<string, Value>,
   FilterNames extends string = string,
 > {
   constructor(
@@ -114,7 +113,7 @@ export class DocumentSearch<
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
-      filterValues?: NamedFilter<FilterNames>[];
+      filterValues?: DocumentFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
     }
@@ -245,7 +244,7 @@ export class DocumentSearch<
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
-      filterValues?: NamedFilter<FilterNames>[];
+      filterValues?: DocumentFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
       onComplete?: OnCompleteDocument;
@@ -308,7 +307,7 @@ export class DocumentSearch<
        * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
        * `{ team_user: { team: "team1" } }` but it will match
        */
-      filters?: NamedFilter<FilterNames>[];
+      filters?: DocumentFilterValues<FitlerSchemas>[];
       /**
        * The maximum number of messages to fetch. Default is 10.
        * This is the number *before* the chunkContext is applied.
@@ -333,7 +332,7 @@ export class DocumentSearch<
   ): Promise<{
     results: SearchResult[];
     text: string[];
-    documents: Document[];
+    documents: Document<FitlerSchemas>[];
   }> {
     const {
       namespace,
@@ -359,7 +358,7 @@ export class DocumentSearch<
     return {
       results: results as SearchResult[],
       text: results.map((r) => r.content.map((c) => c.text).join("\n")),
-      documents: documents as Document[],
+      documents: documents as Document<FitlerSchemas>[],
     };
   }
 
@@ -371,14 +370,14 @@ export class DocumentSearch<
       order?: "desc" | "asc";
       status?: Status;
     }
-  ): Promise<PaginationResult<Document>> {
+  ): Promise<PaginationResult<Document<FitlerSchemas>>> {
     const results = await ctx.runQuery(this.component.documents.list, {
       namespaceId: args.namespaceId,
       paginationOpts: args.paginationOpts,
       order: args.order ?? "asc",
       status: args.status ?? "ready",
     });
-    return results as PaginationResult<Document>;
+    return results as PaginationResult<Document<FitlerSchemas>>;
   }
 
   async getDocument(
@@ -386,11 +385,11 @@ export class DocumentSearch<
     args: {
       documentId: DocumentId;
     }
-  ): Promise<Document | null> {
+  ): Promise<Document<FitlerSchemas> | null> {
     const document = await ctx.runQuery(this.component.documents.get, {
       documentId: args.documentId,
     });
-    return document as Document | null;
+    return document as Document<FitlerSchemas> | null;
   }
 
   async findExistingDocument(
@@ -402,7 +401,7 @@ export class DocumentSearch<
       /** If trying to find a document with a url, you must provide the same url too. */
       url?: string;
     }
-  ): Promise<Document | null> {
+  ): Promise<Document<FitlerSchemas> | null> {
     const document = await ctx.runQuery(
       this.component.documents.findByContentHash,
       {
@@ -415,7 +414,7 @@ export class DocumentSearch<
         url: args.url,
       }
     );
-    return document as Document | null;
+    return document as Document<FitlerSchemas> | null;
   }
 
   async getOrCreateNamespace(
@@ -583,9 +582,9 @@ async function* batchIterator<T>(
   }
 }
 
-function validateUpsertFilterValues<FilterNames extends string = string>(
-  filterValues: NamedFilter<FilterNames>[] | undefined,
-  filterNames: FilterNames[] | undefined
+function validateUpsertFilterValues(
+  filterValues: NamedFilter[] | undefined,
+  filterNames: string[] | undefined
 ) {
   if (!filterValues) {
     return;
@@ -595,7 +594,7 @@ function validateUpsertFilterValues<FilterNames extends string = string>(
       "You must provide filter names to DocumentSearch to upsert documents with filters."
     );
   }
-  const seen = new Set<FilterNames>();
+  const seen = new Set<string>();
   for (const filterValue of filterValues) {
     if (seen.has(filterValue.name)) {
       throw new Error(

@@ -14,8 +14,8 @@ export const vDocumentId = brandedString("DocumentId");
 export type NamespaceId = Infer<typeof vNamespaceId>;
 export type DocumentId = Infer<typeof vDocumentId>;
 
-export const vSearchResultInner = v.object({
-  documentId: v.id("documents"),
+export const vSearchResult = v.object({
+  documentId: vDocumentId,
   order: v.number(),
   content: v.array(
     v.object({
@@ -26,12 +26,7 @@ export const vSearchResultInner = v.object({
   startOrder: v.number(),
   score: v.number(),
 });
-export type SearchResultInner = Infer<typeof vSearchResultInner>;
 
-export const vSearchResult = v.object({
-  ...vSearchResultInner.fields,
-  documentId: vDocumentId,
-});
 export type SearchResult = Infer<typeof vSearchResult>;
 
 export const vStatus = v.union(
@@ -70,7 +65,15 @@ export const vDocument = v.object({
 const _1: Document = {} as Infer<typeof vDocument>;
 const _2: Infer<typeof vDocument> = {} as Document;
 
-export type Document = {
+export type DocumentFilterValues<
+  Filters extends { [name: string]: Value } = { [name: string]: Value },
+> = {
+  [K in keyof Filters & string]: NamedFilter<K, Filters[K]>;
+}[keyof Filters & string];
+
+export type Document<
+  Filters extends { [name: string]: Value } = { [name: string]: Value },
+> = {
   // User-defined key. You can re-use a key to replace it with new contents.
   key: string;
   // User-defined title
@@ -82,7 +85,7 @@ export type Document = {
   importance: number;
   // Filters that can be used to search for this document.
   // Up to 4 filters are supported, of any type.
-  filterValues: NamedFilter[];
+  filterValues: DocumentFilterValues<Filters>[];
   // Hash of the document contents.
   // If supplied, it will avoid upserting if the hash is the same.
   contentHash?: string | undefined;
