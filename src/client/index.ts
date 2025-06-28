@@ -386,11 +386,12 @@ export class DocumentSearch<
     return document as Document<FitlerSchemas> | null;
   }
 
-  async findExistingDocument(
+  async findExistingDocumentByContentHash(
     ctx: RunQueryCtx,
     args: {
       namespace: string;
       key: string;
+      /** The hash of the document contents to try to match. */
       contentHash: string;
       /** If trying to find a document with a url, you must provide the same url too. */
       url?: string;
