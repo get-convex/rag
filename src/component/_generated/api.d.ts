@@ -96,7 +96,7 @@ export type Mounts = {
       "mutation",
       "public",
       { documentId: string; startOrder: number },
-      any
+      null
     >;
     findByContentHash: FunctionReference<
       "query",

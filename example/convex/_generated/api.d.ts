@@ -94,7 +94,7 @@ export declare const components: {
         "mutation",
         "internal",
         { documentId: string; startOrder: number },
-        any
+        null
       >;
       findByContentHash: FunctionReference<
         "query",

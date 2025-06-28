@@ -426,6 +426,7 @@ export const deleteDocumentAsync = mutation({
     documentId: v.id("documents"),
     startOrder: v.number(),
   }),
+  returns: v.null(),
   handler: async (ctx, args) => {
     const { documentId, startOrder } = args;
     const document = await ctx.db.get(documentId);
