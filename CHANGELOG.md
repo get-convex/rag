@@ -9,3 +9,4 @@
   versions, with automatically versioned namespaces.
 - See the example for injesting pdfs, images, audio, and text!
 - List namespaces by status, documents by namespace/status, and chunks by document
+- Find older document versions by file contents to restore.
