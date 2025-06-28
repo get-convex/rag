@@ -67,16 +67,10 @@ function Example() {
       : "skip"
   );
 
-  const handleFileSelect = useCallback(
-    (file: File) => {
-      setSelectedFile(file);
-      // Auto-populate filename if it's empty
-      if (!uploadForm.filename.trim()) {
-        setUploadForm((prev) => ({ ...prev, filename: file.name }));
-      }
-    },
-    [uploadForm.filename]
-  );
+  const handleFileSelect = useCallback((file: File) => {
+    setSelectedFile(file);
+    setUploadForm((prev) => ({ ...prev, filename: file.name }));
+  }, []);
 
   const handleFileUpload = useCallback(async () => {
     if (!selectedFile) {
