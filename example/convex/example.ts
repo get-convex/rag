@@ -41,7 +41,7 @@ const describeImage = openai.chat("o4-mini");
 const describeAudio = openai.transcription("whisper-1");
 const describePdf = openai.chat("gpt-4.1");
 
-export const uploadFile = action({
+export const upsertFile = action({
   args: {
     globalNamespace: v.boolean(),
     filename: v.string(),
@@ -59,42 +59,46 @@ export const uploadFile = action({
       args.mimeType ||
       guessMimeTypeFromExtension(filename) ||
       guessMimeTypeFromContents(bytes);
-    console.debug(
-      "mimeType",
-      mimeType,
-      args.mimeType,
-      guessMimeTypeFromExtension(filename),
-      guessMimeTypeFromContents(bytes)
-    );
     const storageId = await ctx.storage.store(
       new Blob([bytes], { type: mimeType })
     );
     const text = await getText(ctx, { storageId, mimeType, filename, bytes });
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 500,
-      chunkOverlap: 100,
+      chunkSize: 1000,
     });
     const chunks = await textSplitter.splitText(text);
-    const { documentId } = await documentSearch.upsertDocument(ctx, {
-      namespace: globalNamespace ? "global" : userId,
-      chunks,
-      key: filename,
-      title: filename,
-      source: { kind: "_storage", storageId },
-      filterValues: [
-        { name: "documentKey", value: filename },
-        { name: "documentMimeType", value: mimeType },
-        { name: "category", value: category },
-      ],
-    });
-    await ctx.runMutation(internal.example.recordUploadMetadata, {
-      global: args.globalNamespace,
-      filename,
-      storageId,
-      documentId,
-      category,
-      uploadedBy: userId,
-    });
+    const { documentId, created, replacedVersion } =
+      await documentSearch.upsertDocument(ctx, {
+        namespace: globalNamespace ? "global" : userId,
+        chunks,
+        key: filename,
+        title: filename,
+        source: { kind: "_storage", storageId },
+        filterValues: [
+          { name: "documentKey", value: filename },
+          { name: "documentMimeType", value: mimeType },
+          { name: "category", value: category },
+        ],
+      });
+    if (replacedVersion) {
+      console.debug("We replaced a document, deleting the old one");
+      await ctx.runMutation(internal.example.deleteFile, {
+        documentId: replacedVersion.documentId,
+      });
+    }
+    if (created) {
+      await ctx.runMutation(internal.example.recordUploadMetadata, {
+        global: args.globalNamespace,
+        filename,
+        storageId,
+        documentId,
+        category,
+        uploadedBy: userId,
+      });
+    } else {
+      console.debug("document already exists, skipping upload metadata");
+      await ctx.storage.delete(storageId);
+    }
     return {
       url: (await ctx.storage.getUrl(storageId))!,
       documentId,
@@ -106,7 +110,35 @@ export const uploadFile = action({
 export const recordUploadMetadata = internalMutation({
   args: schema.tables.files.validator,
   handler: async (ctx, args) => {
-    await ctx.db.insert("files", args);
+    const existing = await ctx.db
+      .query("files")
+      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
+      .unique();
+    if (existing) {
+      console.debug("replacing file", existing._id, args);
+      await ctx.db.replace(existing._id, args);
+    } else {
+      console.debug("inserting file", args);
+      await ctx.db.insert("files", args);
+    }
+  },
+});
+
+export const deleteFile = internalMutation({
+  args: {
+    documentId: vDocumentId,
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db
+      .query("files")
+      .withIndex("documentId", (q) => q.eq("documentId", args.documentId))
+      .first();
+    if (file) {
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(file._id);
+    } else {
+      console.warn(`File ${args.documentId} not found...`);
+    }
   },
 });
 
@@ -119,7 +151,7 @@ export const listDocuments = query({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    return ctx.db
+    const results = await ctx.db
       .query("files")
       .withIndex("global_category", (q) =>
         args.category === undefined
@@ -127,6 +159,18 @@ export const listDocuments = query({
           : q.eq("global", args.globalNamespace).eq("category", args.category)
       )
       .paginate(args.paginationOpts);
+    return {
+      ...results,
+      page: await Promise.all(
+        results.page.map(async (file) => ({
+          ...file,
+          isImage: await ctx.db.system
+            .get(file.storageId)
+            .then((m) => !!m?.contentType?.startsWith("image/")),
+          url: await ctx.storage.getUrl(file.storageId),
+        }))
+      ),
+    };
   },
 });
 

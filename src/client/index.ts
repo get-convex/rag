@@ -116,7 +116,12 @@ export class DocumentSearch<
       importance?: Importance;
       contentHash?: string;
     }
-  ): Promise<{ documentId: DocumentId; status: Status; created: boolean }> {
+  ): Promise<{
+    documentId: DocumentId;
+    status: Status;
+    created: boolean;
+    replacedVersion: Document | null;
+  }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -134,15 +139,15 @@ export class DocumentSearch<
 
     let allChunks: CreateChunkArgs[] | undefined;
     if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
+      console.debug("All chunks at once", args.chunks.length);
       allChunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         args.chunks
       );
     }
 
-    const { documentId, status, created } = await ctx.runMutation(
-      this.component.documents.upsert,
-      {
+    const { documentId, status, created, replacedVersion } =
+      await ctx.runMutation(this.component.documents.upsert, {
         document: {
           key: args.key,
           namespaceId,
@@ -153,10 +158,14 @@ export class DocumentSearch<
           contentHash,
         },
         allChunks,
-      }
-    );
+      });
     if (status === "ready") {
-      return { documentId: documentId as DocumentId, status, created };
+      return {
+        documentId: documentId as DocumentId,
+        status,
+        created,
+        replacedVersion: replacedVersion as Document | null,
+      };
     }
 
     // break chunks up into batches, respecting soft limit
@@ -191,18 +200,23 @@ export class DocumentSearch<
           return {
             documentId: documentId as DocumentId,
             status: "replaced" as const,
-            created: true,
+            created: false,
+            replacedVersion: null,
           };
         }
         startOrder = nextStartOrder;
       }
     }
-    await ctx.runMutation(this.component.documents.promoteToReady, {
-      documentId,
-    });
+    const promoted = await ctx.runMutation(
+      this.component.documents.promoteToReady,
+      {
+        documentId,
+      }
+    );
     return {
       documentId: documentId as DocumentId,
       status: "ready" as const,
+      replacedVersion: promoted.replacedVersion as Document | null,
       created: true,
     };
   }

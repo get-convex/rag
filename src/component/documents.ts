@@ -122,6 +122,7 @@ export const upsert = mutation({
     documentId: v.id("documents"),
     status: vStatus,
     created: v.boolean(),
+    replacedVersion: v.union(vDocument, v.null()),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.document;
@@ -140,6 +141,7 @@ export const upsert = mutation({
         documentId: existing._id,
         status: existing.status.kind,
         created: false,
+        replacedVersion: null,
       };
     }
     const version = existing ? existing.version + 1 : 0;
@@ -156,10 +158,22 @@ export const upsert = mutation({
         startOrder: 0,
         chunks: args.allChunks,
       });
-      await promoteToReadyHandler(ctx, { documentId });
-      return { documentId, status: "ready" as const, created: true };
+      const { replacedVersion } = await promoteToReadyHandler(ctx, {
+        documentId,
+      });
+      return {
+        documentId,
+        status: "ready" as const,
+        created: true,
+        replacedVersion,
+      };
     }
-    return { documentId, status: "pending" as const, created: true };
+    return {
+      documentId,
+      status: "pending" as const,
+      created: true,
+      replacedVersion: null,
+    };
   },
 });
 
@@ -349,6 +363,9 @@ export const promoteToReady = mutation({
   args: v.object({
     documentId: v.id("documents"),
   }),
+  returns: v.object({
+    replacedVersion: v.union(vDocument, v.null()),
+  }),
   handler: promoteToReadyHandler,
 });
 
@@ -360,7 +377,7 @@ async function promoteToReadyHandler(
   assert(document, `Document ${args.documentId} not found`);
   if (document.status.kind === "ready") {
     console.debug(`Document ${args.documentId} is already ready, skipping...`);
-    return;
+    return { replacedVersion: null };
   }
   const previousDocument = await ctx.db
     .query("documents")
@@ -383,6 +400,9 @@ async function promoteToReadyHandler(
   if (document.status.kind === "pending" && document.status.onComplete) {
     await enqueueOnComplete(ctx, document.status.onComplete, args.documentId);
   }
+  return {
+    replacedVersion: previousDocument ? publicDocument(previousDocument) : null,
+  };
 }
 
 export function publicDocument(document: Doc<"documents">): Document {

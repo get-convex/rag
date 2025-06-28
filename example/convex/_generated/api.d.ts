@@ -177,7 +177,20 @@ export declare const components: {
         "mutation",
         "internal",
         { documentId: string },
-        any
+        {
+          replacedVersion: {
+            contentHash?: string;
+            documentId: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            source:
+              | { kind: "_storage"; storageId: string }
+              | { kind: "url"; url: string };
+            status: "pending" | "ready" | "replaced";
+            title?: string;
+          } | null;
+        }
       >;
       upsert: FunctionReference<
         "mutation",
@@ -204,6 +217,18 @@ export declare const components: {
         {
           created: boolean;
           documentId: string;
+          replacedVersion: {
+            contentHash?: string;
+            documentId: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            source:
+              | { kind: "_storage"; storageId: string }
+              | { kind: "url"; url: string };
+            status: "pending" | "ready" | "replaced";
+            title?: string;
+          } | null;
           status: "pending" | "ready" | "replaced";
         }
       >;
