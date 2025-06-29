@@ -262,7 +262,7 @@ For convenienct, the `text` field of the search results is a string formatted
 with `...` separating non-sequential chunks, `---` separating entries, and
 `# Title:` at each entry boundary (if titles are available).
 
-```
+```txt
 # Title 1:
 Chunk 1 contents
 Chunk 2 contents
