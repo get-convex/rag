@@ -28,15 +28,14 @@ import { getText } from "./getText";
 import { assert } from "convex-helpers";
 
 type DocumentFilterValues = {
-  documentKey: string;
-  documentMimeType: string;
-  category: string;
+  filename: string;
+  category: string | null;
 };
 
 const documentSearch = new DocumentSearch<DocumentFilterValues>(
   components.documentSearch,
   {
-    filterNames: ["documentKey", "documentMimeType", "category"],
+    filterNames: ["filename", "category"],
     textEmbeddingModel: openai.embedding("text-embedding-3-small"),
     embeddingDimension: 1536,
   }
@@ -48,7 +47,7 @@ export const addFile = action({
     filename: v.string(),
     mimeType: v.string(),
     bytes: v.bytes(),
-    category: v.string(),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -76,9 +75,8 @@ export const addFile = action({
         key: filename,
         title: filename,
         filterValues: [
-          { name: "documentKey", value: filename },
-          { name: "documentMimeType", value: mimeType },
-          { name: "category", value: category },
+          { name: "filename", value: filename },
+          { name: "category", value: category ?? null },
         ],
       }
     );
@@ -138,7 +136,7 @@ export const searchDocument = action({
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       chunkContext: { before: 1, after: 1 },
-      filters: [{ name: "documentKey", value: args.filename }],
+      filters: [{ name: "filename", value: args.filename }],
       limit: 10,
     });
     return {
@@ -213,7 +211,7 @@ export type PublicFile = {
   documentId: DocumentId;
   filename: string;
   global: boolean;
-  category: string;
+  category: string | undefined;
   title: string | undefined;
   isImage: boolean;
   url: string | null;

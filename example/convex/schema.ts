@@ -10,7 +10,7 @@ export default defineSchema({
     storageId: v.id("_storage"),
     documentId: vDocumentId,
     uploadedBy: v.string(),
-    category: v.string(),
+    category: v.optional(v.string()),
   })
     .index("global_category", ["global", "category"])
     .index("documentId", ["documentId"]),

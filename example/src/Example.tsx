@@ -210,8 +210,12 @@ function Example() {
 
   const getUniqueCategories = () => {
     const categories = new Set<string>();
-    globalDocuments?.page?.forEach((doc) => categories.add(doc.category));
-    userDocuments?.page?.forEach((doc) => categories.add(doc.category));
+    globalDocuments?.page?.forEach(
+      (doc) => doc.category && categories.add(doc.category)
+    );
+    userDocuments?.page?.forEach(
+      (doc) => doc.category && categories.add(doc.category)
+    );
     return Array.from(categories).sort();
   };
 
@@ -267,11 +271,6 @@ function Example() {
                 placeholder="Enter category"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              {selectedFile && !uploadForm.category.trim() && (
-                <label htmlFor="category" className="text-sm text-red-500">
-                  Category is required
-                </label>
-              )}
             </div>
 
             <div>
@@ -399,9 +398,7 @@ function Example() {
 
             <button
               onClick={handleFileUpload}
-              disabled={
-                isAdding || !selectedFile || !uploadForm.category.trim()
-              }
+              disabled={isAdding || !selectedFile}
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               {isAdding ? "Creating or updating document..." : "Add Document"}
@@ -454,16 +451,18 @@ function Example() {
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {doc.filename}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCategory(doc.category);
-                          setSearchType("category");
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        {doc.category}
-                      </button>
+                      {doc.category && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCategory(doc.category!);
+                            setSearchType("category");
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          {doc.category}
+                        </button>
+                      )}
                     </div>
                     <button
                       onClick={(e) => {
@@ -518,16 +517,18 @@ function Example() {
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {doc.filename}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCategory(doc.category);
-                          setSearchType("category");
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        {doc.category}
-                      </button>
+                      {doc.category && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCategory(doc.category!);
+                            setSearchType("category");
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          {doc.category}
+                        </button>
+                      )}
                     </div>
                     <button
                       onClick={(e) => {
