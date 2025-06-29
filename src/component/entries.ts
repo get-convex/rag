@@ -21,7 +21,7 @@ import {
   getCompatibleNamespaceHandler,
   vNamespaceLookupArgs,
 } from "./namespaces.js";
-import type { OnComplete } from "../client/types.js";
+import type { OnComplete } from "../shared.js";
 
 export const addAsync = mutation({
   args: {

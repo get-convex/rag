@@ -10,52 +10,11 @@ import type {
 } from "convex/server";
 import { type GenericId } from "convex/values";
 import type { Mounts } from "../component/_generated/api.js";
-import type { EntryId, NamespaceId } from "../shared.js";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
 // issues where passing `components.foo` doesn't match the argument
 export type MemoryComponent = UseApi<Mounts>;
-
-export type OnCompleteNamespace = FunctionReference<
-  "mutation",
-  "internal",
-  {
-    namespace: string;
-    namespaceId: NamespaceId;
-    previousNamespaceId: NamespaceId | null;
-    success: boolean;
-  },
-  null,
-  string
->;
-
-export type OnComplete = FunctionReference<
-  "mutation",
-  "internal",
-  {
-    namespace: string;
-    namespaceId: NamespaceId;
-    key: string;
-    entryId: EntryId;
-    previousEntryId: EntryId | null;
-    success: boolean;
-  },
-  null,
-  string
->;
-
-export type ChunkerAction = FunctionReference<
-  "action",
-  "internal",
-  {
-    namespace: string;
-    namespaceId: NamespaceId;
-    key: string;
-    entryId: EntryId;
-  },
-  null
->;
 
 // Type utils follow
 

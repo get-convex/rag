@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Infer, Validator, Value, VObject } from "convex/values";
 import { vNamedFilter, type NamedFilter } from "./component/filters.js";
 import { brandedString } from "convex-helpers/validators";
+import type { FunctionReference } from "convex/server";
 
 // A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
 // Also a reasonable number of writes to the DB.
@@ -152,3 +153,43 @@ export async function contentHashFromBlob(blob: Blob) {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+export type OnCompleteNamespace = FunctionReference<
+  "mutation",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    previousNamespaceId: NamespaceId | null;
+    success: boolean;
+  },
+  null,
+  string
+>;
+
+export type OnComplete = FunctionReference<
+  "mutation",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    key: string;
+    entryId: EntryId;
+    previousEntryId: EntryId | null;
+    success: boolean;
+  },
+  null,
+  string
+>;
+
+export type ChunkerAction = FunctionReference<
+  "action",
+  "internal",
+  {
+    namespace: string;
+    namespaceId: NamespaceId;
+    key: string;
+    entryId: EntryId;
+  },
+  null
+>;

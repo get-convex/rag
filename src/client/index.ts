@@ -26,14 +26,16 @@ import {
 } from "../shared.js";
 import {
   type ActionCtx,
-  type ChunkerAction,
   type MemoryComponent,
-  type OnComplete,
-  type OnCompleteNamespace,
   type RunActionCtx,
   type RunMutationCtx,
   type RunQueryCtx,
 } from "./types.js";
+import {
+  type ChunkerAction,
+  type OnComplete,
+  type OnCompleteNamespace,
+} from "../shared.js";
 import type { NamedFilter } from "../component/filters.js";
 
 export {
