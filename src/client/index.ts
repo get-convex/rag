@@ -27,7 +27,7 @@ import {
 import {
   type ActionCtx,
   type ChunkerAction,
-  type DocumentSearchComponent,
+  type MemoryComponent,
   type OnCompleteDocument,
   type OnCompleteNamespace,
   type RunActionCtx,
@@ -48,7 +48,7 @@ export type {
   ChunkerAction,
   Document,
   DocumentId,
-  DocumentSearchComponent,
+  MemoryComponent,
   NamespaceId,
   OnCompleteDocument,
   OnCompleteNamespace,
@@ -86,12 +86,12 @@ export type InputChunk =
       // filters?: DocumentFilterValues<FitlerSchemas>[];
     });
 
-export class DocumentSearch<
+export class Memory<
   FitlerSchemas extends Record<FilterNames, Value> = Record<string, Value>,
   FilterNames extends string = string,
 > {
   constructor(
-    public component: DocumentSearchComponent,
+    public component: MemoryComponent,
     public options: {
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModelV1<string>;
@@ -222,10 +222,10 @@ export class DocumentSearch<
        * This should be passed as internal.foo.myChunkerAction
        * e.g.
        * ```ts
-       * export const myChunkerAction = documentSearch.defineChunkerAction();
+       * export const myChunkerAction = memory.defineChunkerAction();
        *
        * // in your mutation
-       *   const documentId = await documentSearch.addAsync(ctx, {
+       *   const documentId = await memory.addAsync(ctx, {
        *     key: "myfile.txt",
        *     namespace: "my-namespace",
        *     chunker: internal.foo.myChunkerAction,
@@ -503,7 +503,7 @@ export class DocumentSearch<
         insertChunksHandle: v.string() as VString<
           FunctionHandle<
             "mutation",
-            FunctionArgs<DocumentSearchComponent["chunks"]["insert"]>,
+            FunctionArgs<MemoryComponent["chunks"]["insert"]>,
             null
           >
         >,
@@ -575,7 +575,7 @@ function validateAddFilterValues(
   }
   if (!filterNames) {
     throw new Error(
-      "You must provide filter names to DocumentSearch to add documents with filters."
+      "You must provide filter names to Memory to add documents with filters."
     );
   }
   const seen = new Set<string>();

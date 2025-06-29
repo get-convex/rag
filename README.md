@@ -1,6 +1,6 @@
-# Convex Document Search Component
+# Convex Memory Component
 
-[![npm version](https://badge.fury.io/js/@convex-dev%2Fdocument-search.svg)](https://badge.fury.io/js/@convex-dev%2Fdocument-search)
+[![npm version](https://badge.fury.io/js/@convex-dev%2Fmemory.svg)](https://badge.fury.io/js/@convex-dev%2Fmemory)
 
 <!-- START: Include on https://convex.dev/components -->
 
@@ -17,7 +17,7 @@ LLMs, e.g. for Retrieval-Augmented Generation (RAG).
 - **Chunk Context**: Get surrounding chunks for better context.
 - **Graceful Migrations**: Migrate documents or whole namespaces to new content, models, etc. without disruption.
 
-Found a bug? Feature request? [File it here](https://github.com/get-convex/document-search/issues).
+Found a bug? Feature request? [File it here](https://github.com/get-convex/memory/issues).
 
 ## Pre-requisite: Convex
 
@@ -32,7 +32,7 @@ Run `npm create convex` or follow any of the [quickstarts](https://docs.convex.d
 Install the component package:
 
 ```ts
-npm install @convex-dev/document-search
+npm install @convex-dev/memory
 ```
 
 Create a `convex.config.ts` file in your app's `convex/` folder and install the component by calling `use`:
@@ -40,10 +40,10 @@ Create a `convex.config.ts` file in your app's `convex/` folder and install the 
 ```ts
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import documentSearch from "@convex-dev/document-search/convex.config";
+import memory from "@convex-dev/memory/convex.config";
 
 const app = defineApp();
-app.use(documentSearch);
+app.use(memory);
 
 export default app;
 ```
@@ -53,11 +53,11 @@ export default app;
 ```ts
 // convex/documents.ts
 import { components } from "./_generated/api";
-import { DocumentSearch } from "@convex-dev/document-search";
+import { Memory } from "@convex-dev/memory";
 // Any AI SDK model that supports embeddings will work.
 import { openai } from "@ai-sdk/openai";
 
-const documentSearch = new DocumentSearch(components.documentSearch, {
+const memory = new Memory(components.memory, {
   filterNames: ["category", "documentType", "categoryAndType"],
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536,
@@ -83,7 +83,7 @@ export const uploadDocument = action({
     const chunks = await textSplitter.splitText(content);
     const documentType = response.headers.get("content-type");
 
-    const { documentId } = await documentSearch.upsertDocument(ctx, {
+    const { documentId } = await memory.upsertDocument(ctx, {
       namespace: "global", // namespace can be any string
       key: url,
       chunks,
@@ -131,7 +131,7 @@ export const uploadFile = action({
     const textContent = new TextDecoder().decode(bytes);
     const chunks = await textSplitter.splitText(textContent);
 
-    const { documentId } = await documentSearch.upsertDocument(ctx, {
+    const { documentId } = await memory.upsertDocument(ctx, {
       namespace: userId, // per-user namespace
       key: filename,
       title: filename,
@@ -165,7 +165,7 @@ export const searchDocuments = action({
   },
   handler: async (ctx, args) => {
 
-    const { results, text, sources } = await documentSearch.search(ctx, {
+    const { results, text, sources } = await memory.search(ctx, {
       namespace: "global",
       query: args.query,
       limit: 10
@@ -190,7 +190,7 @@ export const searchByCategory = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const results = await documentSearch.search(ctx, {
+    const results = await memory.search(ctx, {
       namespace: userId,
       query: args.query,
       filters: [{ name: "category", value: args.category }],
@@ -213,7 +213,7 @@ export const searchWithContext = action({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const results = await documentSearch.search(ctx, {
+    const results = await memory.search(ctx, {
       namespace: args.userId,
       query: args.query,
       chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
@@ -233,7 +233,7 @@ Delete a document:
 export const deleteDocument = mutation({
   args: { documentId: vDocumentId },
   handler: async (ctx, args) => {
-    await documentSearch.deleteDocument(ctx, {
+    await memory.deleteDocument(ctx, {
       documentId: args.documentId,
     });
   },
@@ -245,7 +245,7 @@ export const deleteDocument = mutation({
 For large documents, use async processing:
 
 ```ts
-export const chunkerAction = documentSearch.defineChunkerAction(
+export const chunkerAction = memory.defineChunkerAction(
   async (ctx, args) => {
     // Custom chunking logic for large documents
     // This can be an async iterator if you can't fit it all in memory at once.
@@ -263,7 +263,7 @@ export const uploadLargeDocument = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const { documentId } = await documentSearch.upsertDocumentAsync(ctx, {
+    const { documentId } = await memory.upsertDocumentAsync(ctx, {
       namespace: userId,
       key: args.filename,
       source: { kind: "url", url: args.url },

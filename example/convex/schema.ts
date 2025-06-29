@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { vDocumentId } from "@convex-dev/document-search";
+import { vDocumentId } from "@convex-dev/memory";
 
 export default defineSchema({
   // We can use a table with extra metadata to track extra things

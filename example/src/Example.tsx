@@ -2,7 +2,7 @@ import "./Example.css";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { SearchResult } from "@convex-dev/document-search";
+import type { SearchResult } from "@convex-dev/memory";
 import type { PublicFile } from "../convex/example";
 
 type SearchType = "global" | "user" | "category" | "document";
@@ -129,7 +129,7 @@ function Example() {
     if (!searchQuery.trim()) return;
 
     if (searchType === "document" && !selectedDocument) {
-      alert("Please select a document for document search");
+      alert("Please select a document to search");
       return;
     }
 
@@ -550,9 +550,7 @@ function Example() {
       {/* Right Panel - Search */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Document Search
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Memory</h1>
 
           {/* Search Type Selector */}
           <div className="flex space-x-4 mb-4">
@@ -625,7 +623,7 @@ function Example() {
             </div>
           )}
 
-          {/* Document Info for Document Search */}
+          {/* Document Info for Memory */}
           {searchType === "document" && selectedDocument && (
             <div className="mb-4 p-3 bg-blue-50 rounded-md">
               <div className="flex items-center justify-between">
@@ -675,7 +673,7 @@ function Example() {
 
         {/* Search Results */}
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Document Chunks for Document Search */}
+          {/* Document Chunks for Memory */}
           {searchType === "document" &&
             selectedDocument &&
             documentChunks &&

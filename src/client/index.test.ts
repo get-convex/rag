@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { DocumentSearch } from "./index.js";
+import { Memory } from "./index.js";
 import type { DataModelFromSchemaDefinition } from "convex/server";
 import {
   anyApi,
@@ -26,7 +26,7 @@ const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
-const documentSearch = new DocumentSearch(components.documentSearch, {
+const memory = new Memory(components.memory, {
   embeddingDimension: 1536,
   textEmbeddingModel: openai.textEmbeddingModel("text-embedding-3-small"),
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
@@ -35,14 +35,14 @@ const documentSearch = new DocumentSearch(components.documentSearch, {
 export const testQuery = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    // return await documentSearch.count(ctx, args.name);
+    // return await memory.count(ctx, args.name);
   },
 });
 
 export const testMutation = mutation({
   args: { name: v.string(), count: v.number() },
   handler: async (ctx, args) => {
-    // return await documentSearch.add(ctx, args.name, args.count);
+    // return await memory.add(ctx, args.name, args.count);
   },
 });
 
@@ -81,7 +81,7 @@ export const add = action({
   },
   handler: async (ctx, args) => {
     console.log("adding document", args);
-    return documentSearch.add(ctx, args);
+    return memory.add(ctx, args);
   },
 });
 
@@ -100,7 +100,7 @@ function dummyEmbeddings(text: string) {
   );
 }
 
-describe("DocumentSearch thick client", () => {
+describe("Memory thick client", () => {
   test("should add a document and be able to list it", async () => {
     const t = initConvexTest(schema);
     const { documentId, status } = await t.action(testApi.add, {
@@ -115,7 +115,7 @@ describe("DocumentSearch thick client", () => {
     expect(documentId).toBeDefined();
     expect(status).toBe("ready");
     await t.run(async (ctx) => {
-      const { isDone, page } = await documentSearch.listChunks(ctx, {
+      const { isDone, page } = await memory.listChunks(ctx, {
         documentId,
         paginationOpts: { numItems: 10, cursor: null },
       });

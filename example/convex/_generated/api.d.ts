@@ -41,7 +41,7 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  documentSearch: {
+  memory: {
     chunks: {
       insert: FunctionReference<
         "mutation",

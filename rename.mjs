@@ -58,9 +58,6 @@ function getAllFiles(dir, excludeDirs = [".git", "node_modules", ".cursor"]) {
     const items = readdirSync(currentPath);
     for (const item of items) {
       const fullPath = join(currentPath, item);
-      if (fullPath === "bootstrap.mjs") {
-        continue;
-      }
       const stats = statSync(fullPath);
 
       if (stats.isDirectory()) {
@@ -141,7 +138,7 @@ async function setup() {
   // Prompt for component name
   const componentName = await new Promise((resolve) => {
     rl.question(
-      `Enter your component name (e.g., "document search" or "RAG") [${currentDirName}]: `,
+      `Enter your component name (e.g., "memory" or "RAG") [${currentDirName}]: `,
       (answer) => {
         resolve(answer.trim() || currentDirName);
       }
@@ -198,24 +195,24 @@ async function setup() {
   // Define all replacements
   const replacements = [
     // NPM package name
-    ["@convex-dev/document-search", npmPackageName],
+    ["@convex-dev/memory", npmPackageName],
 
     // Repository name
-    ["get-convex/document-search", repoName],
+    ["get-convex/memory", repoName],
 
     // Component name variations
-    ["DocumentSearch", cases.pascal],
-    ["documentSearch", cases.camel],
-    ["document-search", cases.kebab],
-    ["document_search", cases.snake],
-    ["document search", cases.space],
-    ["Document Search", cases.title],
+    ["Memory", cases.pascal],
+    ["memory", cases.camel],
+    ["memory", cases.kebab],
+    ["memory", cases.snake],
+    ["memory", cases.space],
+    ["Memory", cases.title],
 
     // // Handle the component definition in convex.config.ts
-    // ['"documentSearch"', `"${cases.camel}"`],
+    // ['"memory"', `"${cases.camel}"`],
 
     // // Handle description (appears in package.json)
-    // ["A document search component for Convex.", `A ${cases.space} component for Convex.`],
+    // ["A memory component for Convex.", `A ${cases.space} component for Convex.`],
   ];
 
   console.log("🔍 Finding files to update...");
@@ -233,7 +230,7 @@ async function setup() {
   console.log(`\n✅ Setup complete! Processed ${processedCount} files.`);
   console.log("\n📋 Next steps: check out README.md");
 
-  // Prompt to delete bootstrap.mjs
+  // Prompt to delete rename.mjs
   const rl2 = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -241,7 +238,7 @@ async function setup() {
 
   const shouldDelete = await new Promise((resolve) => {
     rl2.question(
-      "\n🗑️  Would you like to delete the bootstrap.mjs file now? (y/N): ",
+      "\n🗑️  Would you like to delete the rename.mjs file now? (y/N): ",
       (answer) => {
         resolve(
           answer.toLowerCase().trim() === "y" ||
@@ -256,15 +253,13 @@ async function setup() {
   if (shouldDelete) {
     try {
       const { unlinkSync } = await import("fs");
-      unlinkSync("./bootstrap.mjs");
-      console.log("✅ bootstrap.mjs has been deleted.");
+      unlinkSync("./rename.mjs");
+      console.log("✅ rename.mjs has been deleted.");
     } catch (error) {
-      console.error("❌ Failed to delete bootstrap.mjs:", error.message);
+      console.error("❌ Failed to delete rename.mjs:", error.message);
     }
   } else {
-    console.log(
-      "📝 bootstrap.mjs kept. You can delete it manually when ready."
-    );
+    console.log("📝 rename.mjs kept. You can delete it manually when ready.");
   }
 }
 

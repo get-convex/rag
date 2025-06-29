@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import documentSearch from "@convex-dev/document-search/convex.config";
+import memory from "@convex-dev/memory/convex.config";
 
 const app = defineApp();
-app.use(documentSearch);
+app.use(memory);
 
 export default app;

@@ -12,13 +12,13 @@ import { components, internal } from "./_generated/api";
 import {
   Document,
   DocumentId,
-  DocumentSearch,
+  Memory,
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   InputChunk,
   vDocument,
   vDocumentId,
-} from "@convex-dev/document-search";
+} from "@convex-dev/memory";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
 import { paginationOptsValidator, PaginationResult } from "convex/server";
@@ -32,8 +32,8 @@ type DocumentFilterValues = {
   category: string | null;
 };
 
-const documentSearch = new DocumentSearch<DocumentFilterValues>(
-  components.documentSearch,
+const memory = new Memory<DocumentFilterValues>(
+  components.memory,
   {
     filterNames: ["filename", "category"],
     textEmbeddingModel: openai.embedding("text-embedding-3-small"),
@@ -67,7 +67,7 @@ export const addFile = action({
       chunkSize: 1000,
     });
     const chunks = await textSplitter.splitText(text);
-    const { documentId, created, replacedVersion } = await documentSearch.add(
+    const { documentId, created, replacedVersion } = await memory.add(
       ctx,
       {
         namespace: globalNamespace ? "global" : userId,
@@ -109,7 +109,7 @@ export const search = action({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const results = await documentSearch.search(ctx, {
+    const results = await memory.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
@@ -132,7 +132,7 @@ export const searchDocument = action({
     if (!userId) {
       throw new Error("Unauthorized");
     }
-    const results = await documentSearch.search(ctx, {
+    const results = await memory.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       chunkContext: { before: 1, after: 1 },
@@ -157,7 +157,7 @@ export const searchCategory = action({
     if (!userId) {
       throw new Error("Unauthorized");
     }
-    const results = await documentSearch.search(ctx, {
+    const results = await memory.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
@@ -173,7 +173,7 @@ export const searchCategory = action({
 /**
  * Uploading asynchronously
  */
-export const chunkerAction = documentSearch.defineChunkerAction(async () => {
+export const chunkerAction = memory.defineChunkerAction(async () => {
   const chunks: InputChunk[] = [];
   // TODO: do async chunking
   return { chunks };
@@ -188,13 +188,13 @@ export const listDocuments = query({
   handler: async (ctx, args): Promise<PaginationResult<PublicFile>> => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const namespace = await documentSearch.getNamespace(ctx, {
+    const namespace = await memory.getNamespace(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
     });
     if (!namespace) {
       return { page: [], isDone: true, continueCursor: "" };
     }
-    const results = await documentSearch.listDocuments(ctx, {
+    const results = await memory.listDocuments(ctx, {
       namespaceId: namespace.namespaceId,
       paginationOpts: args.paginationOpts,
     });
@@ -264,7 +264,7 @@ export const listChunks = query({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const paginatedChunks = await documentSearch.listChunks(ctx, {
+    const paginatedChunks = await memory.listChunks(ctx, {
       documentId: args.documentId,
       paginationOpts: args.paginationOpts,
     });
@@ -319,7 +319,7 @@ async function deleteFile(ctx: MutationCtx, documentId: DocumentId) {
   if (file) {
     await ctx.db.delete(file._id);
     await ctx.storage.delete(file.storageId);
-    await documentSearch.deleteDocument(ctx, { documentId });
+    await memory.deleteDocument(ctx, { documentId });
   }
 }
 /**
