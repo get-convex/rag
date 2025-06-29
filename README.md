@@ -4,18 +4,18 @@
 
 <!-- START: Include on https://convex.dev/components -->
 
-A component for semantic search over documents, often to provide context to
-LLMs, e.g. for Retrieval-Augmented Generation (RAG).
+A component for semantic search, usually used to look up context for LLMs.
+Use with an Agent for Retrieval-Augmented Generation (RAG).
 
 ## ✨ Key Features
 
-- **Document Add**: Add or replace documents with automatic text chunking and embedding.
+- **Add Content**: Add or replace content with text chunks and embeddings.
 - **Semantic Search**: Vector-based search using configurable embedding models
-- **Namespaces**: Organize documents into namespaces for per-user search.
-- **Custom Filtering**: Filter documents with custom indexed fields.
-- **Importance Weighting**: Weight documents by providing a 0 to 1 "importance".
+- **Namespaces**: Organize content into namespaces for per-user search.
+- **Custom Filtering**: Filter content with custom indexed fields.
+- **Importance Weighting**: Weight content by providing a 0 to 1 "importance".
 - **Chunk Context**: Get surrounding chunks for better context.
-- **Graceful Migrations**: Migrate documents or whole namespaces to new content, models, etc. without disruption.
+- **Graceful Migrations**: Migrate content or whole namespaces without disruption.
 
 Found a bug? Feature request? [File it here](https://github.com/get-convex/memory/issues).
 
@@ -51,24 +51,32 @@ export default app;
 ## Basic Setup
 
 ```ts
-// convex/documents.ts
+// convex/example.ts
 import { components } from "./_generated/api";
 import { Memory } from "@convex-dev/memory";
 // Any AI SDK model that supports embeddings will work.
 import { openai } from "@ai-sdk/openai";
 
-const memory = new Memory(components.memory, {
-  filterNames: ["category", "documentType", "categoryAndType"],
+const memory = new Memory<FilterTypes>(components.memory, {
+  filterNames: ["category", "contentType", "categoryAndType"],
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536,
 });
+
+// Optional: Add type safety to your filters.
+type FilterTypes = {
+  category: string;
+  contentType: string;
+  categoryAndType: { category: string; contentType: string };
+};
 ```
 
 ## Usage Examples
 
-### Document Upload and Chunking
+### Add Content
 
-Upload documents with automatic text chunking and embedding:
+Add content with text chunks.
+It will embed the chunks automatically if you don't provide them.
 
 ```ts
 export const add = action({
@@ -81,22 +89,22 @@ export const add = action({
     const response = await fetch(url);
     const content = await response.text();
     const chunks = await textSplitter.splitText(content);
-    const documentType = response.headers.get("content-type");
+    const contentType = response.headers.get("content-type");
 
-    const { documentId } = await memory.add(ctx, {
+    const { entryId } = await memory.add(ctx, {
       namespace: "global", // namespace can be any string
       key: url,
       chunks,
       source: { kind: "url", url },
       filterValues: [
         { name: "category", value: category },
-        { name: "documentType", value: documentType },
+        { name: "contentType", value: contentType },
         // To get an AND filter, use a filter with a more complex value.
-        { name: "categoryAndType", value: { category, documentType } },
+        { name: "categoryAndType", value: { category, contentType } },
       ],
     });
 
-    return { documentId };
+    return { entryId };
   },
 });
 ```
@@ -113,7 +121,7 @@ Upload files directly to a Convex action, httpAction, or upload url. See the
 export const uploadFile = action({
   args: {
     filename: v.string(),
-    mimeType: v.string(),
+    contentType: v.string(),
     bytes: v.bytes(),
     category: v.string(),
   },
@@ -121,17 +129,17 @@ export const uploadFile = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const { filename, mimeType, bytes, category } = args;
+    const { filename, contentType, bytes, category } = args;
     // Store file in Convex storage
     const storageId = await ctx.storage.store(
-      new Blob([bytes], { type: mimeType })
+      new Blob([bytes], { type: contentType })
     );
 
     // Extract and chunk text content
     const textContent = new TextDecoder().decode(bytes);
     const chunks = await textSplitter.splitText(textContent);
 
-    const { documentId } = await memory.add(ctx, {
+    const { entryId } = await memory.add(ctx, {
       namespace: userId, // per-user namespace
       key: filename,
       title: filename,
@@ -139,27 +147,27 @@ export const uploadFile = action({
       source: { kind: "_storage", storageId },
       filterValues: [
         { name: "category", value: category },
-        { name: "documentType", value: mimeType },
-        { name: "categoryAndType", value: { category, documentType: mimeType } },
+        { name: "contentType", value: contentType },
+        { name: "categoryAndType", value: { category, contentType } },
       ],
     });
 
-    return { documentId, url: await ctx.storage.getUrl(storageId) };
+    return { entryId, url: await ctx.storage.getUrl(storageId) };
   },
 });
 ```
 
 ### Semantic Search
 
-Search across documents with vector similarity
+Search across content with vector similarity
 
 - `text` is the plain text content of the results concatenated together.
 - `results` is an array of matching chunks with scores and more metadata.
-- `sources` is an array of the documents that matched the query.
-   Each result has a `documentId` referencing one of these source documents.
+- `sources` is an array of the entries that matched the query.
+   Each result has a `entryId` referencing one of these source entries.
 
 ```ts
-export const searchDocuments = action({
+export const search = action({
   args: {
     query: v.string(),
   },
@@ -225,36 +233,36 @@ export const searchWithContext = action({
 });
 ```
 
-### Document Management
+### Lifecycle Management
 
-Delete a document:
+Delete an entry:
 
 ```ts
-export const deleteDocument = mutation({
-  args: { documentId: vDocumentId },
+export const delete = mutation({
+  args: { entryId: vEntry },
   handler: async (ctx, args) => {
-    await memory.deleteDocument(ctx, {
-      documentId: args.documentId,
+    await memory.delete(ctx, {
+      entryId: args.entryId,
     });
   },
 });
 ```
 
-### Asynchronous Document Processing
+### Asynchronous Processing
 
-For large documents, use async processing:
+For large files, use async processing:
 
 ```ts
 export const chunkerAction = memory.defineChunkerAction(
   async (ctx, args) => {
-    // Custom chunking logic for large documents
+    // Custom chunking logic for large files
     // This can be an async iterator if you can't fit it all in memory at once.
-    const chunks = await processLargeDocument(args.source);
+    const chunks = await processLargeFile(args.source);
     return { chunks };
   }
 );
 
-export const uploadLargeDocument = action({
+export const uploadLargeFile = action({
   args: {
     filename: v.string(),
     url: v.string(),
@@ -263,14 +271,14 @@ export const uploadLargeDocument = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const { documentId } = await memory.addDocumentAsync(ctx, {
+    const { entryId } = await memory.addAsync(ctx, {
       namespace: userId,
       key: args.filename,
       source: { kind: "url", url: args.url },
       chunkerAction: internal.example.chunkerAction,
     });
 
-    return { documentId };
+    return { entryId };
   },
 });
 ```

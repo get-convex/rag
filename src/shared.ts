@@ -9,12 +9,12 @@ export const CHUNK_BATCH_SIZE = 100;
 
 // Branded types for IDs, as components don't expose the internal ID types.
 export const vNamespaceId = brandedString("NamespaceId");
-export const vDocumentId = brandedString("DocumentId");
+export const vEntryId = brandedString("EntryId");
 export type NamespaceId = Infer<typeof vNamespaceId>;
-export type DocumentId = Infer<typeof vDocumentId>;
+export type EntryId = Infer<typeof vEntryId>;
 
 export const vSearchResult = v.object({
-  documentId: vDocumentId,
+  entryId: vEntryId,
   order: v.number(),
   content: v.array(
     v.object({
@@ -49,54 +49,54 @@ export const vNamespace = v.object({
 
 export type Namespace = Infer<typeof vNamespace>;
 
-export const vDocument = v.object({
+export const vEntry = v.object({
   key: v.string(),
   title: v.optional(v.string()),
-  documentId: vDocumentId,
+  entryId: vEntryId,
   importance: v.number(),
   filterValues: v.array(vNamedFilter),
   contentHash: v.optional(v.string()),
   status: vStatus,
 });
 
-export type VDocument<Filters extends Record<string, Value>> = VObject<
-  Document<Filters>,
-  typeof vDocument.fields,
+export type VEntry<Filters extends Record<string, Value>> = VObject<
+  Entry<Filters>,
+  typeof vEntry.fields,
   "required",
-  typeof vDocument.fieldPaths
+  typeof vEntry.fieldPaths
 >;
 
 // Type assertion to keep us honest
-const _1: Document = {} as Infer<typeof vDocument>;
-const _2: Infer<typeof vDocument> = {} as Document;
+const _1: Entry = {} as Infer<typeof vEntry>;
+const _2: Infer<typeof vEntry> = {} as Entry;
 
-export type DocumentFilterValues<
+export type EntryFilterValues<
   Filters extends Record<string, Value> = Record<string, Value>,
 > = {
   [K in keyof Filters & string]: NamedFilter<K, Filters[K]>;
 }[keyof Filters & string];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Document<Filters extends Record<string, Value> = any> = {
+export type Entry<Filters extends Record<string, Value> = any> = {
   /** User-defined key. You can re-use a key to replace it with new contents. */
   key: string;
   /** User-defined title. */
   title?: string | undefined;
-  /** The document's id, uniquely identifying the key + contents + namespace etc. */
-  documentId: DocumentId;
-  /** How important this document is. Defaults to 1.
+  /** The entry's id, uniquely identifying the key + contents + namespace etc. */
+  entryId: EntryId;
+  /** How important this entry is. Defaults to 1.
    * Think of it as multiplying by the vector search score.
    */
   importance: number;
-  /** Filters that can be used to search for this document.
+  /** Filters that can be used to search for this entry.
    * Up to 4 filters are supported, of any type.
    */
-  filterValues: DocumentFilterValues<Filters>[];
-  /** Hash of the document contents.
+  filterValues: EntryFilterValues<Filters>[];
+  /** Hash of the entry contents.
    * If supplied, it will avoid adding if the hash is the same.
    */
   contentHash?: string | undefined;
-  /** Whether this document's contents have all been inserted and indexed. */
+  /** Whether this entry's contents have all been inserted and indexed. */
   status: Status;
 };
 

@@ -30,7 +30,7 @@ export async function getText(
     const imageResult = await generateText({
       model: describeImage,
       system:
-        "You turn images into text. If it is a photo of a document, transcribe it. If it is not a document, describe it.",
+        "You turn images into text. If it is a photo of a entry, transcribe it. If it is not a entry, describe it.",
       messages: [
         {
           role: "user",

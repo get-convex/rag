@@ -10,7 +10,7 @@ import type {
 } from "convex/server";
 import { type GenericId } from "convex/values";
 import type { Mounts } from "../component/_generated/api.js";
-import type { DocumentId, NamespaceId } from "../shared.js";
+import type { EntryId, NamespaceId } from "../shared.js";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
@@ -30,15 +30,15 @@ export type OnCompleteNamespace = FunctionReference<
   string
 >;
 
-export type OnCompleteDocument = FunctionReference<
+export type OnComplete = FunctionReference<
   "mutation",
   "internal",
   {
     namespace: string;
     namespaceId: NamespaceId;
     key: string;
-    documentId: DocumentId;
-    previousDocumentId: DocumentId | null;
+    entryId: EntryId;
+    previousEntryId: EntryId | null;
     success: boolean;
   },
   null,
@@ -52,7 +52,7 @@ export type ChunkerAction = FunctionReference<
     namespace: string;
     namespaceId: NamespaceId;
     key: string;
-    documentId: DocumentId;
+    entryId: EntryId;
   },
   null
 >;

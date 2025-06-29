@@ -52,7 +52,7 @@ export declare const components: {
             embedding: Array<number>;
             searchableText?: string;
           }>;
-          documentId: string;
+          entryId: string;
           startOrder: number;
         },
         { status: "pending" | "ready" | "replaced" }
@@ -61,7 +61,7 @@ export declare const components: {
         "query",
         "internal",
         {
-          documentId: string;
+          entryId: string;
           paginationOpts: {
             cursor: string | null;
             endCursor?: string | null;
@@ -87,11 +87,11 @@ export declare const components: {
       replaceChunksPage: FunctionReference<
         "mutation",
         "internal",
-        { documentId: string; startOrder: number },
+        { entryId: string; startOrder: number },
         { nextStartOrder: number; status: "pending" | "ready" | "replaced" }
       >;
     };
-    documents: {
+    entries: {
       add: FunctionReference<
         "mutation",
         "internal",
@@ -101,7 +101,7 @@ export declare const components: {
             embedding: Array<number>;
             searchableText?: string;
           }>;
-          document: {
+          entry: {
             contentHash?: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
@@ -113,10 +113,10 @@ export declare const components: {
         },
         {
           created: boolean;
-          documentId: string;
+          entryId: string;
           replacedVersion: {
             contentHash?: string;
-            documentId: string;
+            entryId: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
@@ -131,7 +131,7 @@ export declare const components: {
         "internal",
         {
           chunker: string;
-          document: {
+          entry: {
             contentHash?: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
@@ -143,14 +143,14 @@ export declare const components: {
         },
         {
           created: boolean;
-          documentId: string;
+          entryId: string;
           status: "pending" | "ready" | "replaced";
         }
       >;
-      deleteDocumentAsync: FunctionReference<
+      deleteAsync: FunctionReference<
         "mutation",
         "internal",
-        { documentId: string; startOrder: number },
+        { entryId: string; startOrder: number },
         null
       >;
       findByContentHash: FunctionReference<
@@ -166,7 +166,7 @@ export declare const components: {
         },
         {
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -177,10 +177,10 @@ export declare const components: {
       get: FunctionReference<
         "query",
         "internal",
-        { documentId: string },
+        { entryId: string },
         {
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -209,7 +209,7 @@ export declare const components: {
           isDone: boolean;
           page: Array<{
             contentHash?: string;
-            documentId: string;
+            entryId: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
@@ -223,11 +223,11 @@ export declare const components: {
       promoteToReady: FunctionReference<
         "mutation",
         "internal",
-        { documentId: string },
+        { entryId: string },
         {
           replacedVersion: {
             contentHash?: string;
-            documentId: string;
+            entryId: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
@@ -330,9 +330,9 @@ export declare const components: {
           vectorScoreThreshold?: number;
         },
         {
-          documents: Array<{
+          entries: Array<{
             contentHash?: string;
-            documentId: string;
+            entryId: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
@@ -341,7 +341,7 @@ export declare const components: {
           }>;
           results: Array<{
             content: Array<{ metadata?: Record<string, any>; text: string }>;
-            documentId: string;
+            entryId: string;
             order: number;
             score: number;
             startOrder: number;

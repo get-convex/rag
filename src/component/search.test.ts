@@ -30,7 +30,7 @@ describe("search", () => {
     });
   }
 
-  async function setupTestDocument(
+  async function setupTestEntry(
     t: ConvexTest,
     namespaceId: Id<"namespaces">,
     key = "test-doc",
@@ -38,7 +38,7 @@ describe("search", () => {
     filterValues: Array<{ name: string; value: Value }> = []
   ) {
     return await t.run(async (ctx) => {
-      return ctx.db.insert("documents", {
+      return ctx.db.insert("entries", {
         namespaceId,
         key,
         version,
@@ -73,13 +73,13 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(0);
-    expect(result.documents).toHaveLength(0);
+    expect(result.entries).toHaveLength(0);
   });
 
   test("if a namespace exists and is compatible, it finds the correct embedding for a query", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert chunks with specific embeddings
     const targetEmbedding = [...Array(127).fill(0.5), 1];
@@ -102,7 +102,7 @@ describe("search", () => {
 
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -118,8 +118,8 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(2);
-    expect(result.documents).toHaveLength(1);
-    expect(result.documents[0].documentId).toBe(documentId);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].entryId).toBe(entryId);
 
     // The target chunk should have a higher score (first result)
     expect(result.results[0].score).toBeGreaterThan(result.results[1].score);
@@ -129,13 +129,13 @@ describe("search", () => {
   test("if the limit is 0, it returns nothing", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert chunks
     const chunks = createTestChunks(3);
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -151,13 +151,13 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(0);
-    expect(result.documents).toHaveLength(0);
+    expect(result.entries).toHaveLength(0);
   });
 
   test("it filters out results where the vectorScoreThreshold is too low", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert chunks with different embeddings (to get different scores)
     const chunks = [
@@ -179,7 +179,7 @@ describe("search", () => {
 
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -217,7 +217,7 @@ describe("search", () => {
     }
   });
 
-  test("it successfully uses filters to search for documents that match", async () => {
+  test("it successfully uses filters to search for entries that match", async () => {
     const t = convexTest(schema, modules);
 
     // Create namespace with filter support
@@ -225,32 +225,32 @@ describe("search", () => {
       "category",
     ]);
 
-    // Create documents with different filter values
-    const doc1Id = await setupTestDocument(t, namespaceId, "doc1", 0, [
+    // Create entries with different filter values
+    const doc1Id = await setupTestEntry(t, namespaceId, "doc1", 0, [
       { name: "category", value: "category1" },
     ]);
-    const doc2Id = await setupTestDocument(t, namespaceId, "doc2", 0, [
+    const doc2Id = await setupTestEntry(t, namespaceId, "doc2", 0, [
       { name: "category", value: "category2" },
     ]);
-    const doc3Id = await setupTestDocument(t, namespaceId, "doc3", 0, [
+    const doc3Id = await setupTestEntry(t, namespaceId, "doc3", 0, [
       { name: "category", value: "category1" },
     ]);
 
-    // Insert chunks in all documents
+    // Insert chunks in all entries
     const baseEmbedding = Array(128).fill(0.1);
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId: doc1Id,
+        entryId: doc1Id,
         startOrder: 0,
         chunks: createTestChunks(2, 0.1),
       });
       await insertChunks(ctx, {
-        documentId: doc2Id,
+        entryId: doc2Id,
         startOrder: 0,
         chunks: createTestChunks(2, 0.1),
       });
       await insertChunks(ctx, {
-        documentId: doc3Id,
+        entryId: doc3Id,
         startOrder: 0,
         chunks: createTestChunks(2, 0.1),
       });
@@ -265,13 +265,11 @@ describe("search", () => {
       limit: 10,
     });
 
-    expect(category1Results.documents).toHaveLength(2); // doc1 and doc3
+    expect(category1Results.entries).toHaveLength(2); // doc1 and doc3
     expect(category1Results.results).toHaveLength(4); // 2 chunks each from doc1 and doc3
 
-    const documentIds = category1Results.documents
-      .map((d) => d.documentId)
-      .sort();
-    expect(documentIds).toEqual([doc1Id, doc3Id].sort());
+    const entryIds = category1Results.entries.map((d) => d.entryId).sort();
+    expect(entryIds).toEqual([doc1Id, doc3Id].sort());
 
     // Search for category2 only
     const category2Results = await t.action(api.search.search, {
@@ -282,9 +280,9 @@ describe("search", () => {
       limit: 10,
     });
 
-    expect(category2Results.documents).toHaveLength(1); // only doc2
+    expect(category2Results.entries).toHaveLength(1); // only doc2
     expect(category2Results.results).toHaveLength(2); // 2 chunks from doc2
-    expect(category2Results.documents[0].documentId).toBe(doc2Id);
+    expect(category2Results.entries[0].entryId).toBe(doc2Id);
 
     // Search with no filters should return all
     const noFilterResults = await t.action(api.search.search, {
@@ -295,7 +293,7 @@ describe("search", () => {
       limit: 10,
     });
 
-    expect(noFilterResults.documents).toHaveLength(3); // all documents
+    expect(noFilterResults.entries).toHaveLength(3); // all entries
     expect(noFilterResults.results).toHaveLength(6); // all chunks
   });
 
@@ -310,22 +308,22 @@ describe("search", () => {
       ["category", "priority_category"]
     );
 
-    // Create documents with different filter combinations
-    const doc1Id = await setupTestDocument(t, namespaceId, "doc1", 0, [
+    // Create entries with different filter combinations
+    const doc1Id = await setupTestEntry(t, namespaceId, "doc1", 0, [
       { name: "category", value: "articles" },
       {
         name: "priority_category",
         value: { priority: "high", category: "articles" },
       },
     ]);
-    const doc2Id = await setupTestDocument(t, namespaceId, "doc2", 0, [
+    const doc2Id = await setupTestEntry(t, namespaceId, "doc2", 0, [
       { name: "category", value: "articles" },
       {
         name: "priority_category",
         value: { priority: "low", category: "articles" },
       },
     ]);
-    const doc3Id = await setupTestDocument(t, namespaceId, "doc3", 0, [
+    const doc3Id = await setupTestEntry(t, namespaceId, "doc3", 0, [
       { name: "category", value: "blogs" },
       {
         name: "priority_category",
@@ -337,17 +335,17 @@ describe("search", () => {
     const baseEmbedding = Array(128).fill(0.1);
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId: doc1Id,
+        entryId: doc1Id,
         startOrder: 0,
         chunks: createTestChunks(1, 0.1),
       });
       await insertChunks(ctx, {
-        documentId: doc2Id,
+        entryId: doc2Id,
         startOrder: 0,
         chunks: createTestChunks(1, 0.1),
       });
       await insertChunks(ctx, {
-        documentId: doc3Id,
+        entryId: doc3Id,
         startOrder: 0,
         chunks: createTestChunks(1, 0.1),
       });
@@ -367,8 +365,8 @@ describe("search", () => {
       limit: 10,
     });
 
-    expect(result.documents).toHaveLength(1); // only doc1 matches both filters
-    expect(result.documents[0].documentId).toBe(doc1Id);
+    expect(result.entries).toHaveLength(1); // only doc1 matches both filters
+    expect(result.entries[0].entryId).toBe(doc1Id);
     expect(result.results).toHaveLength(1);
   });
 
@@ -388,7 +386,7 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(0);
-    expect(result.documents).toHaveLength(0);
+    expect(result.entries).toHaveLength(0);
   });
 
   test("it returns empty results for incompatible model IDs", async () => {
@@ -407,19 +405,19 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(0);
-    expect(result.documents).toHaveLength(0);
+    expect(result.entries).toHaveLength(0);
   });
 
   test("it respects the limit parameter", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert many chunks
     const chunks = createTestChunks(10);
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -435,7 +433,7 @@ describe("search", () => {
     });
 
     expect(result.results).toHaveLength(3);
-    expect(result.documents).toHaveLength(1);
+    expect(result.entries).toHaveLength(1);
 
     // Results should be sorted by score (best first)
     for (let i = 1; i < result.results.length; i++) {

@@ -80,7 +80,7 @@ export const add = action({
     contentHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    console.log("adding document", args);
+    console.log("adding entry", args);
     return memory.add(ctx, args);
   },
 });
@@ -101,9 +101,9 @@ function dummyEmbeddings(text: string) {
 }
 
 describe("Memory thick client", () => {
-  test("should add a document and be able to list it", async () => {
+  test("should add a entry and be able to list it", async () => {
     const t = initConvexTest(schema);
-    const { documentId, status } = await t.action(testApi.add, {
+    const { entryId, status } = await t.action(testApi.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
@@ -112,11 +112,11 @@ describe("Memory thick client", () => {
       ],
       namespace: "test",
     });
-    expect(documentId).toBeDefined();
+    expect(entryId).toBeDefined();
     expect(status).toBe("ready");
     await t.run(async (ctx) => {
       const { isDone, page } = await memory.listChunks(ctx, {
-        documentId,
+        entryId,
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(page.length).toBe(3);

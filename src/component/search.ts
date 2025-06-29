@@ -4,11 +4,11 @@ import { searchEmbeddings } from "./embeddings/index.js";
 import { numberedFiltersFromNamedFilters, vNamedFilter } from "./filters.js";
 import { internal } from "./_generated/api.js";
 import {
-  vDocument,
-  type Document,
+  vEntry,
+  type Entry,
   vSearchResult,
   type SearchResult,
-  type DocumentId,
+  type EntryId,
 } from "../shared.js";
 import type { vRangeResult } from "./chunks.js";
 
@@ -27,14 +27,14 @@ export const search = action({
   },
   returns: v.object({
     results: v.array(vSearchResult),
-    documents: v.array(vDocument),
+    entries: v.array(vEntry),
   }),
   handler: async (
     ctx,
     args
   ): Promise<{
     results: SearchResult[];
-    documents: Document[];
+    entries: Entry[];
   }> => {
     const { modelId, embedding, filters, limit } = args;
     const namespace = await ctx.runQuery(
@@ -52,7 +52,7 @@ export const search = action({
       );
       return {
         results: [],
-        documents: [],
+        entries: [],
       };
     }
     const results = await searchEmbeddings(ctx, {
@@ -66,7 +66,7 @@ export const search = action({
     const aboveThreshold = results.filter((r) => r._score >= threshold);
     const chunkContext = args.chunkContext ?? { before: 0, after: 0 };
     // TODO: break this up if there are too many results
-    const { ranges, documents } = await ctx.runQuery(
+    const { ranges, entries } = await ctx.runQuery(
       internal.chunks.getRangesOfChunks,
       {
         embeddingIds: aboveThreshold.map((r) => r._id),
@@ -77,7 +77,7 @@ export const search = action({
       results: ranges
         .map((r, i) => publicSearchResult(r, aboveThreshold[i]._score))
         .filter((r) => r !== null),
-      documents,
+      entries,
     };
   },
 });
@@ -92,6 +92,6 @@ function publicSearchResult(
   return {
     ...r,
     score,
-    documentId: r.documentId as unknown as DocumentId,
+    entryId: r.entryId as unknown as EntryId,
   };
 }

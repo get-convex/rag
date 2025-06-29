@@ -10,14 +10,14 @@ import {
 } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import {
-  Document,
-  DocumentId,
+  Entry,
+  EntryId,
   Memory,
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   InputChunk,
-  vDocument,
-  vDocumentId,
+  vEntry,
+  vEntryId,
 } from "@convex-dev/memory";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
@@ -27,19 +27,16 @@ import schema from "./schema";
 import { getText } from "./getText";
 import { assert } from "convex-helpers";
 
-type DocumentFilterValues = {
+type Filters = {
   filename: string;
   category: string | null;
 };
 
-const memory = new Memory<DocumentFilterValues>(
-  components.memory,
-  {
-    filterNames: ["filename", "category"],
-    textEmbeddingModel: openai.embedding("text-embedding-3-small"),
-    embeddingDimension: 1536,
-  }
-);
+const memory = new Memory<Filters>(components.memory, {
+  filterNames: ["filename", "category"],
+  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+  embeddingDimension: 1536,
+});
 
 export const addFile = action({
   args: {
@@ -67,36 +64,33 @@ export const addFile = action({
       chunkSize: 1000,
     });
     const chunks = await textSplitter.splitText(text);
-    const { documentId, created, replacedVersion } = await memory.add(
-      ctx,
-      {
-        namespace: globalNamespace ? "global" : userId,
-        chunks,
-        key: filename,
-        title: filename,
-        filterValues: [
-          { name: "filename", value: filename },
-          { name: "category", value: category ?? null },
-        ],
-      }
-    );
+    const { entryId, created, replacedVersion } = await memory.add(ctx, {
+      namespace: globalNamespace ? "global" : userId,
+      chunks,
+      key: filename,
+      title: filename,
+      filterValues: [
+        { name: "filename", value: filename },
+        { name: "category", value: category ?? null },
+      ],
+    });
     if (created) {
       await ctx.runMutation(internal.example.recordUploadMetadata, {
         global: args.globalNamespace,
         filename,
         storageId,
-        documentId,
+        entryId,
         category,
         uploadedBy: userId,
-        previousDocumentId: replacedVersion?.documentId,
+        previousId: replacedVersion?.entryId,
       });
     } else {
-      console.debug("document already exists, skipping upload metadata");
+      console.debug("entry already exists, skipping upload metadata");
       await ctx.storage.delete(storageId);
     }
     return {
       url: (await ctx.storage.getUrl(storageId))!,
-      documentId,
+      entryId,
     };
   },
 });
@@ -116,12 +110,12 @@ export const search = action({
     });
     return {
       ...results,
-      documents: await publicDocuments(ctx, results.documents),
+      files: await toFiles(ctx, results.entries),
     };
   },
 });
 
-export const searchDocument = action({
+export const searchFile = action({
   args: {
     query: v.string(),
     globalNamespace: v.boolean(),
@@ -141,7 +135,7 @@ export const searchDocument = action({
     });
     return {
       ...results,
-      documents: await publicDocuments(ctx, results.documents),
+      files: await toFiles(ctx, results.entries),
     };
   },
 });
@@ -165,7 +159,7 @@ export const searchCategory = action({
     });
     return {
       ...results,
-      documents: await publicDocuments(ctx, results.documents),
+      files: await toFiles(ctx, results.entries),
     };
   },
 });
@@ -179,7 +173,7 @@ export const chunkerAction = memory.defineChunkerAction(async () => {
   return { chunks };
 });
 
-export const listDocuments = query({
+export const listFiles = query({
   args: {
     globalNamespace: v.boolean(),
     category: v.optional(v.string()),
@@ -194,21 +188,21 @@ export const listDocuments = query({
     if (!namespace) {
       return { page: [], isDone: true, continueCursor: "" };
     }
-    const results = await memory.listDocuments(ctx, {
+    const results = await memory.list(ctx, {
       namespaceId: namespace.namespaceId,
       paginationOpts: args.paginationOpts,
     });
     return {
       ...results,
-      page: await ctx.runQuery(internal.example.getPublicDocuments, {
-        documents: results.page,
-      }),
+      page: await Promise.all(
+        results.page.map((doc) => toFile(ctx, doc, args.globalNamespace))
+      ),
     };
   },
 });
 
 export type PublicFile = {
-  documentId: DocumentId;
+  entryId: EntryId;
   filename: string;
   global: boolean;
   category: string | undefined;
@@ -217,36 +211,31 @@ export type PublicFile = {
   url: string | null;
 };
 
-async function publicDocuments(
-  ctx: ActionCtx,
-  documents: Document[]
-): Promise<PublicFile[]> {
-  return await ctx.runQuery(internal.example.getPublicDocuments, {
-    documents,
-  });
+async function toFiles(ctx: ActionCtx, files: Entry[]): Promise<PublicFile[]> {
+  return await ctx.runQuery(internal.example.getFiles, { files });
 }
 
-export const getPublicDocuments = internalQuery({
-  args: { documents: v.array(vDocument) },
-  handler: async (ctx, { documents }) => {
-    return Promise.all(documents.map((doc) => publicDocument(ctx, doc, false)));
+export const getFiles = internalQuery({
+  args: { files: v.array(vEntry) },
+  handler: async (ctx, { files }) => {
+    return Promise.all(files.map((doc) => toFile(ctx, doc, false)));
   },
 });
 
-async function publicDocument(
+async function toFile(
   ctx: QueryCtx,
-  doc: Document,
+  doc: Entry,
   global: boolean
 ): Promise<PublicFile> {
   const fileMetadata = await ctx.db
     .query("fileMetadata")
-    .withIndex("documentId", (q) => q.eq("documentId", doc.documentId))
+    .withIndex("entryId", (q) => q.eq("entryId", doc.entryId))
     .unique();
-  assert(fileMetadata, doc.documentId);
+  assert(fileMetadata, doc.entryId);
   const storageMetadata = await ctx.db.system.get(fileMetadata.storageId);
-  assert(storageMetadata, doc.documentId);
+  assert(storageMetadata, doc.entryId);
   return {
-    documentId: doc.documentId,
+    entryId: doc.entryId,
     filename: doc.key,
     global,
     category: fileMetadata.category,
@@ -258,14 +247,14 @@ async function publicDocument(
 
 export const listChunks = query({
   args: {
-    documentId: vDocumentId,
+    entryId: vEntryId,
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
     const paginatedChunks = await memory.listChunks(ctx, {
-      documentId: args.documentId,
+      entryId: args.entryId,
       paginationOpts: args.paginationOpts,
     });
     return paginatedChunks;
@@ -273,24 +262,24 @@ export const listChunks = query({
 });
 
 /**
- * Document metadata handling
+ * Entry metadata handling
  */
 
 // You can track other file metadata in your own tables.
 export const recordUploadMetadata = internalMutation({
   args: {
     ...schema.tables.fileMetadata.validator.fields,
-    previousDocumentId: v.optional(vDocumentId),
+    previousId: v.optional(vEntryId),
   },
   handler: async (ctx, args) => {
-    const { previousDocumentId, ...doc } = args;
-    if (previousDocumentId) {
-      console.debug("deleting previous document", previousDocumentId);
-      await deleteFile(ctx, previousDocumentId);
+    const { previousId, ...doc } = args;
+    if (previousId) {
+      console.debug("deleting previous entry", previousId);
+      await _deleteFile(ctx, previousId);
     }
     const existing = await ctx.db
       .query("fileMetadata")
-      .withIndex("documentId", (q) => q.eq("documentId", doc.documentId))
+      .withIndex("entryId", (q) => q.eq("entryId", doc.entryId))
       .unique();
     if (existing) {
       console.debug("replacing file", existing._id, doc);
@@ -302,24 +291,24 @@ export const recordUploadMetadata = internalMutation({
   },
 });
 
-export const deleteDocument = mutation({
-  args: { documentId: vDocumentId },
+export const deleteFile = mutation({
+  args: { entryId: vEntryId },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    await deleteFile(ctx, args.documentId);
+    await _deleteFile(ctx, args.entryId);
   },
 });
 
-async function deleteFile(ctx: MutationCtx, documentId: DocumentId) {
+async function _deleteFile(ctx: MutationCtx, entryId: EntryId) {
   const file = await ctx.db
     .query("fileMetadata")
-    .withIndex("documentId", (q) => q.eq("documentId", documentId))
+    .withIndex("entryId", (q) => q.eq("entryId", entryId))
     .unique();
   if (file) {
     await ctx.db.delete(file._id);
     await ctx.storage.delete(file.storageId);
-    await memory.deleteDocument(ctx, { documentId });
+    await memory.delete(ctx, { entryId });
   }
 }
 /**

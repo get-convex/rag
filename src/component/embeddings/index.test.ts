@@ -182,7 +182,7 @@ describe("embeddings", () => {
     // Insert embedding with filter on position 0
     const vectorId0 = await t.run(async (ctx) => {
       return insertEmbedding(ctx, embedding, namespaceId, undefined, {
-        0: "documents",
+        0: "entries",
       });
     });
 
@@ -197,7 +197,7 @@ describe("embeddings", () => {
     const vector0 = await t.run(async (ctx) => ctx.db.get(vectorId0));
     const vector2 = await t.run(async (ctx) => ctx.db.get(vectorId2));
 
-    expect(vector0!.filter0).toEqual([namespaceId, "documents"]);
+    expect(vector0!.filter0).toEqual([namespaceId, "entries"]);
     expect(vector0!.filter1).toBeUndefined();
     expect(vector0!.filter2).toBeUndefined();
     expect(vector0!.filter3).toBeUndefined();

@@ -7,10 +7,10 @@ import {
   statuses,
   vChunk,
   vCreateChunkArgs,
-  vDocument,
+  vEntry,
   vPaginationResult,
   vStatus,
-  type Document,
+  type Entry,
 } from "../shared.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import {
@@ -23,7 +23,7 @@ import {
 import { insertEmbedding } from "./embeddings/index.js";
 import { vVectorId } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
-import { publicDocument } from "./documents.js";
+import { publicEntry } from "./entries.js";
 import {
   filterFieldsFromNumbers,
   numberedFilterFromNamedFilters,
@@ -35,7 +35,7 @@ const BANDWIDTH_PER_TRANSACTION_HARD_LIMIT = 8 * MB;
 const BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT = 4 * MB;
 
 export const vInsertChunksArgs = v.object({
-  documentId: v.id("documents"),
+  entryId: v.id("entries"),
   startOrder: v.number(),
   chunks: v.array(vCreateChunkArgs),
 });
@@ -49,26 +49,26 @@ export const insert = mutation({
 
 export async function insertChunks(
   ctx: MutationCtx,
-  { documentId, startOrder, chunks }: InsertChunksArgs
+  { entryId, startOrder, chunks }: InsertChunksArgs
 ) {
-  const document = await ctx.db.get(documentId);
-  if (!document) {
-    throw new Error(`Document ${documentId} not found`);
+  const entry = await ctx.db.get(entryId);
+  if (!entry) {
+    throw new Error(`Entry ${entryId} not found`);
   }
-  await ensureLatestDocumentVersion(ctx, document);
+  await ensureLatestEntryVersion(ctx, entry);
 
   // Get the namespace for filter conversion
-  const namespace = await ctx.db.get(document.namespaceId);
-  assert(namespace, `Namespace ${document.namespaceId} not found`);
+  const namespace = await ctx.db.get(entry.namespaceId);
+  assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
-  const previousDocument = await ctx.db
-    .query("documents")
+  const previousEntry = await ctx.db
+    .query("entries")
     .withIndex("namespaceId_status_key_version", (q) =>
       q
-        .eq("namespaceId", document.namespaceId)
+        .eq("namespaceId", entry.namespaceId)
         .eq("status.kind", "ready")
-        .eq("key", document.key)
-        .lt("version", document.version)
+        .eq("key", entry.key)
+        .lt("version", entry.version)
     )
     .order("desc")
     .first();
@@ -77,16 +77,16 @@ export async function insertChunks(
   // TODO: avoid writing if they're the same
   const existingChunks = await ctx.db
     .query("chunks")
-    .withIndex("documentId_order", (q) =>
+    .withIndex("entryId_order", (q) =>
       q
-        .eq("documentId", documentId)
+        .eq("entryId", entryId)
         .gte("order", startOrder)
         .lt("order", startOrder + chunks.length)
     )
     .collect();
   if (existingChunks.length > 0) {
     console.debug(
-      `Deleting ${existingChunks.length} existing chunks for document ${documentId} at version ${document.version}`
+      `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`
     );
   }
   await Promise.all(
@@ -99,7 +99,7 @@ export async function insertChunks(
     })
   );
   const numberedFilter = numberedFilterFromNamedFilters(
-    document.filterValues,
+    entry.filterValues,
     namespace!.filterNames
   );
   for (const chunk of chunks) {
@@ -110,15 +110,15 @@ export async function insertChunks(
     let state: Doc<"chunks">["state"] = {
       kind: "pending",
       embedding: chunk.embedding,
-      importance: document.importance,
+      importance: entry.importance,
       pendingSearchableText: chunk.searchableText,
     };
-    if (!previousDocument) {
+    if (!previousEntry) {
       const embeddingId = await insertEmbedding(
         ctx,
         chunk.embedding,
-        document.namespaceId,
-        document.importance,
+        entry.namespaceId,
+        entry.importance,
         numberedFilter
       );
       state = {
@@ -129,42 +129,39 @@ export async function insertChunks(
     }
     chunkIds.push(
       await ctx.db.insert("chunks", {
-        documentId,
+        entryId,
         order,
         state,
         contentId,
-        namespaceId: document.namespaceId,
-        ...filterFieldsFromNumbers(document.namespaceId, numberedFilter),
+        namespaceId: entry.namespaceId,
+        ...filterFieldsFromNumbers(entry.namespaceId, numberedFilter),
       })
     );
     order++;
   }
   return {
-    status: previousDocument ? ("pending" as const) : ("ready" as const),
+    status: previousEntry ? ("pending" as const) : ("ready" as const),
   };
 }
 
-async function ensureLatestDocumentVersion(
-  ctx: QueryCtx,
-  document: Doc<"documents">
-) {
-  const newerDocument = await mergedStream(
+async function ensureLatestEntryVersion(ctx: QueryCtx, entry: Doc<"entries">) {
+  const newerEntry = await mergedStream(
     statuses.map((status) =>
       stream(ctx.db, schema)
-        .query("documents")
+        .query("entries")
         .withIndex("namespaceId_status_key_version", (q) =>
           q
-            .eq("namespaceId", document.namespaceId)
+            .eq("namespaceId", entry.namespaceId)
             .eq("status.kind", status)
-            .eq("key", document.key)
-            .gt("version", document.version)
+            .eq("key", entry.key)
+            .gt("version", entry.version)
         )
     ),
     ["version"]
   ).first();
-  if (newerDocument) {
+  if (newerEntry) {
     console.warn(
-      `Bailing from inserting chunks for document ${document.key} at version ${document.version} since there's a newer version ${newerDocument.version} (status ${newerDocument.status}) creation time difference ${(newerDocument._creationTime - document._creationTime).toFixed(0)}ms`
+      `Bailing from inserting chunks for entry ${entry.key} at version ${entry.version} since there's a newer version ${newerEntry.version} (status ${newerEntry.status}) creation time difference ${(newerEntry._creationTime - entry._creationTime).toFixed(0)}ms`
     );
     return false;
   }
@@ -173,7 +170,7 @@ async function ensureLatestDocumentVersion(
 
 export const replaceChunksPage = mutation({
   args: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
     startOrder: v.number(),
   }),
   returns: v.object({
@@ -181,13 +178,13 @@ export const replaceChunksPage = mutation({
     nextStartOrder: v.number(),
   }),
   handler: async (ctx, args) => {
-    const { documentId, startOrder } = args;
-    const documentOrNull = await ctx.db.get(documentId);
-    if (!documentOrNull) {
-      throw new Error(`Document ${documentId} not found`);
+    const { entryId, startOrder } = args;
+    const entryOrNull = await ctx.db.get(entryId);
+    if (!entryOrNull) {
+      throw new Error(`Entry ${entryId} not found`);
     }
-    const document = documentOrNull;
-    const isLatest = await ensureLatestDocumentVersion(ctx, document);
+    const entry = entryOrNull;
+    const isLatest = await ensureLatestEntryVersion(ctx, entry);
     if (!isLatest) {
       return {
         status: "replaced" as const,
@@ -196,49 +193,49 @@ export const replaceChunksPage = mutation({
     }
 
     // Get the namespace for filter conversion
-    const namespace = await ctx.db.get(document.namespaceId);
-    assert(namespace, `Namespace ${document.namespaceId} not found`);
+    const namespace = await ctx.db.get(entry.namespaceId);
+    assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
-    const previousDocument = await ctx.db
-      .query("documents")
+    const previousEntry = await ctx.db
+      .query("entries")
       .withIndex("namespaceId_status_key_version", (q) =>
         q
-          .eq("namespaceId", document.namespaceId)
+          .eq("namespaceId", entry.namespaceId)
           .eq("status.kind", "ready")
-          .eq("key", document.key)
-          .lt("version", document.version)
+          .eq("key", entry.key)
+          .lt("version", entry.version)
       )
       .order("desc")
       .first();
-    const pendingDocuments = previousDocument
+    const pendingEntries = previousEntry
       ? await ctx.db
-          .query("documents")
+          .query("entries")
           .withIndex("namespaceId_status_key_version", (q) =>
             q
-              .eq("namespaceId", document.namespaceId)
+              .eq("namespaceId", entry.namespaceId)
               .eq("status.kind", "pending")
-              .eq("key", document.key)
-              .gt("version", previousDocument.version)
-              .lt("version", document.version)
+              .eq("key", entry.key)
+              .gt("version", previousEntry.version)
+              .lt("version", entry.version)
           )
           .order("desc")
           .collect()
       : [];
     const chunkStream = mergedStream(
-      [document, ...pendingDocuments, previousDocument]
+      [entry, ...pendingEntries, previousEntry]
         .filter((d) => d !== null)
         .map((doc) =>
           stream(ctx.db, schema)
             .query("chunks")
-            .withIndex("documentId_order", (q) =>
-              q.eq("documentId", doc._id).gte("order", startOrder)
+            .withIndex("entryId_order", (q) =>
+              q.eq("entryId", doc._id).gte("order", startOrder)
             )
         ),
       ["order"]
     );
-    const namespaceId = document.namespaceId;
+    const namespaceId = entry.namespaceId;
     const namedFilters = numberedFilterFromNamedFilters(
-      document.filterValues,
+      entry.filterValues,
       namespace!.filterNames
     );
     async function addChunk(
@@ -248,7 +245,7 @@ export const replaceChunksPage = mutation({
         ctx,
         chunk.state.embedding,
         namespaceId,
-        document.importance,
+        entry.importance,
         namedFilters
       );
       await ctx.db.patch(chunk._id, {
@@ -309,21 +306,21 @@ export const replaceChunksPage = mutation({
         };
       }
       if (chunk.state.kind === "pending") {
-        if (chunk.documentId === documentId) {
+        if (chunk.entryId === entryId) {
           if (chunkToAdd) {
             console.warn(
-              `Multiple pending chunks before changing order ${chunk.order} for document ${documentId} version ${document.version}: ${chunkToAdd._id} and ${chunk._id}`
+              `Multiple pending chunks before changing order ${chunk.order} for entry ${entryId} version ${entry.version}: ${chunkToAdd._id} and ${chunk._id}`
             );
             await addChunk(chunkToAdd);
           }
           chunkToAdd = chunk as Doc<"chunks"> & { state: { kind: "pending" } };
         }
       } else {
-        if (chunk.documentId !== documentId && chunk.state.kind === "ready") {
+        if (chunk.entryId !== entryId && chunk.state.kind === "ready") {
           chunksToDeleteEmbeddings.push(chunk);
         } else {
           console.debug(
-            `Skipping adding chunk ${chunk._id} for document ${documentId} version ${document.version} since it's already ready`
+            `Skipping adding chunk ${chunk._id} for entry ${entryId} version ${entry.version} since it's already ready`
           );
         }
       }
@@ -339,7 +336,7 @@ export const replaceChunksPage = mutation({
 });
 
 export const vRangeResult = v.object({
-  documentId: v.id("documents"),
+  entryId: v.id("entries"),
   order: v.number(),
   startOrder: v.number(),
   content: v.array(
@@ -357,14 +354,14 @@ export const getRangesOfChunks = internalQuery({
   },
   returns: v.object({
     ranges: v.array(v.union(v.null(), vRangeResult)),
-    documents: v.array(vDocument),
+    entries: v.array(vEntry),
   }),
   handler: async (
     ctx,
     args
   ): Promise<{
     ranges: (null | Infer<typeof vRangeResult>)[];
-    documents: Document[];
+    entries: Entry[];
   }> => {
     const { embeddingIds, chunkContext } = args;
     const chunks = await Promise.all(
@@ -379,32 +376,30 @@ export const getRangesOfChunks = internalQuery({
       )
     );
 
-    // Note: This preserves order of documents as they first appeared.
-    const documents = (
+    // Note: This preserves order of entries as they first appeared.
+    const entries = (
       await Promise.all(
         Array.from(
-          new Set(chunks.filter((c) => c !== null).map((c) => c.documentId))
+          new Set(chunks.filter((c) => c !== null).map((c) => c.entryId))
         ).map((id) => ctx.db.get(id))
       )
     )
       .filter((d) => d !== null)
-      .map(publicDocument);
+      .map(publicEntry);
 
-    const documentOders = chunks
+    const entryOders = chunks
       .filter((c) => c !== null)
-      .map((c) => [c.documentId, c.order] as const)
+      .map((c) => [c.entryId, c.order] as const)
       .reduce(
-        (acc, [documentId, order]) => {
-          if (acc[documentId]?.includes(order)) {
+        (acc, [entryId, order]) => {
+          if (acc[entryId]?.includes(order)) {
             // De-dupe orders
             return acc;
           }
-          acc[documentId] = [...(acc[documentId] ?? []), order].sort(
-            (a, b) => a - b
-          );
+          acc[entryId] = [...(acc[entryId] ?? []), order].sort((a, b) => a - b);
           return acc;
         },
-        {} as Record<Id<"documents">, number[]>
+        {} as Record<Id<"entries">, number[]>
       );
 
     const result: Array<Infer<typeof vRangeResult> | null> = [];
@@ -418,17 +413,17 @@ export const getRangesOfChunks = internalQuery({
       // instead we'd check that other chunks are not the same doc/order
       if (
         result.find(
-          (r) => r?.documentId === chunk.documentId && r?.order === chunk.order
+          (r) => r?.entryId === chunk.entryId && r?.order === chunk.order
         )
       ) {
         // De-dupe chunks
         result.push(null);
         continue;
       }
-      const documentId = chunk.documentId;
-      const document = await ctx.db.get(documentId);
-      assert(document, `Document ${documentId} not found`);
-      const otherOrders = documentOders[documentId] ?? [chunk.order];
+      const entryId = chunk.entryId;
+      const entry = await ctx.db.get(entryId);
+      assert(entry, `Entry ${entryId} not found`);
+      const otherOrders = entryOders[entryId] ?? [chunk.order];
       const ourOrderIndex = otherOrders.indexOf(chunk.order);
       const previousOrder = otherOrders[ourOrderIndex - 1] ?? -Infinity;
       const nextOrder = otherOrders[ourOrderIndex + 1] ?? Infinity;
@@ -449,9 +444,9 @@ export const getRangesOfChunks = internalQuery({
       } else {
         const chunks = await ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) =>
+          .withIndex("entryId_order", (q) =>
             q
-              .eq("documentId", documentId)
+              .eq("entryId", entryId)
               .gte("order", startOrder)
               .lt("order", endOrder)
           )
@@ -469,7 +464,7 @@ export const getRangesOfChunks = internalQuery({
       );
 
       result.push({
-        documentId,
+        entryId,
         order: chunk.order,
         startOrder,
         content,
@@ -478,22 +473,22 @@ export const getRangesOfChunks = internalQuery({
 
     return {
       ranges: result,
-      documents,
+      entries,
     };
   },
 });
 
 export const list = query({
   args: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
     paginationOpts: paginationOptsValidator,
   }),
   returns: vPaginationResult(vChunk),
   handler: async (ctx, args) => {
-    const { documentId, paginationOpts } = args;
+    const { entryId, paginationOpts } = args;
     const chunks = await paginator(ctx.db, schema)
       .query("chunks")
-      .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+      .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
       .order("asc")
       .paginate(paginationOpts);
     return {
@@ -511,11 +506,11 @@ export const list = query({
 
 // export async function findLastChunk(
 //   ctx: MutationCtx,
-//   documentId: Id<"documents">
+//   entryId: Id<"entries">
 // ): Promise<Chunk | null> {
 //   const chunk = await ctx.db
 //     .query("chunks")
-//     .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+//     .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
 //     .order("desc")
 //     .first();
 //   if (!chunk) {
@@ -537,15 +532,12 @@ async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
 
 export async function deleteChunksPage(
   ctx: MutationCtx,
-  {
-    documentId,
-    startOrder,
-  }: { documentId: Id<"documents">; startOrder: number }
+  { entryId, startOrder }: { entryId: Id<"entries">; startOrder: number }
 ) {
   const chunkStream = ctx.db
     .query("chunks")
-    .withIndex("documentId_order", (q) =>
-      q.eq("documentId", documentId).gte("order", startOrder)
+    .withIndex("entryId_order", (q) =>
+      q.eq("entryId", entryId).gte("order", startOrder)
     );
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {

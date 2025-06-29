@@ -9,10 +9,10 @@
  */
 
 import type * as chunks from "../chunks.js";
-import type * as documents from "../documents.js";
 import type * as embeddings_importance from "../embeddings/importance.js";
 import type * as embeddings_index from "../embeddings/index.js";
 import type * as embeddings_tables from "../embeddings/tables.js";
+import type * as entries from "../entries.js";
 import type * as filters from "../filters.js";
 import type * as namespaces from "../namespaces.js";
 import type * as search from "../search.js";
@@ -33,10 +33,10 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   chunks: typeof chunks;
-  documents: typeof documents;
   "embeddings/importance": typeof embeddings_importance;
   "embeddings/index": typeof embeddings_index;
   "embeddings/tables": typeof embeddings_tables;
+  entries: typeof entries;
   filters: typeof filters;
   namespaces: typeof namespaces;
   search: typeof search;
@@ -52,7 +52,7 @@ export type Mounts = {
           embedding: Array<number>;
           searchableText?: string;
         }>;
-        documentId: string;
+        entryId: string;
         startOrder: number;
       },
       { status: "pending" | "ready" | "replaced" }
@@ -61,7 +61,7 @@ export type Mounts = {
       "query",
       "public",
       {
-        documentId: string;
+        entryId: string;
         paginationOpts: {
           cursor: string | null;
           endCursor?: string | null;
@@ -87,11 +87,11 @@ export type Mounts = {
     replaceChunksPage: FunctionReference<
       "mutation",
       "public",
-      { documentId: string; startOrder: number },
+      { entryId: string; startOrder: number },
       { nextStartOrder: number; status: "pending" | "ready" | "replaced" }
     >;
   };
-  documents: {
+  entries: {
     add: FunctionReference<
       "mutation",
       "public",
@@ -101,7 +101,7 @@ export type Mounts = {
           embedding: Array<number>;
           searchableText?: string;
         }>;
-        document: {
+        entry: {
           contentHash?: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
@@ -113,10 +113,10 @@ export type Mounts = {
       },
       {
         created: boolean;
-        documentId: string;
+        entryId: string;
         replacedVersion: {
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -131,7 +131,7 @@ export type Mounts = {
       "public",
       {
         chunker: string;
-        document: {
+        entry: {
           contentHash?: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
@@ -143,14 +143,14 @@ export type Mounts = {
       },
       {
         created: boolean;
-        documentId: string;
+        entryId: string;
         status: "pending" | "ready" | "replaced";
       }
     >;
-    deleteDocumentAsync: FunctionReference<
+    deleteAsync: FunctionReference<
       "mutation",
       "public",
-      { documentId: string; startOrder: number },
+      { entryId: string; startOrder: number },
       null
     >;
     findByContentHash: FunctionReference<
@@ -166,7 +166,7 @@ export type Mounts = {
       },
       {
         contentHash?: string;
-        documentId: string;
+        entryId: string;
         filterValues: Array<{ name: string; value: any }>;
         importance: number;
         key: string;
@@ -177,10 +177,10 @@ export type Mounts = {
     get: FunctionReference<
       "query",
       "public",
-      { documentId: string },
+      { entryId: string },
       {
         contentHash?: string;
-        documentId: string;
+        entryId: string;
         filterValues: Array<{ name: string; value: any }>;
         importance: number;
         key: string;
@@ -209,7 +209,7 @@ export type Mounts = {
         isDone: boolean;
         page: Array<{
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -223,11 +223,11 @@ export type Mounts = {
     promoteToReady: FunctionReference<
       "mutation",
       "public",
-      { documentId: string },
+      { entryId: string },
       {
         replacedVersion: {
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -330,9 +330,9 @@ export type Mounts = {
         vectorScoreThreshold?: number;
       },
       {
-        documents: Array<{
+        entries: Array<{
           contentHash?: string;
-          documentId: string;
+          entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
@@ -341,7 +341,7 @@ export type Mounts = {
         }>;
         results: Array<{
           content: Array<{ metadata?: Record<string, any>; text: string }>;
-          documentId: string;
+          entryId: string;
           order: number;
           score: number;
           startOrder: number;

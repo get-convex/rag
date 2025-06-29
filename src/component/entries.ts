@@ -1,14 +1,14 @@
 import { assert, omit } from "convex-helpers";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { DocumentId } from "../shared.js";
+import type { EntryId, NamespaceId } from "../shared.js";
 import {
   statuses,
   vCreateChunkArgs,
-  vDocument,
+  vEntry,
   vPaginationResult,
   vStatus,
-  type Document,
+  type Entry,
 } from "../shared.js";
 import { api } from "./_generated/api.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
@@ -21,35 +21,44 @@ import {
   getCompatibleNamespaceHandler,
   vNamespaceLookupArgs,
 } from "./namespaces.js";
+import type { OnComplete } from "../client/types.js";
 
 export const addAsync = mutation({
   args: {
-    document: v.object({
-      ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
+    entry: v.object({
+      ...omit(schema.tables.entries.validator.fields, ["version", "status"]),
     }),
     onComplete: v.optional(v.string()),
     chunker: v.string(),
   },
   returns: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
     status: vStatus,
     created: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const { namespaceId, key } = args.document;
+    const { namespaceId, key } = args.entry;
     const namespace = await ctx.db.get(namespaceId);
     assert(namespace, `Namespace ${namespaceId} not found`);
-    // iterate through the latest versions of the document
-    const existing = await findExistingDocument(ctx, namespaceId, key);
+    // iterate through the latest versions of the entry
+    const existing = await findExistingEntry(ctx, namespaceId, key);
     if (
       existing?.status.kind === "ready" &&
-      documentIsSame(existing, args.document)
+      entryIsSame(existing, args.entry)
     ) {
       if (args.onComplete) {
-        await enqueueOnComplete(ctx, args.onComplete, existing._id);
+        await enqueueOnComplete(
+          ctx,
+          args.onComplete,
+          namespace,
+          existing,
+          // Note: we pass the existing entry as the previous entry too.
+          existing,
+          true
+        );
       }
       return {
-        documentId: existing._id,
+        entryId: existing._id,
         status: existing.status.kind,
         created: false,
       };
@@ -59,35 +68,35 @@ export const addAsync = mutation({
       kind: "pending",
       onComplete: args.onComplete,
     };
-    const documentId = await ctx.db.insert("documents", {
-      ...args.document,
+    const entryId = await ctx.db.insert("entries", {
+      ...args.entry,
       version,
       status,
     });
     await enqueueAdd(ctx, {
-      documentId,
+      entryId,
       chunker: args.chunker,
     });
-    return { documentId, status: status.kind, created: true };
+    return { entryId, status: status.kind, created: true };
   },
 });
 
 async function enqueueAdd(
   _ctx: MutationCtx,
   _args: {
-    documentId: Id<"documents">;
+    entryId: Id<"entries">;
     chunker: string;
   }
 ) {
   // TODO: enqueue into workpool
 }
 
-type AddDocumentArgs = Pick<
-  Doc<"documents">,
+type AddEntryArgs = Pick<
+  Doc<"entries">,
   "key" | "contentHash" | "importance" | "filterValues"
 >;
 
-async function findExistingDocument(
+async function findExistingEntry(
   ctx: MutationCtx,
   namespaceId: Id<"namespaces">,
   key: string
@@ -95,7 +104,7 @@ async function findExistingDocument(
   const existing = await mergedStream(
     statuses.map((status) =>
       stream(ctx.db, schema)
-        .query("documents")
+        .query("entries")
         .withIndex("namespaceId_status_key_version", (q) =>
           q
             .eq("namespaceId", namespaceId)
@@ -111,42 +120,50 @@ async function findExistingDocument(
 
 export const add = mutation({
   args: {
-    document: v.object({
-      ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
+    entry: v.object({
+      ...omit(schema.tables.entries.validator.fields, ["version", "status"]),
     }),
     onComplete: v.optional(v.string()),
     // If we can commit all chunks at the same time, the status is "ready"
     allChunks: v.optional(v.array(vCreateChunkArgs)),
   },
   returns: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
     status: vStatus,
     created: v.boolean(),
-    replacedVersion: v.union(vDocument, v.null()),
+    replacedVersion: v.union(vEntry, v.null()),
   }),
   handler: async (ctx, args) => {
-    const { namespaceId, key } = args.document;
+    const { namespaceId, key } = args.entry;
     const namespace = await ctx.db.get(namespaceId);
     assert(namespace, `Namespace ${namespaceId} not found`);
-    // iterate through the latest versions of the document
-    const existing = await findExistingDocument(ctx, namespaceId, key);
+    // iterate through the latest versions of the entry
+    const existing = await findExistingEntry(ctx, namespaceId, key);
     if (
       existing?.status.kind === "ready" &&
-      documentIsSame(existing, args.document)
+      entryIsSame(existing, args.entry)
     ) {
       if (args.onComplete) {
-        await enqueueOnComplete(ctx, args.onComplete, existing._id);
+        await enqueueOnComplete(
+          ctx,
+          args.onComplete,
+          namespace,
+          existing,
+          // Note: we pass the existing entry as the previous entry too.
+          existing,
+          true
+        );
       }
       return {
-        documentId: existing._id,
+        entryId: existing._id,
         status: existing.status.kind,
         created: false,
         replacedVersion: null,
       };
     }
     const version = existing ? existing.version + 1 : 0;
-    const documentId = await ctx.db.insert("documents", {
-      ...args.document,
+    const entryId = await ctx.db.insert("entries", {
+      ...args.entry,
       version,
       status: args.allChunks
         ? { kind: "ready" }
@@ -154,22 +171,22 @@ export const add = mutation({
     });
     if (args.allChunks) {
       await insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks: args.allChunks,
       });
       const { replacedVersion } = await promoteToReadyHandler(ctx, {
-        documentId,
+        entryId,
       });
       return {
-        documentId,
+        entryId,
         status: "ready" as const,
         created: true,
         replacedVersion,
       };
     }
     return {
-      documentId,
+      entryId,
       status: "pending" as const,
       created: true,
       replacedVersion: null,
@@ -178,61 +195,68 @@ export const add = mutation({
 });
 
 async function enqueueOnComplete(
-  _ctx: MutationCtx,
-  _onComplete: string,
-  _documentId: Id<"documents">
+  ctx: MutationCtx,
+  onComplete: string,
+  namespace: Doc<"namespaces">,
+  entry: Doc<"entries">,
+  previousEntry: Doc<"entries"> | null,
+  success: boolean
 ) {
+  // TODO: use a workpool
+  await ctx.scheduler.runAfter(0, onComplete as unknown as OnComplete, {
+    namespace: namespace.namespace,
+    namespaceId: namespace._id as unknown as NamespaceId,
+    key: entry.key,
+    entryId: entry._id as unknown as EntryId,
+    previousEntryId: previousEntry?._id as unknown as EntryId | null,
+    success,
+  });
   throw new Error("Not implemented");
 }
 
-function documentIsSame(
-  existing: Doc<"documents">,
-  newDocument: AddDocumentArgs
-) {
-  if (!existing.contentHash || !newDocument.contentHash) {
+function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
+  if (!existing.contentHash || !newEntry.contentHash) {
+    console.debug(`Entry ${newEntry.key} has no content hash, replacing...`);
+    return false;
+  }
+  if (existing.contentHash !== newEntry.contentHash) {
     console.debug(
-      `Document ${newDocument.key} has no content hash, replacing...`
+      `Entry ${newEntry.key} content hash is different, replacing...`
     );
     return false;
   }
-  if (existing.contentHash !== newDocument.contentHash) {
+  if (existing.importance !== newEntry.importance) {
     console.debug(
-      `Document ${newDocument.key} content hash is different, replacing...`
+      `Entry ${newEntry.key} importance is different, replacing...`
     );
     return false;
   }
-  if (existing.importance !== newDocument.importance) {
+  if (newEntry.filterValues.length !== existing.filterValues.length) {
     console.debug(
-      `Document ${newDocument.key} importance is different, replacing...`
-    );
-    return false;
-  }
-  if (newDocument.filterValues.length !== existing.filterValues.length) {
-    console.debug(
-      `Document ${newDocument.key} has a different number of filter values, replacing...`
+      `Entry ${newEntry.key} has a different number of filter values, replacing...`
     );
     return false;
   }
   if (
     !existing.filterValues.every((filter) =>
-      newDocument.filterValues.some(
+      newEntry.filterValues.some(
         (f) => f.name === filter.name && f.value === filter.value
       )
     )
   ) {
     console.debug(
-      `Document ${newDocument.key} filter values are different, replacing...`
+      `Entry ${newEntry.key} filter values are different, replacing...`
     );
     return false;
   }
   // At this point we check for the contents to be the same.
-  if (existing.contentHash && newDocument.contentHash) {
-    if (existing.contentHash === newDocument.contentHash) {
+  if (existing.contentHash && newEntry.contentHash) {
+    if (existing.contentHash === newEntry.contentHash) {
       // Return early, even if the storageIds are different.
       return true;
     }
     console.debug(
-      `Document ${newDocument.key} content hash is different, replacing...`
+      `Entry ${newEntry.key} content hash is different, replacing...`
     );
     return false;
   }
@@ -240,7 +264,7 @@ function documentIsSame(
 }
 
 /**
- * Lists documents in order of their most recent change
+ * Lists entries in order of their most recent change
  */
 export const list = query({
   args: {
@@ -249,10 +273,10 @@ export const list = query({
     status: vStatus,
     paginationOpts: paginationOptsValidator,
   },
-  returns: vPaginationResult(vDocument),
+  returns: vPaginationResult(vEntry),
   handler: async (ctx, args) => {
     const results = await stream(ctx.db, schema)
-      .query("documents")
+      .query("entries")
       .withIndex("status_namespaceId", (q) =>
         q
           .eq("status.kind", args.status ?? "ready")
@@ -262,31 +286,31 @@ export const list = query({
       .paginate(args.paginationOpts);
     return {
       ...results,
-      page: results.page.map(publicDocument),
+      page: results.page.map(publicEntry),
     };
   },
 });
 
 /**
- * Gets a document by its id.
+ * Gets a entry by its id.
  */
 export const get = query({
   args: {
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
   },
-  returns: v.union(vDocument, v.null()),
+  returns: v.union(vEntry, v.null()),
   handler: async (ctx, args) => {
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      console.warn(`Document ${args.documentId} not found`);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry) {
+      console.warn(`Entry ${args.entryId} not found`);
       return null;
     }
-    return publicDocument(document);
+    return publicEntry(entry);
   },
 });
 
 /**
- * Finds a document by its key and content hash.
+ * Finds a entry by its key and content hash.
  */
 export const findByContentHash = query({
   args: {
@@ -294,7 +318,7 @@ export const findByContentHash = query({
     key: v.string(),
     contentHash: v.string(),
   },
-  returns: v.union(vDocument, v.null()),
+  returns: v.union(vEntry, v.null()),
   handler: async (ctx, args) => {
     const namespace = await getCompatibleNamespaceHandler(ctx, args);
     if (!namespace) {
@@ -304,7 +328,7 @@ export const findByContentHash = query({
     for await (const doc of mergedStream(
       statuses.map((status) =>
         stream(ctx.db, schema)
-          .query("documents")
+          .query("entries")
           .withIndex("namespaceId_status_key_version", (q) =>
             q
               .eq("namespaceId", namespace._id)
@@ -318,19 +342,19 @@ export const findByContentHash = query({
       attempts++;
       if (attempts > 20) {
         console.debug(
-          `Giving up after checking ${attempts} documents for ${args.key}, returning null`
+          `Giving up after checking ${attempts} entries for ${args.key}, returning null`
         );
         return null;
       }
       if (
-        documentIsSame(doc, {
+        entryIsSame(doc, {
           key: args.key,
           contentHash: args.contentHash,
           filterValues: doc.filterValues,
           importance: doc.importance,
         })
       ) {
-        return publicDocument(doc);
+        return publicEntry(doc);
       }
     }
     return null;
@@ -338,97 +362,106 @@ export const findByContentHash = query({
 });
 
 /**
- * Promotes a document to ready, replacing any existing ready document by key.
+ * Promotes a entry to ready, replacing any existing ready entry by key.
  * It will also call the associated onComplete function if it was pending.
  * Note: this will not replace the chunks automatically, so you should first
  * call `replaceChunksPage` on all its chunks.
- * Edge case: if the document has already been replaced, it will return the
- * same document (replacedVersion.documentId === args.documentId).
+ * Edge case: if the entry has already been replaced, it will return the
+ * same entry (replacedVersion.entryId === args.entryId).
  */
 export const promoteToReady = mutation({
   args: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
   }),
   returns: v.object({
-    replacedVersion: v.union(vDocument, v.null()),
+    replacedVersion: v.union(vEntry, v.null()),
   }),
   handler: promoteToReadyHandler,
 });
 
 async function promoteToReadyHandler(
   ctx: MutationCtx,
-  args: { documentId: Id<"documents"> }
+  args: { entryId: Id<"entries"> }
 ) {
-  const document = await ctx.db.get(args.documentId);
-  assert(document, `Document ${args.documentId} not found`);
-  if (document.status.kind === "ready") {
-    console.debug(`Document ${args.documentId} is already ready, skipping...`);
+  const entry = await ctx.db.get(args.entryId);
+  assert(entry, `Entry ${args.entryId} not found`);
+  if (entry.status.kind === "ready") {
+    console.debug(`Entry ${args.entryId} is already ready, skipping...`);
     return { replacedVersion: null };
-  } else if (document.status.kind === "replaced") {
+  } else if (entry.status.kind === "replaced") {
     console.debug(
-      `Document ${args.documentId} is already replaced, returning the current version...`
+      `Entry ${args.entryId} is already replaced, returning the current version...`
     );
-    return { replacedVersion: publicDocument(document) };
+    return { replacedVersion: publicEntry(entry) };
   }
-  const previousDocument = await ctx.db
-    .query("documents")
+  const previousEntry = await ctx.db
+    .query("entries")
     .withIndex("namespaceId_status_key_version", (q) =>
       q
-        .eq("namespaceId", document.namespaceId)
+        .eq("namespaceId", entry.namespaceId)
         .eq("status.kind", "ready")
-        .eq("key", document.key)
+        .eq("key", entry.key)
     )
     .order("desc")
     .unique();
-  if (previousDocument) {
-    await ctx.db.patch(previousDocument._id, {
+  if (previousEntry) {
+    await ctx.db.patch(previousEntry._id, {
       status: { kind: "replaced", replacedAt: Date.now() },
     });
   }
-  await ctx.db.patch(args.documentId, {
+  await ctx.db.patch(args.entryId, {
     status: { kind: "ready" },
   });
-  if (document.status.kind === "pending" && document.status.onComplete) {
-    await enqueueOnComplete(ctx, document.status.onComplete, args.documentId);
+  if (entry.status.kind === "pending" && entry.status.onComplete) {
+    const namespace = await ctx.db.get(entry.namespaceId);
+    assert(namespace, `Namespace for ${entry.namespaceId} not found`);
+    await enqueueOnComplete(
+      ctx,
+      entry.status.onComplete,
+      namespace,
+      entry,
+      previousEntry,
+      true
+    );
   }
   return {
-    replacedVersion: previousDocument ? publicDocument(previousDocument) : null,
+    replacedVersion: previousEntry ? publicEntry(previousEntry) : null,
   };
 }
 
-export function publicDocument(document: Doc<"documents">): Document {
-  const { key, importance, filterValues, contentHash, title } = document;
+export function publicEntry(entry: Doc<"entries">): Entry {
+  const { key, importance, filterValues, contentHash, title } = entry;
 
   return {
-    documentId: document._id as unknown as DocumentId,
+    entryId: entry._id as unknown as EntryId,
     key,
     title,
     importance,
     filterValues,
     contentHash,
-    status: document.status.kind,
+    status: entry.status.kind,
   };
 }
 
-export const deleteDocumentAsync = mutation({
+export const deleteAsync = mutation({
   args: v.object({
-    documentId: v.id("documents"),
+    entryId: v.id("entries"),
     startOrder: v.number(),
   }),
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { documentId, startOrder } = args;
-    const document = await ctx.db.get(documentId);
-    if (!document) {
-      throw new Error(`Document ${documentId} not found`);
+    const { entryId, startOrder } = args;
+    const entry = await ctx.db.get(entryId);
+    if (!entry) {
+      throw new Error(`Entry ${entryId} not found`);
     }
-    const status = await deleteChunksPage(ctx, { documentId, startOrder });
+    const status = await deleteChunksPage(ctx, { entryId, startOrder });
     if (status.isDone) {
-      await ctx.db.delete(documentId);
+      await ctx.db.delete(entryId);
     } else {
       // TODO: schedule follow-up - workpool?
-      await ctx.scheduler.runAfter(0, api.documents.deleteDocumentAsync, {
-        documentId,
+      await ctx.scheduler.runAfter(0, api.entries.deleteAsync, {
+        entryId,
         startOrder: status.nextStartOrder,
       });
     }

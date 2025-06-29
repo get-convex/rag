@@ -9,7 +9,7 @@ import type { Id } from "./_generated/dataModel.js";
 
 type ConvexTest = TestConvex<typeof schema>;
 
-describe("documents", () => {
+describe("entries", () => {
   async function setupTestNamespace(t: ConvexTest, filterNames: string[] = []) {
     return await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -23,53 +23,53 @@ describe("documents", () => {
     });
   }
 
-  function createTestDocument(namespaceId: Id<"namespaces">, key = "test-doc") {
+  function createTestEntry(namespaceId: Id<"namespaces">, key = "test-doc") {
     return {
       namespaceId,
       key,
       importance: 0.5,
       filterValues: [],
       contentHash: "hash123",
-      title: "Test Document",
+      title: "Test Entry",
     };
   }
 
-  test("add creates a new document when none exists", async () => {
+  test("add creates a new entry when none exists", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
-    const result = await t.mutation(api.documents.add, {
-      document,
+    const result = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
     expect(result.created).toBe(true);
     expect(result.status).toBe("ready");
-    expect(result.documentId).toBeDefined();
+    expect(result.entryId).toBeDefined();
     expect(result.replacedVersion).toBeNull();
 
-    // Verify the document was actually created
+    // Verify the entry was actually created
     const createdDoc = await t.run(async (ctx) => {
-      return ctx.db.get(result.documentId);
+      return ctx.db.get(result.entryId);
     });
 
     expect(createdDoc).toBeDefined();
-    expect(createdDoc!.key).toBe(document.key);
+    expect(createdDoc!.key).toBe(entry.key);
     expect(createdDoc!.version).toBe(0);
     expect(createdDoc!.status.kind).toBe("ready");
   });
 
-  test("add returns existing document when adding identical content", async () => {
+  test("add returns existing entry when adding identical content", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
     // First add
-    const firstResult = await t.mutation(api.documents.add, {
-      document,
+    const firstResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
@@ -78,42 +78,42 @@ describe("documents", () => {
     expect(firstResult.replacedVersion).toBeNull();
 
     // Second add with identical content
-    const secondResult = await t.mutation(api.documents.add, {
-      document,
+    const secondResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
     expect(secondResult.created).toBe(false);
     expect(secondResult.status).toBe("ready");
-    expect(secondResult.documentId).toBe(firstResult.documentId);
+    expect(secondResult.entryId).toBe(firstResult.entryId);
     expect(secondResult.replacedVersion).toBeNull();
 
-    // Verify no new document was created
+    // Verify no new entry was created
     const allDocs = await t.run(async (ctx) => {
       return ctx.db
-        .query("documents")
+        .query("entries")
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), document.key)
+            q.eq(q.field("key"), entry.key)
           )
         )
         .collect();
     });
 
     expect(allDocs).toHaveLength(1);
-    expect(allDocs[0]._id).toBe(firstResult.documentId);
+    expect(allDocs[0]._id).toBe(firstResult.entryId);
   });
 
   test("add creates new version when content hash changes", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
     // First add
-    const firstResult = await t.mutation(api.documents.add, {
-      document,
+    const firstResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
@@ -121,30 +121,30 @@ describe("documents", () => {
     expect(firstResult.replacedVersion).toBeNull();
 
     // Second add with different content hash
-    const modifiedDocument = {
-      ...document,
+    const modifiedEntry = {
+      ...entry,
       contentHash: "hash456", // Different hash
     };
 
-    const secondResult = await t.mutation(api.documents.add, {
-      document: modifiedDocument,
+    const secondResult = await t.mutation(api.entries.add, {
+      entry: modifiedEntry,
       allChunks: [],
     });
 
     expect(secondResult.created).toBe(true);
-    expect(secondResult.documentId).not.toBe(firstResult.documentId);
-    // When creating a document as "ready" initially, replacedVersion is null
+    expect(secondResult.entryId).not.toBe(firstResult.entryId);
+    // When creating a entry as "ready" initially, replacedVersion is null
     // Replacement only happens during pending -> ready transitions
     expect(secondResult.replacedVersion).toBeNull();
 
-    // Verify both documents exist with different versions
+    // Verify both entries exist with different versions
     const allDocs = await t.run(async (ctx) => {
       return ctx.db
-        .query("documents")
+        .query("entries")
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), document.key)
+            q.eq(q.field("key"), entry.key)
           )
         )
         .collect();
@@ -160,32 +160,32 @@ describe("documents", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
     // First add
-    const firstResult = await t.mutation(api.documents.add, {
-      document,
+    const firstResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
     // Second add with different importance
-    const modifiedDocument = {
-      ...document,
+    const modifiedEntry = {
+      ...entry,
       importance: 0.8, // Changed from 0.5
     };
 
-    const secondResult = await t.mutation(api.documents.add, {
-      document: modifiedDocument,
+    const secondResult = await t.mutation(api.entries.add, {
+      entry: modifiedEntry,
       allChunks: [],
     });
 
     expect(secondResult.created).toBe(true);
-    expect(secondResult.documentId).not.toBe(firstResult.documentId);
+    expect(secondResult.entryId).not.toBe(firstResult.entryId);
     expect(secondResult.replacedVersion).toBeNull();
 
     // Verify new version was created
     const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.documentId);
+      return ctx.db.get(secondResult.entryId);
     });
 
     expect(newDoc!.version).toBe(1);
@@ -196,32 +196,32 @@ describe("documents", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t, ["category"]); // Add filter name
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
     // First add
-    const firstResult = await t.mutation(api.documents.add, {
-      document,
+    const firstResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
     // Second add with different filter values
-    const modifiedDocument = {
-      ...document,
+    const modifiedEntry = {
+      ...entry,
       filterValues: [{ name: "category", value: "test" }],
     };
 
-    const secondResult = await t.mutation(api.documents.add, {
-      document: modifiedDocument,
+    const secondResult = await t.mutation(api.entries.add, {
+      entry: modifiedEntry,
       allChunks: [],
     });
 
     expect(secondResult.created).toBe(true);
-    expect(secondResult.documentId).not.toBe(firstResult.documentId);
+    expect(secondResult.entryId).not.toBe(firstResult.entryId);
     expect(secondResult.replacedVersion).toBeNull();
 
     // Verify new version was created with correct filter values
     const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.documentId);
+      return ctx.db.get(secondResult.entryId);
     });
 
     expect(newDoc!.version).toBe(1);
@@ -230,14 +230,14 @@ describe("documents", () => {
     expect(newDoc!.filterValues[0].value).toBe("test");
   });
 
-  test("add without allChunks creates pending document", async () => {
+  test("add without allChunks creates pending entry", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
-    const result = await t.mutation(api.documents.add, {
-      document,
+    const result = await t.mutation(api.entries.add, {
+      entry,
       // No allChunks provided
     });
 
@@ -245,41 +245,41 @@ describe("documents", () => {
     expect(result.status).toBe("pending");
     expect(result.replacedVersion).toBeNull();
 
-    // Verify the document was created with pending status
+    // Verify the entry was created with pending status
     const createdDoc = await t.run(async (ctx) => {
-      return ctx.db.get(result.documentId);
+      return ctx.db.get(result.entryId);
     });
 
     expect(createdDoc!.status.kind).toBe("pending");
   });
 
-  test("multiple documents with different keys can coexist", async () => {
+  test("multiple entries with different keys can coexist", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document1 = createTestDocument(namespaceId, "doc1");
-    const document2 = createTestDocument(namespaceId, "doc2");
+    const entry1 = createTestEntry(namespaceId, "doc1");
+    const entry2 = createTestEntry(namespaceId, "doc2");
 
-    const result1 = await t.mutation(api.documents.add, {
-      document: document1,
+    const result1 = await t.mutation(api.entries.add, {
+      entry: entry1,
       allChunks: [],
     });
 
-    const result2 = await t.mutation(api.documents.add, {
-      document: document2,
+    const result2 = await t.mutation(api.entries.add, {
+      entry: entry2,
       allChunks: [],
     });
 
     expect(result1.created).toBe(true);
     expect(result2.created).toBe(true);
-    expect(result1.documentId).not.toBe(result2.documentId);
+    expect(result1.entryId).not.toBe(result2.entryId);
     expect(result1.replacedVersion).toBeNull();
     expect(result2.replacedVersion).toBeNull();
 
-    // Verify both documents exist
+    // Verify both entries exist
     const allDocs = await t.run(async (ctx) => {
       return ctx.db
-        .query("documents")
+        .query("entries")
         .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
         .collect();
     });
@@ -293,11 +293,11 @@ describe("documents", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const document = createTestDocument(namespaceId);
+    const entry = createTestEntry(namespaceId);
 
     // First add - create as ready
-    const firstResult = await t.mutation(api.documents.add, {
-      document,
+    const firstResult = await t.mutation(api.entries.add, {
+      entry,
       allChunks: [],
     });
 
@@ -306,33 +306,33 @@ describe("documents", () => {
     expect(firstResult.replacedVersion).toBeNull();
 
     // Second add - create as pending (no allChunks)
-    const modifiedDocument = {
-      ...document,
+    const modifiedEntry = {
+      ...entry,
       contentHash: "hash456",
     };
 
-    const pendingResult = await t.mutation(api.documents.add, {
-      document: modifiedDocument,
-      // No allChunks - creates pending document
+    const pendingResult = await t.mutation(api.entries.add, {
+      entry: modifiedEntry,
+      // No allChunks - creates pending entry
     });
 
     expect(pendingResult.created).toBe(true);
     expect(pendingResult.status).toBe("pending");
     expect(pendingResult.replacedVersion).toBeNull();
 
-    // Promote to ready - this should replace the first document
-    const promoteResult = await t.mutation(api.documents.promoteToReady, {
-      documentId: pendingResult.documentId,
+    // Promote to ready - this should replace the first entry
+    const promoteResult = await t.mutation(api.entries.promoteToReady, {
+      entryId: pendingResult.entryId,
     });
 
     expect(promoteResult.replacedVersion).not.toBeNull();
-    expect(promoteResult.replacedVersion!.documentId).toBe(
-      firstResult.documentId
+    expect(promoteResult.replacedVersion!.entryId).toBe(
+      firstResult.entryId
     );
 
-    // Verify the first document is now replaced
+    // Verify the first entry is now replaced
     const firstDoc = await t.run(async (ctx) => {
-      return ctx.db.get(firstResult.documentId);
+      return ctx.db.get(firstResult.entryId);
     });
     expect(firstDoc!.status.kind).toBe("replaced");
   });

@@ -12,13 +12,13 @@ import {
 import { v, type Value, type VString } from "convex/values";
 import {
   CHUNK_BATCH_SIZE,
-  vDocumentId,
+  vEntryId,
   vNamespaceId,
   type Chunk,
   type CreateChunkArgs,
-  type Document,
-  type DocumentFilterValues,
-  type DocumentId,
+  type Entry,
+  type EntryFilterValues,
+  type EntryId,
   type Namespace,
   type NamespaceId,
   type SearchResult,
@@ -28,7 +28,7 @@ import {
   type ActionCtx,
   type ChunkerAction,
   type MemoryComponent,
-  type OnCompleteDocument,
+  type OnComplete,
   type OnCompleteNamespace,
   type RunActionCtx,
   type RunMutationCtx,
@@ -37,20 +37,20 @@ import {
 import type { NamedFilter } from "../component/filters.js";
 
 export {
-  vDocument,
+  vEntry,
   vSearchResult,
   contentHashFromBlob,
-  type VDocument,
+  type VEntry,
 } from "../shared.js";
-export { vDocumentId, vNamespaceId };
+export { vEntryId, vNamespaceId };
 
 export type {
   ChunkerAction,
-  Document,
-  DocumentId,
+  Entry,
+  EntryId,
   MemoryComponent,
   NamespaceId,
-  OnCompleteDocument,
+  OnComplete,
   OnCompleteNamespace,
   SearchResult,
   Status,
@@ -83,7 +83,7 @@ export type InputChunk =
       keywords?: string;
       // In the future we can add per-chunk metadata if it's useful.
       // importance?: Importance;
-      // filters?: DocumentFilterValues<FitlerSchemas>[];
+      // filters?: EntryFilterValues<FitlerSchemas>[];
     });
 
 export class Memory<
@@ -109,15 +109,15 @@ export class Memory<
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
-      filterValues?: DocumentFilterValues<FitlerSchemas>[];
+      filterValues?: EntryFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
     }
   ): Promise<{
-    documentId: DocumentId;
+    entryId: EntryId;
     status: Status;
     created: boolean;
-    replacedVersion: Document | null;
+    replacedVersion: Entry | null;
   }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -141,9 +141,9 @@ export class Memory<
       );
     }
 
-    const { documentId, status, created, replacedVersion } =
-      await ctx.runMutation(this.component.documents.add, {
-        document: {
+    const { entryId, status, created, replacedVersion } =
+      await ctx.runMutation(this.component.entries.add, {
+        entry: {
           key: args.key,
           namespaceId,
           title: args.title,
@@ -155,10 +155,10 @@ export class Memory<
       });
     if (status === "ready") {
       return {
-        documentId: documentId as DocumentId,
+        entryId: entryId as EntryId,
         status,
         created,
-        replacedVersion: replacedVersion as Document | null,
+        replacedVersion: replacedVersion as Entry | null,
       };
     }
 
@@ -171,7 +171,7 @@ export class Memory<
         batch
       );
       const { status } = await ctx.runMutation(this.component.chunks.insert, {
-        documentId,
+        entryId,
         startOrder,
         chunks: createChunkArgs,
       });
@@ -182,17 +182,17 @@ export class Memory<
     }
     if (isPending) {
       let startOrder = 0;
-      // replace any older version of the document with the new one
+      // replace any older version of the entry with the new one
       while (true) {
         const { status, nextStartOrder } = await ctx.runMutation(
           this.component.chunks.replaceChunksPage,
-          { documentId, startOrder }
+          { entryId, startOrder }
         );
         if (status === "ready") {
           break;
         } else if (status === "replaced") {
           return {
-            documentId: documentId as DocumentId,
+            entryId: entryId as EntryId,
             status: "replaced" as const,
             created: false,
             replacedVersion: null,
@@ -202,13 +202,13 @@ export class Memory<
       }
     }
     const promoted = await ctx.runMutation(
-      this.component.documents.promoteToReady,
-      { documentId }
+      this.component.entries.promoteToReady,
+      { entryId }
     );
     return {
-      documentId: documentId as DocumentId,
+      entryId: entryId as EntryId,
       status: "ready" as const,
-      replacedVersion: promoted.replacedVersion as Document | null,
+      replacedVersion: promoted.replacedVersion as Entry | null,
       created: true,
     };
   }
@@ -218,14 +218,14 @@ export class Memory<
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       /**
-       * A function that splits the document into chunks and embeds them.
+       * A function that splits the entry into chunks and embeds them.
        * This should be passed as internal.foo.myChunkerAction
        * e.g.
        * ```ts
        * export const myChunkerAction = memory.defineChunkerAction();
        *
        * // in your mutation
-       *   const documentId = await memory.addAsync(ctx, {
+       *   const entryId = await memory.addAsync(ctx, {
        *     key: "myfile.txt",
        *     namespace: "my-namespace",
        *     chunker: internal.foo.myChunkerAction,
@@ -235,12 +235,12 @@ export class Memory<
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
-      filterValues?: DocumentFilterValues<FitlerSchemas>[];
+      filterValues?: EntryFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
-      onComplete?: OnCompleteDocument;
+      onComplete?: OnComplete;
     }
-  ): Promise<{ documentId: DocumentId; status: Status }> {
+  ): Promise<{ entryId: EntryId; status: Status }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -259,10 +259,10 @@ export class Memory<
       : undefined;
     const chunker = await createFunctionHandle(args.chunkerAction);
 
-    const { documentId, status } = await ctx.runMutation(
-      this.component.documents.addAsync,
+    const { entryId, status } = await ctx.runMutation(
+      this.component.entries.addAsync,
       {
-        document: {
+        entry: {
           key: args.key,
           namespaceId,
           title: args.title,
@@ -274,7 +274,7 @@ export class Memory<
         chunker,
       }
     );
-    return { documentId: documentId as DocumentId, status };
+    return { entryId: entryId as EntryId, status };
   }
 
   async search(
@@ -282,21 +282,21 @@ export class Memory<
     args: {
       /** The search query. */
       query: string;
-      /** The namespace to search in. e.g. a userId if documents are per-user. */
+      /** The namespace to search in. e.g. a userId if entries are per-user. */
       namespace: string;
       /**
        * Filters to apply to the search. These are OR'd together. To represent
        * AND logic, your filter can be an object or array with multiple values.
        * e.g. `[{ category: "articles" }, { priority: "high" }]` will return
-       * documents that have "articles" category OR "high" priority.
+       * entries that have "articles" category OR "high" priority.
        * `[{ category_priority: ["articles", "high"] }]` will return
-       * documents that have "articles" category AND "high" priority.
-       * This requires inserting the documents with these filter values exactly.
-       * e.g. if you insert a document with
+       * entries that have "articles" category AND "high" priority.
+       * This requires inserting the entries with these filter values exactly.
+       * e.g. if you insert a entry with
        * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
        * `{ team_user: { team: "team1" } }` but it will match
        */
-      filters?: DocumentFilterValues<FitlerSchemas>[];
+      filters?: EntryFilterValues<FitlerSchemas>[];
       /**
        * The maximum number of messages to fetch. Default is 10.
        * This is the number *before* the chunkContext is applied.
@@ -321,7 +321,7 @@ export class Memory<
   ): Promise<{
     results: SearchResult[];
     text: string[];
-    documents: Document<FitlerSchemas>[];
+    entries: Entry<FitlerSchemas>[];
   }> {
     const {
       namespace,
@@ -333,7 +333,7 @@ export class Memory<
       model: this.options.textEmbeddingModel,
       value: args.query,
     });
-    const { results, documents } = await ctx.runAction(
+    const { results, entries } = await ctx.runAction(
       this.component.search.search,
       {
         embedding,
@@ -347,11 +347,11 @@ export class Memory<
     return {
       results: results as SearchResult[],
       text: results.map((r) => r.content.map((c) => c.text).join("\n")),
-      documents: documents as Document<FitlerSchemas>[],
+      entries: entries as Entry<FitlerSchemas>[],
     };
   }
 
-  async listDocuments(
+  async list(
     ctx: RunQueryCtx,
     args: {
       namespaceId: NamespaceId;
@@ -359,49 +359,46 @@ export class Memory<
       order?: "desc" | "asc";
       status?: Status;
     }
-  ): Promise<PaginationResult<Document<FitlerSchemas>>> {
-    const results = await ctx.runQuery(this.component.documents.list, {
+  ): Promise<PaginationResult<Entry<FitlerSchemas>>> {
+    const results = await ctx.runQuery(this.component.entries.list, {
       namespaceId: args.namespaceId,
       paginationOpts: args.paginationOpts,
       order: args.order ?? "asc",
       status: args.status ?? "ready",
     });
-    return results as PaginationResult<Document<FitlerSchemas>>;
+    return results as PaginationResult<Entry<FitlerSchemas>>;
   }
 
-  async getDocument(
+  async getEntry(
     ctx: RunQueryCtx,
     args: {
-      documentId: DocumentId;
+      entryId: EntryId;
     }
-  ): Promise<Document<FitlerSchemas> | null> {
-    const document = await ctx.runQuery(this.component.documents.get, {
-      documentId: args.documentId,
+  ): Promise<Entry<FitlerSchemas> | null> {
+    const entry = await ctx.runQuery(this.component.entries.get, {
+      entryId: args.entryId,
     });
-    return document as Document<FitlerSchemas> | null;
+    return entry as Entry<FitlerSchemas> | null;
   }
 
-  async findExistingDocumentByContentHash(
+  async findExistingEntryByContentHash(
     ctx: RunQueryCtx,
     args: {
       namespace: string;
       key: string;
-      /** The hash of the document contents to try to match. */
+      /** The hash of the entry contents to try to match. */
       contentHash: string;
     }
-  ): Promise<Document<FitlerSchemas> | null> {
-    const document = await ctx.runQuery(
-      this.component.documents.findByContentHash,
-      {
-        namespace: args.namespace,
-        dimension: this.options.embeddingDimension,
-        filterNames: this.options.filterNames ?? [],
-        modelId: this.options.textEmbeddingModel.modelId,
-        key: args.key,
-        contentHash: args.contentHash,
-      }
-    );
-    return document as Document<FitlerSchemas> | null;
+  ): Promise<Entry<FitlerSchemas> | null> {
+    const entry = await ctx.runQuery(this.component.entries.findByContentHash, {
+      namespace: args.namespace,
+      dimension: this.options.embeddingDimension,
+      filterNames: this.options.filterNames ?? [],
+      modelId: this.options.textEmbeddingModel.modelId,
+      key: args.key,
+      contentHash: args.contentHash,
+    });
+    return entry as Entry<FitlerSchemas> | null;
   }
 
   async getOrCreateNamespace(
@@ -461,23 +458,18 @@ export class Memory<
     ctx: RunQueryCtx,
     args: {
       paginationOpts: PaginationOptions;
-      documentId: DocumentId;
+      entryId: EntryId;
     }
   ): Promise<PaginationResult<Chunk>> {
     return ctx.runQuery(this.component.chunks.list, {
-      documentId: args.documentId,
+      entryId: args.entryId,
       paginationOpts: args.paginationOpts,
     });
   }
 
-  async deleteDocument(
-    ctx: RunMutationCtx,
-    args: {
-      documentId: DocumentId;
-    }
-  ) {
-    await ctx.runMutation(this.component.documents.deleteDocumentAsync, {
-      documentId: args.documentId,
+  async delete(ctx: RunMutationCtx, args: { entryId: EntryId }) {
+    await ctx.runMutation(this.component.entries.deleteAsync, {
+      entryId: args.entryId,
       startOrder: 0,
     });
   }
@@ -489,8 +481,8 @@ export class Memory<
       args: {
         namespace: string;
         namespaceId: NamespaceId;
-        key: string; // document key
-        documentId: DocumentId;
+        key: string; // entry key
+        entryId: EntryId;
       }
     ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
   ) {
@@ -499,7 +491,7 @@ export class Memory<
         namespace: v.string(),
         namespaceId: vNamespaceId,
         key: v.string(),
-        documentId: vDocumentId,
+        entryId: vEntryId,
         insertChunksHandle: v.string() as VString<
           FunctionHandle<
             "mutation",
@@ -510,12 +502,12 @@ export class Memory<
         importance: v.number(),
       }),
       handler: async (ctx, args) => {
-        const { namespace, namespaceId, key, documentId } = args;
+        const { namespace, namespaceId, key, entryId } = args;
         const chunksPromise = fn(ctx, {
           namespace,
           namespaceId,
           key,
-          documentId,
+          entryId,
         });
         let chunkIterator: AsyncIterable<InputChunk>;
         if (chunksPromise instanceof Promise) {
@@ -538,7 +530,7 @@ export class Memory<
             batch
           );
           await ctx.runMutation(args.insertChunksHandle, {
-            documentId,
+            entryId,
             startOrder: batchOrder,
             chunks: createChunkArgs,
           });
@@ -575,7 +567,7 @@ function validateAddFilterValues(
   }
   if (!filterNames) {
     throw new Error(
-      "You must provide filter names to Memory to add documents with filters."
+      "You must provide filter names to Memory to add entries with filters."
     );
   }
   const seen = new Set<string>();

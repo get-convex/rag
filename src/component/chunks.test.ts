@@ -25,7 +25,7 @@ describe("chunks", () => {
     });
   }
 
-  async function setupTestDocument(
+  async function setupTestEntry(
     t: ConvexTest,
     namespaceId: Id<"namespaces">,
     key = "test-doc",
@@ -33,7 +33,7 @@ describe("chunks", () => {
     status: "ready" | "pending" = "ready"
   ) {
     return await t.run(async (ctx) => {
-      return ctx.db.insert("documents", {
+      return ctx.db.insert("entries", {
         namespaceId,
         key,
         version,
@@ -55,35 +55,35 @@ describe("chunks", () => {
     }));
   }
 
-  test("inserting chunks when there's no document throws error", async () => {
+  test("inserting chunks when there's no entry throws error", async () => {
     const t = convexTest(schema, modules);
     await setupTestNamespace(t);
 
-    // Try to insert chunks for a non-existent document
-    const nonExistentDocId = "j57c3xc4x6j3c4x6j3c4x6j3c4x6" as Id<"documents">;
+    // Try to insert chunks for a non-existent entry
+    const nonExistentDocId = "j57c3xc4x6j3c4x6j3c4x6j3c4x6" as Id<"entries">;
     const chunks = createTestChunks(2);
 
     await expect(
       t.run(async (ctx) => {
         return insertChunks(ctx, {
-          documentId: nonExistentDocId,
+          entryId: nonExistentDocId,
           startOrder: 0,
           chunks,
         });
       })
-    ).rejects.toThrow(`Document ${nonExistentDocId} not found`);
+    ).rejects.toThrow(`Entry ${nonExistentDocId} not found`);
   });
 
   test("overwriting chunks with insert works", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert initial chunks
     const initialChunks = createTestChunks(3);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks: initialChunks,
       });
@@ -93,7 +93,7 @@ describe("chunks", () => {
     const initialChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+        .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
         .collect();
     });
     expect(initialChunksList).toHaveLength(3);
@@ -118,7 +118,7 @@ describe("chunks", () => {
 
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 1,
         chunks: overwriteChunks,
       });
@@ -128,7 +128,7 @@ describe("chunks", () => {
     const finalChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+        .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
         .collect();
     });
     expect(finalChunksList).toHaveLength(3);
@@ -157,27 +157,27 @@ describe("chunks", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    // Create version 1 of document
-    const docV1Id = await setupTestDocument(t, namespaceId, "versioned-doc", 1);
+    // Create version 1 of entry
+    const docV1Id = await setupTestEntry(t, namespaceId, "versioned-doc", 1);
 
     // Insert chunks in version 1
     const v1Chunks = createTestChunks(2);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId: docV1Id,
+        entryId: docV1Id,
         startOrder: 0,
         chunks: v1Chunks,
       });
     });
 
-    // Create version 2 of the same document
-    const docV2Id = await setupTestDocument(t, namespaceId, "versioned-doc", 2);
+    // Create version 2 of the same entry
+    const docV2Id = await setupTestEntry(t, namespaceId, "versioned-doc", 2);
 
     // Insert chunks in version 2 (this should mark v1 chunks as replaced)
     const v2Chunks = createTestChunks(2);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId: docV2Id,
+        entryId: docV2Id,
         startOrder: 0,
         chunks: v2Chunks,
       });
@@ -188,7 +188,7 @@ describe("chunks", () => {
     let startOrder = 0;
     while (!isDone) {
       const result = await t.mutation(api.chunks.replaceChunksPage, {
-        documentId: docV2Id,
+        entryId: docV2Id,
         startOrder,
       });
       isDone = result.status !== "pending";
@@ -199,7 +199,7 @@ describe("chunks", () => {
     const v1ChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", docV1Id))
+        .withIndex("entryId_order", (q) => q.eq("entryId", docV1Id))
         .collect();
     });
 
@@ -213,7 +213,7 @@ describe("chunks", () => {
     const v2ChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", docV2Id))
+        .withIndex("entryId_order", (q) => q.eq("entryId", docV2Id))
         .collect();
     });
 
@@ -222,43 +222,43 @@ describe("chunks", () => {
     }
   });
 
-  test("chunks can be created on different documents and fetched separately", async () => {
+  test("chunks can be created on different entries and fetched separately", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    // Create two documents
-    const doc1Id = await setupTestDocument(t, namespaceId, "doc1");
-    const doc2Id = await setupTestDocument(t, namespaceId, "doc2");
+    // Create two entries
+    const doc1Id = await setupTestEntry(t, namespaceId, "doc1");
+    const doc2Id = await setupTestEntry(t, namespaceId, "doc2");
 
-    // Insert chunks in both documents
+    // Insert chunks in both entries
     const doc1Chunks = createTestChunks(5);
     const doc2Chunks = createTestChunks(3);
 
     await t.run(async (ctx) => {
       await insertChunks(ctx, {
-        documentId: doc1Id,
+        entryId: doc1Id,
         startOrder: 0,
         chunks: doc1Chunks,
       });
       return insertChunks(ctx, {
-        documentId: doc2Id,
+        entryId: doc2Id,
         startOrder: 0,
         chunks: doc2Chunks,
       });
     });
 
-    // Verify chunks exist in both documents
+    // Verify chunks exist in both entries
     const doc1ChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", doc1Id))
+        .withIndex("entryId_order", (q) => q.eq("entryId", doc1Id))
         .collect();
     });
 
     const doc2ChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", doc2Id))
+        .withIndex("entryId_order", (q) => q.eq("entryId", doc2Id))
         .collect();
     });
 
@@ -286,13 +286,13 @@ describe("chunks", () => {
   test("chunks support zero-range queries", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert chunks
     const chunks = createTestChunks(5);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -302,8 +302,8 @@ describe("chunks", () => {
     const singleChunk = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) =>
-          q.eq("documentId", documentId).eq("order", 2)
+        .withIndex("entryId_order", (q) =>
+          q.eq("entryId", entryId).eq("order", 2)
         )
         .first();
     });
@@ -321,13 +321,13 @@ describe("chunks", () => {
   test("deleting pages should work", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert a large number of chunks
     const chunks = createTestChunks(10);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -337,7 +337,7 @@ describe("chunks", () => {
     const initialChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+        .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
         .collect();
     });
     expect(initialChunksList).toHaveLength(10);
@@ -345,7 +345,7 @@ describe("chunks", () => {
     // Delete chunks starting from order 3
     const deleteResult = await t.run(async (ctx) => {
       return deleteChunksPage(ctx, {
-        documentId,
+        entryId,
         startOrder: 3,
       });
     });
@@ -356,7 +356,7 @@ describe("chunks", () => {
     const remainingChunksList = await t.run(async (ctx) => {
       return ctx.db
         .query("chunks")
-        .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+        .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
         .collect();
     });
     expect(remainingChunksList).toHaveLength(3);
@@ -376,13 +376,13 @@ describe("chunks", () => {
   test("listing chunks returns correct pagination", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
-    const documentId = await setupTestDocument(t, namespaceId);
+    const entryId = await setupTestEntry(t, namespaceId);
 
     // Insert chunks
     const chunks = createTestChunks(5);
     await t.run(async (ctx) => {
       return insertChunks(ctx, {
-        documentId,
+        entryId,
         startOrder: 0,
         chunks,
       });
@@ -390,7 +390,7 @@ describe("chunks", () => {
 
     // Test listing with pagination
     const result = await t.query(api.chunks.list, {
-      documentId,
+      entryId,
       paginationOpts: { numItems: 3, cursor: null },
     });
 
@@ -410,7 +410,7 @@ describe("chunks", () => {
 
     // Get next page
     const nextResult = await t.query(api.chunks.list, {
-      documentId,
+      entryId,
       paginationOpts: { numItems: 3, cursor: result.continueCursor },
     });
 
@@ -424,13 +424,13 @@ describe("chunks", () => {
     test("it returns the correct number of chunks when given a range", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert chunks
       const chunks = createTestChunks(5);
       await t.run(async (ctx) => {
         const result = await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -440,25 +440,25 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs.length === 5);
       assert(chunkDocs[2].state.kind === "ready");
 
-      const { ranges, documents } = await t.query(
+      const { ranges, entries } = await t.query(
         internal.chunks.getRangesOfChunks,
         {
           embeddingIds: [chunkDocs[2].state.embeddingId],
           chunkContext: { before: 1, after: 2 },
         }
       );
-      expect(documents).toHaveLength(1);
-      expect(documents[0].documentId).toBe(documentId);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entryId).toBe(entryId);
       expect(ranges).toHaveLength(1);
       expect(ranges[0]?.startOrder).toBe(1);
       expect(ranges[0]?.order).toBe(2);
-      expect(ranges[0]?.documentId).toBe(documentId);
+      expect(ranges[0]?.entryId).toBe(entryId);
       expect(ranges[0]?.content).toHaveLength(4);
       expect(ranges[0]?.content[0].text).toBe("Test chunk content 2");
       expect(ranges[0]?.content[1].text).toBe("Test chunk content 3");
@@ -466,49 +466,49 @@ describe("chunks", () => {
       expect(ranges[0]?.content[3].text).toBe("Test chunk content 5");
     });
 
-    test("works finding chunks from multiple documents", async () => {
+    test("works finding chunks from multiple entries", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
 
-      // Create two documents
-      const doc1Id = await setupTestDocument(t, namespaceId, "doc1");
-      const doc2Id = await setupTestDocument(t, namespaceId, "doc2");
+      // Create two entries
+      const doc1Id = await setupTestEntry(t, namespaceId, "doc1");
+      const doc2Id = await setupTestEntry(t, namespaceId, "doc2");
 
-      // Insert chunks in both documents
+      // Insert chunks in both entries
       const doc1Chunks = createTestChunks(3);
       const doc2Chunks = createTestChunks(4);
 
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId: doc1Id,
+          entryId: doc1Id,
           startOrder: 0,
           chunks: doc1Chunks,
         });
         await insertChunks(ctx, {
-          documentId: doc2Id,
+          entryId: doc2Id,
           startOrder: 0,
           chunks: doc2Chunks,
         });
       });
 
-      // Get chunks from both documents
+      // Get chunks from both entries
       const doc1ChunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", doc1Id))
+          .withIndex("entryId_order", (q) => q.eq("entryId", doc1Id))
           .collect();
       });
       const doc2ChunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", doc2Id))
+          .withIndex("entryId_order", (q) => q.eq("entryId", doc2Id))
           .collect();
       });
 
       assert(doc1ChunkDocs[1].state.kind === "ready");
       assert(doc2ChunkDocs[2].state.kind === "ready");
 
-      const { ranges, documents } = await t.query(
+      const { ranges, entries } = await t.query(
         internal.chunks.getRangesOfChunks,
         {
           embeddingIds: [
@@ -519,29 +519,29 @@ describe("chunks", () => {
         }
       );
 
-      expect(documents).toHaveLength(2);
+      expect(entries).toHaveLength(2);
       expect(ranges).toHaveLength(2);
 
       // First range should be from doc1
-      expect(ranges[0]?.documentId).toBe(doc1Id);
+      expect(ranges[0]?.entryId).toBe(doc1Id);
       expect(ranges[0]?.order).toBe(1);
       expect(ranges[0]?.startOrder).toBe(0);
       expect(ranges[0]?.content).toHaveLength(3); // orders 0, 1, 2
 
       // Second range should be from doc2
-      expect(ranges[1]?.documentId).toBe(doc2Id);
+      expect(ranges[1]?.entryId).toBe(doc2Id);
       expect(ranges[1]?.order).toBe(2);
       expect(ranges[1]?.startOrder).toBe(1);
       expect(ranges[1]?.content).toHaveLength(3); // orders 1, 2, 3
     });
 
-    test("finds chunks on both a ready and replaced version of the same document", async () => {
+    test("finds chunks on both a ready and replaced version of the same entry", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
 
-      // Create version 1 (ready) and version 2 (ready) of the same document
+      // Create version 1 (ready) and version 2 (ready) of the same entry
       // (We'll test with ready versions since pending chunks don't have embeddingIds)
-      const docV1Id = await setupTestDocument(
+      const docV1Id = await setupTestEntry(
         t,
         namespaceId,
         "versioned-doc",
@@ -553,13 +553,13 @@ describe("chunks", () => {
       const v1Chunks = createTestChunks(3);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId: docV1Id,
+          entryId: docV1Id,
           startOrder: 0,
           chunks: v1Chunks,
         });
       });
 
-      const docV2Id = await setupTestDocument(
+      const docV2Id = await setupTestEntry(
         t,
         namespaceId,
         "versioned-doc",
@@ -571,14 +571,14 @@ describe("chunks", () => {
       const v2Chunks = createTestChunks(3);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId: docV2Id,
+          entryId: docV2Id,
           startOrder: 0,
           chunks: v2Chunks,
         });
       });
       while (true) {
         const result = await t.mutation(api.chunks.replaceChunksPage, {
-          documentId: docV2Id,
+          entryId: docV2Id,
           startOrder: 0,
         });
         if (result.status !== "pending") {
@@ -590,13 +590,13 @@ describe("chunks", () => {
       const v1ChunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", docV1Id))
+          .withIndex("entryId_order", (q) => q.eq("entryId", docV1Id))
           .collect();
       });
       const v2ChunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", docV2Id))
+          .withIndex("entryId_order", (q) => q.eq("entryId", docV2Id))
           .collect();
       });
 
@@ -607,7 +607,7 @@ describe("chunks", () => {
       assert(v1ChunkDocs[1].state.kind === "replaced");
       assert(v2ChunkDocs[1].state.kind === "ready");
 
-      const { ranges, documents } = await t.query(
+      const { ranges, entries } = await t.query(
         internal.chunks.getRangesOfChunks,
         {
           embeddingIds: [
@@ -618,24 +618,24 @@ describe("chunks", () => {
         }
       );
 
-      expect(documents).toHaveLength(2);
+      expect(entries).toHaveLength(2);
       expect(ranges).toHaveLength(2);
-      expect(ranges[0]?.documentId).toBe(docV1Id);
+      expect(ranges[0]?.entryId).toBe(docV1Id);
       expect(ranges[0]?.order).toBe(1);
-      expect(ranges[1]?.documentId).toBe(docV2Id);
+      expect(ranges[1]?.entryId).toBe(docV2Id);
       expect(ranges[1]?.order).toBe(1);
     });
 
     test("finds chunks before and after a chunk", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert chunks
       const chunks = createTestChunks(7);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -644,7 +644,7 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs[3].state.kind === "ready");
@@ -665,16 +665,16 @@ describe("chunks", () => {
       expect(ranges[0]?.content[4].text).toBe("Test chunk content 6"); // order 5
     });
 
-    test("accepts ranges outside of the document order bounds", async () => {
+    test("accepts ranges outside of the entry order bounds", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert only 3 chunks (orders 0, 1, 2)
       const chunks = createTestChunks(3);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -683,12 +683,12 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs[2].state.kind === "ready");
 
-      // Request a large range that extends beyond document bounds
+      // Request a large range that extends beyond entry bounds
       const { ranges } = await t.query(internal.chunks.getRangesOfChunks, {
         embeddingIds: [chunkDocs[2].state.embeddingId], // chunk at order 2
         chunkContext: { before: 5, after: 5 }, // Large range
@@ -706,13 +706,13 @@ describe("chunks", () => {
     test("when two ranges overlap, the later range gets priority on the chunks in between", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert chunks
       const chunks = createTestChunks(10);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -721,7 +721,7 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs[2].state.kind === "ready");
@@ -752,13 +752,13 @@ describe("chunks", () => {
     test("when three ranges overlap, the middle chunk gets priority on before chunk but not after chunk", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert chunks
       const chunks = createTestChunks(15);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -767,7 +767,7 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs[2].state.kind === "ready");
@@ -796,19 +796,19 @@ describe("chunks", () => {
       // Last range (order 12): should get priority over middle range's after context
       expect(ranges[2]?.order).toBe(12);
       expect(ranges[2]?.startOrder).toBe(8); // Should start after middle range's territory
-      expect(ranges[2]?.content.length).toBeLessThanOrEqual(7); // Should not extend beyond document
+      expect(ranges[2]?.content.length).toBeLessThanOrEqual(7); // Should not extend beyond entry
     });
 
     test("it works with before/after of 0", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
-      const documentId = await setupTestDocument(t, namespaceId);
+      const entryId = await setupTestEntry(t, namespaceId);
 
       // Insert chunks
       const chunks = createTestChunks(5);
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId,
+          entryId,
           startOrder: 0,
           chunks,
         });
@@ -817,7 +817,7 @@ describe("chunks", () => {
       const chunkDocs = await t.run(async (ctx) => {
         return ctx.db
           .query("chunks")
-          .withIndex("documentId_order", (q) => q.eq("documentId", documentId))
+          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
           .collect();
       });
       assert(chunkDocs[2].state.kind === "ready");
@@ -834,48 +834,48 @@ describe("chunks", () => {
       expect(ranges[0]?.content[0].text).toBe("Test chunk content 3"); // order 2
     });
 
-    test("it returns de-duplicated documents in the order of the associated embedding ids", async () => {
+    test("it returns de-duplicated entries in the order of the associated embedding ids", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
 
-      // Create three documents
-      const doc1Id = await setupTestDocument(t, namespaceId, "doc1");
-      const doc2Id = await setupTestDocument(t, namespaceId, "doc2");
-      const doc3Id = await setupTestDocument(t, namespaceId, "doc3");
+      // Create three entries
+      const doc1Id = await setupTestEntry(t, namespaceId, "doc1");
+      const doc2Id = await setupTestEntry(t, namespaceId, "doc2");
+      const doc3Id = await setupTestEntry(t, namespaceId, "doc3");
 
-      // Insert chunks in all documents
+      // Insert chunks in all entries
       await t.run(async (ctx) => {
         await insertChunks(ctx, {
-          documentId: doc1Id,
+          entryId: doc1Id,
           startOrder: 0,
           chunks: createTestChunks(2),
         });
         await insertChunks(ctx, {
-          documentId: doc2Id,
+          entryId: doc2Id,
           startOrder: 0,
           chunks: createTestChunks(2),
         });
         await insertChunks(ctx, {
-          documentId: doc3Id,
+          entryId: doc3Id,
           startOrder: 0,
           chunks: createTestChunks(2),
         });
       });
 
-      // Get chunks from all documents
+      // Get chunks from all entries
       const [doc1Chunks, doc2Chunks, doc3Chunks] = await t.run(async (ctx) => {
         return Promise.all([
           ctx.db
             .query("chunks")
-            .withIndex("documentId_order", (q) => q.eq("documentId", doc1Id))
+            .withIndex("entryId_order", (q) => q.eq("entryId", doc1Id))
             .collect(),
           ctx.db
             .query("chunks")
-            .withIndex("documentId_order", (q) => q.eq("documentId", doc2Id))
+            .withIndex("entryId_order", (q) => q.eq("entryId", doc2Id))
             .collect(),
           ctx.db
             .query("chunks")
-            .withIndex("documentId_order", (q) => q.eq("documentId", doc3Id))
+            .withIndex("entryId_order", (q) => q.eq("entryId", doc3Id))
             .collect(),
         ]);
       });
@@ -886,7 +886,7 @@ describe("chunks", () => {
       assert(doc1Chunks[1].state.kind === "ready");
       assert(doc2Chunks[0].state.kind === "ready");
 
-      const { documents } = await t.query(internal.chunks.getRangesOfChunks, {
+      const { entries } = await t.query(internal.chunks.getRangesOfChunks, {
         embeddingIds: [
           doc2Chunks[1].state.embeddingId, // doc2 first
           doc1Chunks[0].state.embeddingId, // doc1 second
@@ -897,13 +897,13 @@ describe("chunks", () => {
         chunkContext: { before: 0, after: 0 },
       });
 
-      // Should return only 3 documents (deduplicated)
-      expect(documents).toHaveLength(3);
+      // Should return only 3 entries (deduplicated)
+      expect(entries).toHaveLength(3);
 
       // Should be in the order they first appeared in the embedding IDs
-      expect(documents[0].documentId).toBe(doc2Id); // First appearance
-      expect(documents[1].documentId).toBe(doc1Id); // Second appearance
-      expect(documents[2].documentId).toBe(doc3Id); // Third appearance
+      expect(entries[0].entryId).toBe(doc2Id); // First appearance
+      expect(entries[1].entryId).toBe(doc1Id); // Second appearance
+      expect(entries[2].entryId).toBe(doc3Id); // Third appearance
     });
   });
 });

@@ -1,18 +1,18 @@
 import "./Example.css";
-import { useAction, useQuery, useMutation } from "convex/react";
+import { useQuery, useConvex } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
 import type { SearchResult } from "@convex-dev/memory";
 import type { PublicFile } from "../convex/example";
 
-type SearchType = "global" | "user" | "category" | "document";
+type SearchType = "global" | "user" | "category" | "file";
 
 interface UISearchResult {
   results: (SearchResult & {
-    document: PublicFile;
+    entry: PublicFile;
   })[];
   text: string[];
-  documents: Array<PublicFile>;
+  files: Array<PublicFile>;
 }
 
 function Example() {
@@ -40,28 +40,24 @@ function Example() {
   const [showChunks, setShowChunks] = useState(true);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
 
-  // Actions and queries
-  const addFile = useAction(api.example.addFile);
-  const search = useAction(api.example.search);
-  const searchDocument = useAction(api.example.searchDocument);
-  const searchCategory = useAction(api.example.searchCategory);
-  const deleteDocument = useMutation(api.example.deleteDocument);
+  // Convex functions
+  const convex = useConvex();
 
-  const globalDocuments = useQuery(api.example.listDocuments, {
+  const globalFiles = useQuery(api.example.listFiles, {
     globalNamespace: true,
     paginationOpts: { numItems: 50, cursor: null },
   });
 
-  const userDocuments = useQuery(api.example.listDocuments, {
+  const userFiles = useQuery(api.example.listFiles, {
     globalNamespace: false,
     paginationOpts: { numItems: 50, cursor: null },
   });
 
   const documentChunks = useQuery(
     api.example.listChunks,
-    selectedDocument?.documentId
+    selectedDocument?.entryId
       ? {
-          documentId: selectedDocument.documentId,
+          entryId: selectedDocument.entryId,
           paginationOpts: { numItems: 100, cursor: null },
         }
       : "skip"
@@ -95,7 +91,7 @@ function Example() {
 
     setIsAdding(true);
     try {
-      await addFile({
+      await convex.action(api.example.addFile, {
         bytes: await selectedFile.arrayBuffer(),
         filename: uploadForm.filename || selectedFile.name,
         mimeType: selectedFile.type || "text/plain",
@@ -123,13 +119,13 @@ function Example() {
     } finally {
       setIsAdding(false);
     }
-  }, [addFile, uploadForm, selectedFile]);
+  }, [convex, uploadForm, selectedFile]);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
 
-    if (searchType === "document" && !selectedDocument) {
-      alert("Please select a document to search");
+    if (searchType === "file" && !selectedDocument) {
+      alert("Please select a file to search");
       return;
     }
 
@@ -143,26 +139,26 @@ function Example() {
       let results;
       switch (searchType) {
         case "global":
-          results = await search({
+          results = await convex.action(api.example.search, {
             query: searchQuery,
             globalNamespace: true,
           });
           break;
         case "user":
-          results = await search({
+          results = await convex.action(api.example.search, {
             query: searchQuery,
             globalNamespace: false,
           });
           break;
         case "category":
-          results = await searchCategory({
+          results = await convex.action(api.example.searchCategory, {
             query: searchQuery,
             globalNamespace: categorySearchGlobal,
             category: selectedCategory,
           });
           break;
-        case "document":
-          results = await searchDocument({
+        case "file":
+          results = await convex.action(api.example.searchFile, {
             query: searchQuery,
             globalNamespace: selectedDocument!.global || false,
             filename: selectedDocument!.filename || "",
@@ -171,12 +167,12 @@ function Example() {
         default:
           throw new Error(`Unknown search type: ${searchType}`);
       }
-      const sources = results?.documents || [];
+      const sources = results?.files || [];
       setSearchResults({
         ...results,
         results: results.results.map((result) => ({
           ...result,
-          document: sources.find((s) => s.documentId === result.documentId)!,
+          entry: sources.find((s) => s.entryId === result.entryId)!,
         })),
       });
     } catch (error) {
@@ -192,9 +188,7 @@ function Example() {
     searchType,
     selectedDocument,
     selectedCategory,
-    search,
-    searchDocument,
-    searchCategory,
+    convex,
     categorySearchGlobal,
   ]);
 
@@ -210,10 +204,10 @@ function Example() {
 
   const getUniqueCategories = () => {
     const categories = new Set<string>();
-    globalDocuments?.page?.forEach(
+    globalFiles?.page?.forEach(
       (doc) => doc.category && categories.add(doc.category)
     );
-    userDocuments?.page?.forEach(
+    userFiles?.page?.forEach(
       (doc) => doc.category && categories.add(doc.category)
     );
     return Array.from(categories).sort();
@@ -222,22 +216,22 @@ function Example() {
   const handleDelete = useCallback(
     async (doc: PublicFile) => {
       try {
-        await deleteDocument({
-          documentId: doc.documentId,
+        await convex.mutation(api.example.deleteFile, {
+          entryId: doc.entryId,
         });
 
-        // Clear selected document if it was the one being deleted
-        if (selectedDocument?.documentId === doc.documentId) {
+        // Clear selected entry if it was the one being deleted
+        if (selectedDocument?.entryId === doc.entryId) {
           setSelectedDocument(null);
         }
       } catch (error) {
         console.error("Delete failed:", error);
         alert(
-          `Failed to delete document. ${error instanceof Error ? error.message : String(error)}`
+          `Failed to delete entry. ${error instanceof Error ? error.message : String(error)}`
         );
       }
     },
-    [deleteDocument, selectedDocument]
+    [convex, selectedDocument]
   );
 
   useEffect(() => {
@@ -293,7 +287,7 @@ function Example() {
 
             <div className="flex items-center justify-between">
               <label className="text-sm text-gray-700">
-                Global (shared) document
+                Global (shared) file
               </label>
               <button
                 type="button"
@@ -414,10 +408,10 @@ function Example() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Global Documents */}
+          {/* Global Files */}
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">Global Documents</h3>
+              <h3 className="font-medium text-gray-900">Global Files</h3>
               <button
                 onClick={() => {
                   setSearchType("global");
@@ -430,9 +424,9 @@ function Example() {
               </button>
             </div>
             <div className="space-y-2">
-              {globalDocuments?.page?.map((doc) => (
+              {globalFiles?.page?.map((doc) => (
                 <div
-                  key={doc.documentId}
+                  key={doc.entryId}
                   className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === true
@@ -445,7 +439,7 @@ function Example() {
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
                         setSelectedDocument(doc);
-                        setSearchType("document");
+                        setSearchType("file");
                       }}
                     >
                       <div className="text-sm font-medium text-gray-900 truncate">
@@ -470,7 +464,7 @@ function Example() {
                         handleDelete(doc);
                       }}
                       className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete document"
+                      title="Delete entry"
                     >
                       ✕
                     </button>
@@ -479,11 +473,10 @@ function Example() {
               ))}
             </div>
           </div>
-
-          {/* User Documents */}
+          ;{/* User Files */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">User Documents</h3>
+              <h3 className="font-medium text-gray-900">User Files</h3>
               <button
                 onClick={() => {
                   setSearchType("user");
@@ -496,9 +489,9 @@ function Example() {
               </button>
             </div>
             <div className="space-y-2">
-              {userDocuments?.page?.map((doc) => (
+              {userFiles?.page?.map((doc) => (
                 <div
-                  key={doc.documentId}
+                  key={doc.entryId}
                   className={`group p-2 border rounded transition-colors ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === false
@@ -511,7 +504,7 @@ function Example() {
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
                         setSelectedDocument({ ...doc, global: false });
-                        setSearchType("document");
+                        setSearchType("file");
                       }}
                     >
                       <div className="text-sm font-medium text-gray-900 truncate">
@@ -536,7 +529,7 @@ function Example() {
                         handleDelete(doc);
                       }}
                       className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete document"
+                      title="Delete entry"
                     >
                       ✕
                     </button>
@@ -545,6 +538,7 @@ function Example() {
               ))}
             </div>
           </div>
+          ;
         </div>
       </div>
       {/* Right Panel - Search */}
@@ -554,21 +548,19 @@ function Example() {
 
           {/* Search Type Selector */}
           <div className="flex space-x-4 mb-4">
-            {(["global", "user", "category", "document"] as SearchType[]).map(
-              (type) => (
-                <button
-                  key={type}
-                  onClick={() => setSearchType(type)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                    searchType === type
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)} Search
-                </button>
-              )
-            )}
+            {(["global", "user", "category", "file"] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => setSearchType(type)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  searchType === type
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)} Search
+              </button>
+            ))}
           </div>
 
           {/* Category Selector for Category Search */}
@@ -624,7 +616,7 @@ function Example() {
           )}
 
           {/* Document Info for Memory */}
-          {searchType === "document" && selectedDocument && (
+          {searchType === "file" && selectedDocument && (
             <div className="mb-4 p-3 bg-blue-50 rounded-md">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-blue-800">
@@ -674,7 +666,7 @@ function Example() {
         {/* Search Results */}
         <div className="flex-1 overflow-y-auto p-4">
           {/* Document Chunks for Memory */}
-          {searchType === "document" &&
+          {searchType === "file" &&
             selectedDocument &&
             documentChunks &&
             showChunks && (
@@ -719,35 +711,34 @@ function Example() {
               </div>
             )}
 
-          {searchResults && (searchType !== "document" || !showChunks) && (
+          {searchResults && (searchType !== "file" || !showChunks) && (
             <div className="space-y-6">
               {/* Sources */}
-              {searchResults.documents &&
-                searchResults.documents.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {searchResults.documents.map((doc, index) => (
-                      <div
-                        key={index}
-                        className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
-                      >
-                        {doc.url ? (
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-700 hover:text-gray-900"
-                          >
-                            {doc.title || doc.url}
-                          </a>
-                        ) : (
-                          <span className="text-gray-700">
-                            {doc.title || doc.filename}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {searchResults.files && searchResults.files.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {searchResults.files.map((doc, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                    >
+                      {doc.url ? (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-700 hover:text-gray-900"
+                        >
+                          {doc.title || doc.url}
+                        </a>
+                      ) : (
+                        <span className="text-gray-700">
+                          {doc.title || doc.filename}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Results */}
               <div className="space-y-4">
@@ -762,8 +753,7 @@ function Example() {
                     <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium text-gray-900">
-                          Document:{" "}
-                          {result.document.title || result.document.filename}
+                          File: {result.entry.title || result.entry.filename}
                         </div>
                         <div className="text-sm text-gray-500">
                           Score: {result.score.toFixed(3)}
@@ -833,7 +823,7 @@ function Example() {
 
           {!searchResults &&
             !(
-              searchType === "document" &&
+              searchType === "file" &&
               selectedDocument &&
               documentChunks &&
               showChunks

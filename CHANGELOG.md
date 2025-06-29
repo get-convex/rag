@@ -2,11 +2,10 @@
 
 ## 0.1.1 alpha
 
-- Document search with upserting chunked documents.
-  Embedding, namespaces, search filters, etc.
-- You can also gracefully transition between models,
-  embedding lengths, chunking strategies, and document
-  versions, with automatically versioned namespaces.
+- Vector search over chunked content, with namespaces, search filters, etc.
+- You can also gracefully transition between models, embedding lengths,
+  chunking strategies, and versions, with automatically versioned namespaces.
 - See the example for injesting pdfs, images, audio, and text!
-- List namespaces by status, documents by namespace/status, and chunks by document
-- Find older document versions by file contents to restore.
+- List namespaces by status, entries by namespace/status, and chunks by entry
+- Find older versions by content hash to restore.
+- Add metadata filters for searching.
