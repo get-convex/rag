@@ -25,7 +25,6 @@ import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
 import { getText } from "./getText";
-import { assert } from "convex-helpers";
 
 type Filters = {
   filename: string;
@@ -231,17 +230,18 @@ async function toFile(
     .query("fileMetadata")
     .withIndex("entryId", (q) => q.eq("entryId", doc.entryId))
     .unique();
-  assert(fileMetadata, doc.entryId);
-  const storageMetadata = await ctx.db.system.get(fileMetadata.storageId);
-  assert(storageMetadata, doc.entryId);
+  const storageMetadata =
+    fileMetadata && (await ctx.db.system.get(fileMetadata.storageId));
   return {
     entryId: doc.entryId,
     filename: doc.key,
     global,
-    category: fileMetadata.category,
+    category: fileMetadata?.category ?? undefined,
     title: doc.title,
-    isImage: storageMetadata.contentType?.startsWith("image/") ?? false,
-    url: await ctx.storage.getUrl(fileMetadata.storageId),
+    isImage: storageMetadata?.contentType?.startsWith("image/") ?? false,
+    url: fileMetadata?.storageId
+      ? await ctx.storage.getUrl(fileMetadata.storageId)
+      : null,
   };
 }
 

@@ -84,11 +84,6 @@ function Example() {
       return;
     }
 
-    if (!uploadForm.category.trim()) {
-      alert("Please enter a category");
-      return;
-    }
-
     setIsAdding(true);
     try {
       await convex.action(api.example.addFile, {
@@ -544,7 +539,9 @@ function Example() {
       {/* Right Panel - Search */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Memory</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Memory Search
+          </h1>
 
           {/* Search Type Selector */}
           <div className="flex space-x-4 mb-4">
@@ -558,7 +555,10 @@ function Example() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {type.charAt(0).toUpperCase() + type.slice(1)} Search
+                {type === "user"
+                  ? "User File"
+                  : type.charAt(0).toUpperCase() + type.slice(1)}{" "}
+                Search
               </button>
             ))}
           </div>
@@ -679,7 +679,7 @@ function Example() {
                     <img
                       src={selectedDocument.url}
                       alt={selectedDocument.filename}
-                      className="w-full h-auto"
+                      className="h-auto max-h-96 object-contain"
                     />
                   ) : (
                     <a
