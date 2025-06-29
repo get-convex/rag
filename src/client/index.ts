@@ -325,8 +325,8 @@ export class Memory<
     }
   ): Promise<{
     results: SearchResult[];
-    text: string[];
-    entries: Entry<FitlerSchemas>[];
+    text: string;
+    entries: (Entry<FitlerSchemas> & { text: string })[];
   }> {
     const {
       namespace,
@@ -347,13 +347,41 @@ export class Memory<
         modelId: this.options.textEmbeddingModel.modelId,
         filters,
         limit,
+        vectorScoreThreshold,
         chunkContext,
       }
     );
+    const entriesWithTexts = entries.map((e) => {
+      const ranges = results
+        .filter((r) => r.entryId === e.entryId)
+        .sort((a, b) => a.startOrder - b.startOrder);
+      let text = "";
+      let previousEnd = 0;
+      for (const range of ranges) {
+        if (previousEnd !== 0) {
+          if (range.startOrder !== previousEnd) {
+            text += "\n...\n";
+          } else {
+            text += "\n";
+          }
+        }
+        text += range.content.map((c) => c.text).join("\n");
+        previousEnd = range.startOrder + range.content.length;
+      }
+      return {
+        ...e,
+        entryId: e.entryId as EntryId,
+        filterValues: e.filterValues as EntryFilterValues<FitlerSchemas>[],
+        text,
+      };
+    });
+
     return {
       results: results as SearchResult[],
-      text: results.map((r) => r.content.map((c) => c.text).join("\n")),
-      entries: entries as Entry<FitlerSchemas>[],
+      text: entriesWithTexts
+        .map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text))
+        .join(`\n---\n`),
+      entries: entriesWithTexts,
     };
   }
 

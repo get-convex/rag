@@ -159,10 +159,12 @@ export const uploadFile = action({
 
 Search across content with vector similarity
 
-- `text` is the plain text content of the results concatenated together.
+- `text` is a string with the full content of the results, for convenience.
+  It is in order of the entries, with titles at each entry boundary, and
+  separators between non-sequential chunks. See below for more details.
 - `results` is an array of matching chunks with scores and more metadata.
-- `sources` is an array of the entries that matched the query.
-   Each result has a `entryId` referencing one of these source entries.
+- `entries` is an array of the entries that matched the query.
+  Each result has a `entryId` referencing one of these source entries.
 
 ```ts
 export const search = action({
@@ -208,9 +210,26 @@ export const searchByCategory = action({
 });
 ```
 
-### Search with Context
+### Add surrounding chunks to results for context
 
-Get surrounding chunks for better context:
+Instead of getting just the single matching chunk, you can request
+surrounding chunks so there's more context to the result.
+
+Note: If there are results that have overlapping ranges, it will not return
+duplicate chunks, but instead give priority to adding the "before" context
+to each chunk.
+For example if you requested 2 before and 1 after, and your results were for
+the same entryId indexes 1, 4, and 7, the results would be:
+```ts
+[
+  // Only one before chunk available, and leaves chunk2 for the next result.
+  { order: 1, content: [chunk0, chunk1], startOrder: 0, ... },
+  // 2 before chunks available, but leaves chunk5 for the next result.
+  { order: 4, content: [chunk2, chunk3, chunk4], startOrder: 2, ... },
+  // 2 before chunks available, and includes one after chunk.
+  { order: 7, content: [chunk5, chunk6, chunk7, chunk8], startOrder: 5, ... },
+]
+```
 
 ```ts
 export const searchWithContext = action({
@@ -219,15 +238,83 @@ export const searchWithContext = action({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const results = await memory.search(ctx, {
+    const { results, text, entries } = await memory.search(ctx, {
       namespace: args.userId,
       query: args.query,
       chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
       limit: 5,
     });
 
-    return results;
+    return { results, text, entries };
   },
+});
+```
+
+### Formatting results
+
+Formatting the results for use in a prompt depends a bit on the use case.
+By default, the results will be sorted by score, not necessarily in the order
+they appear in the original text. You may want to sort them by the order they
+appear in the original text so they follow the flow of the original document.
+
+For convenienct, the `text` field of the search results is a string formatted
+with `...` separating non-sequential chunks, `---` separating entries, and
+`# Title:` at each entry boundary (if titles are available).
+
+```
+# Title 1:
+Chunk 1 contents
+Chunk 2 contents
+...
+Chunk 8 contents
+Chunk 9 contents
+---
+# Title 2:
+Chunk 4 contents
+Chunk 5 contents
+```
+
+There is also a `text` field on each entry that is the full text of the entry,
+similarly formatted with `...` separating non-sequential chunks, if you want
+to format each entry differently.
+
+For a fully custom format, you can use the `results` field and entries directly:
+
+```ts
+const { results, text, entries } = await memory.search(ctx, {
+  namespace: args.userId,
+  query: args.query,
+  chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
+  limit: 5,
+  vectorScoreThreshold: 0.5, // Only return results with a score >= 0.5
+});
+
+// Get results in the order of the entries (highest score first)
+const contexts = entries.map((e) => {
+  const ranges = results
+    .filter((r) => r.entryId === e.entryId)
+    .sort((a, b) => a.startOrder - b.startOrder);
+  let text = (e.title ?? "") + ":\n\n";
+  let previousEnd = 0;
+  for (const range of ranges) {
+    if (range.startOrder !== previousEnd) {
+      text += "\n...\n";
+    }
+    text += range.content.map((c) => c.text).join("\n");
+    previousEnd = range.startOrder + range.content.length;
+  }
+  return {
+    ...e,
+    entryId: e.entryId as EntryId,
+    filterValues: e.filterValues as EntryFilterValues<FitlerSchemas>[],
+    text,
+  };
+}).map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text));
+
+await generateText({
+  model: openai.chat("gpt-4o-mini"),
+  prompt: "Use the following context:\n\n" + contexts.join("\n---\n") +
+    "\n\n---\n\n Based on the context, answer the question:\n\n" + args.query,
 });
 ```
 
