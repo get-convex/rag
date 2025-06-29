@@ -17,7 +17,6 @@ import { v } from "convex/values";
 import { defineSchema } from "convex/server";
 import { components, initConvexTest } from "./setup.test.js";
 import { openai } from "@ai-sdk/openai";
-import { vSource } from "../component/schema.js";
 
 // The schema for the tests
 const schema = defineSchema({});
@@ -58,7 +57,6 @@ export const upsertDocument = action({
       })
     ),
     namespace: v.string(),
-    source: vSource,
     title: v.optional(v.string()),
     filterValues: v.optional(
       v.array(
@@ -113,7 +111,6 @@ describe("DocumentSearch thick client", () => {
         { text: "C", metadata: {}, embedding: dummyEmbeddings("C") },
       ],
       namespace: "test",
-      source: { kind: "url", url: "https://www.google.com" },
     });
     expect(documentId).toBeDefined();
     expect(status).toBe("ready");

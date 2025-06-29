@@ -41,7 +41,6 @@ describe("chunks", () => {
         contentHash: `test-content-hash-${key}-${version}`,
         importance: 0.5,
         filterValues: [],
-        source: { kind: "url", url: "https://example.com/test" },
       });
     });
   }

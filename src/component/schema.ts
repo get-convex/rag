@@ -8,18 +8,6 @@ import {
   vNamedFilter,
 } from "./filters.js";
 
-export const vSource = v.union(
-  v.object({
-    kind: v.literal("_storage"),
-    storageId: v.id("_storage"),
-  }),
-  v.object({
-    kind: v.literal("url"),
-    url: v.string(),
-  })
-);
-export type Source = Infer<typeof vSource>;
-
 export const vStatusWithOnComplete = v.union(
   v.object({
     kind: v.literal("pending"),
@@ -57,11 +45,9 @@ export const schema = defineSchema({
     // To avoid re-creating/ updating the same document
     // This is a hash that ideally encompasses the content AND chunking strategy
     // e.g. a hash of the list of chunk content hashes.
-    contentHash: v.string(),
+    contentHash: v.optional(v.string()),
     // conveneient metadata
     title: v.optional(v.string()),
-    source: vSource,
-    // mimeType: v.string(),
     // metadata: v.optional(v.record(v.string(), v.any())),
     status: vStatusWithOnComplete,
   })

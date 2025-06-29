@@ -108,7 +108,6 @@ export declare const components: {
           key: string;
           modelId: string;
           namespace: string;
-          url?: string;
         },
         {
           contentHash?: string;
@@ -116,9 +115,6 @@ export declare const components: {
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
-          source:
-            | { kind: "_storage"; storageId: string }
-            | { kind: "url"; url: string };
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -133,9 +129,6 @@ export declare const components: {
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key: string;
-          source:
-            | { kind: "_storage"; storageId: string }
-            | { kind: "url"; url: string };
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -165,9 +158,6 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;
@@ -186,9 +176,6 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -204,14 +191,11 @@ export declare const components: {
             searchableText?: string;
           }>;
           document: {
-            contentHash: string;
+            contentHash?: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
             namespaceId: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             title?: string;
           };
           onComplete?: string;
@@ -225,9 +209,6 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -240,14 +221,11 @@ export declare const components: {
         {
           chunker: string;
           document: {
-            contentHash: string;
+            contentHash?: string;
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
             namespaceId: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             title?: string;
           };
           onComplete?: string;
@@ -358,9 +336,6 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key: string;
-            source:
-              | { kind: "_storage"; storageId: string }
-              | { kind: "url"; url: string };
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;

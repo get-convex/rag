@@ -1,6 +1,5 @@
 import { v } from "convex/values";
-import type { Infer, Validator, Value } from "convex/values";
-import { vSource, type Source } from "./component/schema.js";
+import type { Infer, Validator, Value, VObject } from "convex/values";
 import { vNamedFilter, type NamedFilter } from "./component/filters.js";
 import { brandedString } from "convex-helpers/validators";
 
@@ -57,7 +56,6 @@ export const vDocument = v.object({
   importance: v.number(),
   filterValues: v.array(vNamedFilter),
   contentHash: v.optional(v.string()),
-  source: vSource,
   status: vStatus,
 });
 
@@ -89,8 +87,6 @@ export type Document<
   // Hash of the document contents.
   // If supplied, it will avoid upserting if the hash is the same.
   contentHash?: string | undefined;
-  // Where this document came from.
-  source: Source;
   // Whether this document's contents have all been inserted and indexed.
   status: Status;
 };
@@ -130,4 +126,20 @@ export function vPaginationResult<
       )
     ),
   });
+}
+
+/**
+ * Make a contentHash of a Blob that matches the File Storage metadata, allowing
+ * identifying when content is identical.
+ * @param blob The contents to hash
+ * @returns sha256 hash of the contents
+ */
+export async function contentHashFromBlob(blob: Blob) {
+  return Array.from(
+    new Uint8Array(
+      await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())
+    )
+  )
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }

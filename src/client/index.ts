@@ -9,8 +9,7 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "convex/server";
-import { v, type GenericId, type Value, type VString } from "convex/values";
-import { vSource, type Source } from "../component/schema.js";
+import { v, type Value, type VString } from "convex/values";
 import {
   CHUNK_BATCH_SIZE,
   vDocumentId,
@@ -37,7 +36,7 @@ import {
 } from "./types.js";
 import type { NamedFilter } from "../component/filters.js";
 
-export { vSearchResult } from "../shared.js";
+export { vDocument, vSearchResult, contentHashFromBlob } from "../shared.js";
 export { vDocumentId, vNamespaceId };
 
 export type {
@@ -49,7 +48,6 @@ export type {
   OnCompleteDocument,
   OnCompleteNamespace,
   SearchResult,
-  Source,
   Status,
 };
 
@@ -103,7 +101,6 @@ export class DocumentSearch<
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
-      source: Source;
       title?: string;
       // mimeType: string;
       // metadata?: Record<string, Value>;
@@ -130,8 +127,6 @@ export class DocumentSearch<
 
     validateUpsertFilterValues(args.filterValues, this.options.filterNames);
 
-    const { source, contentHash } = await getSource(ctx, args.source);
-
     let allChunks: CreateChunkArgs[] | undefined;
     if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
       console.debug("All chunks at once", args.chunks.length);
@@ -146,11 +141,10 @@ export class DocumentSearch<
         document: {
           key: args.key,
           namespaceId,
-          source,
           title: args.title,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
-          contentHash,
+          contentHash: args.contentHash,
         },
         allChunks,
       });
@@ -218,7 +212,6 @@ export class DocumentSearch<
     ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
-      source: Source;
       /**
        * A function that splits the document into chunks and embeds them.
        * This should be passed as internal.foo.myChunkerAction
@@ -230,7 +223,6 @@ export class DocumentSearch<
        *   const documentId = await documentSearch.upsertDocumentAsync(ctx, {
        *     key: "myfile.txt",
        *     namespace: "my-namespace",
-       *     source: { url: "https://my-url.com" },
        *     chunker: internal.foo.myChunkerAction,
        *   });
        */
@@ -257,7 +249,6 @@ export class DocumentSearch<
 
     validateUpsertFilterValues(args.filterValues, this.options.filterNames);
 
-    const { source, contentHash } = await getSource(ctx, args.source);
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
       : undefined;
@@ -270,10 +261,9 @@ export class DocumentSearch<
           key: args.key,
           namespaceId,
           title: args.title,
-          source,
           filterValues: args.filterValues ?? [],
           importance: args.importance ?? 1,
-          contentHash,
+          contentHash: args.contentHash,
         },
         onComplete,
         chunker,
@@ -393,8 +383,6 @@ export class DocumentSearch<
       key: string;
       /** The hash of the document contents to try to match. */
       contentHash: string;
-      /** If trying to find a document with a url, you must provide the same url too. */
-      url?: string;
     }
   ): Promise<Document<FitlerSchemas> | null> {
     const document = await ctx.runQuery(
@@ -406,7 +394,6 @@ export class DocumentSearch<
         modelId: this.options.textEmbeddingModel.modelId,
         key: args.key,
         contentHash: args.contentHash,
-        url: args.url,
       }
     );
     return document as Document<FitlerSchemas> | null;
@@ -499,7 +486,6 @@ export class DocumentSearch<
         namespaceId: NamespaceId;
         key: string; // document key
         documentId: DocumentId;
-        source: Source;
       }
     ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
   ) {
@@ -509,7 +495,6 @@ export class DocumentSearch<
         namespaceId: vNamespaceId,
         key: v.string(),
         documentId: vDocumentId,
-        source: vSource,
         insertChunksHandle: v.string() as VString<
           FunctionHandle<
             "mutation",
@@ -520,13 +505,12 @@ export class DocumentSearch<
         importance: v.number(),
       }),
       handler: async (ctx, args) => {
-        const { namespace, namespaceId, key, documentId, source } = args;
+        const { namespace, namespaceId, key, documentId } = args;
         const chunksPromise = fn(ctx, {
           namespace,
           namespaceId,
           key,
           documentId,
-          source,
         });
         let chunkIterator: AsyncIterable<InputChunk>;
         if (chunksPromise instanceof Promise) {
@@ -692,28 +676,6 @@ async function createChunkArgsBatch(
     }
     return true;
   }) as CreateChunkArgs[];
-}
-
-async function getSource(
-  ctx: ActionCtx,
-  {
-    storageId,
-    url,
-    contentHash,
-  }: { storageId?: GenericId<"_storage">; url?: string; contentHash?: string }
-): Promise<{ source: Source; contentHash: string }> {
-  assert(storageId || url, "Either storageId or url must be provided");
-  if (storageId) {
-    const metadata = await ctx.storage.getMetadata(storageId);
-    assert(metadata, "Storage metadata not found for storageId " + storageId);
-    return {
-      source: { kind: "_storage", storageId },
-      contentHash: metadata.sha256,
-    };
-  } else {
-    assert(url);
-    return { source: { kind: "url", url }, contentHash: contentHash ?? url };
-  }
 }
 
 /**

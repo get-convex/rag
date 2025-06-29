@@ -1,7 +1,7 @@
 import { assert, omit } from "convex-helpers";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { DocumentId } from "../client/index.js";
+import type { DocumentId } from "../shared.js";
 import {
   statuses,
   vCreateChunkArgs,
@@ -84,7 +84,7 @@ async function enqueueUpsert(
 
 type UpsertDocumentArgs = Pick<
   Doc<"documents">,
-  "key" | "contentHash" | "importance" | "source" | "filterValues"
+  "key" | "contentHash" | "importance" | "filterValues"
 >;
 
 async function findExistingDocument(
@@ -189,12 +189,13 @@ function documentIsSame(
   existing: Doc<"documents">,
   newDocument: UpsertDocumentArgs
 ) {
-  console.debug("documentIsSame", existing, newDocument);
-  if (
-    !!existing.contentHash &&
-    !!newDocument.contentHash &&
-    existing.contentHash !== newDocument.contentHash
-  ) {
+  if (!existing.contentHash || !newDocument.contentHash) {
+    console.debug(
+      `Document ${newDocument.key} has no content hash, replacing...`
+    );
+    return false;
+  }
+  if (existing.contentHash !== newDocument.contentHash) {
     console.debug(
       `Document ${newDocument.key} content hash is different, replacing...`
     );
@@ -224,22 +225,6 @@ function documentIsSame(
     );
     return false;
   }
-  if (existing.source.kind !== newDocument.source.kind) {
-    console.debug(
-      `Document ${newDocument.key} source kind is different, replacing...`
-    );
-    return false;
-  }
-  if (
-    existing.source.kind === "url" &&
-    newDocument.source.kind === "url" &&
-    existing.source.url !== newDocument.source.url
-  ) {
-    console.debug(
-      `Document ${newDocument.key} source url is different, replacing...`
-    );
-    return false;
-  }
   // At this point we check for the contents to be the same.
   if (existing.contentHash && newDocument.contentHash) {
     if (existing.contentHash === newDocument.contentHash) {
@@ -249,18 +234,6 @@ function documentIsSame(
     console.debug(
       `Document ${newDocument.key} content hash is different, replacing...`
     );
-    return false;
-  }
-  if (
-    existing.source.kind === "_storage" &&
-    newDocument.source.kind === "_storage" &&
-    existing.source.storageId !== newDocument.source.storageId
-  ) {
-    console.debug(
-      `Document ${newDocument.key} source storageId is different, replacing...`
-    );
-    // If we are adding/removing a content hash, that's only ok if we are using
-    // the same storageId, as those are immutable.
     return false;
   }
   return true;
@@ -314,7 +287,6 @@ export const findByContentHash = query({
     ...vNamespaceLookupArgs,
     key: v.string(),
     contentHash: v.string(),
-    url: v.optional(v.string()),
   },
   returns: v.union(vDocument, v.null()),
   handler: async (ctx, args) => {
@@ -348,9 +320,6 @@ export const findByContentHash = query({
         documentIsSame(doc, {
           key: args.key,
           contentHash: args.contentHash,
-          source: args.url
-            ? { kind: "url", url: args.url }
-            : { kind: "_storage", storageId: "" as Id<"_storage"> },
           filterValues: doc.filterValues,
           importance: doc.importance,
         })
@@ -409,8 +378,7 @@ async function promoteToReadyHandler(
 }
 
 export function publicDocument(document: Doc<"documents">): Document {
-  const { key, importance, filterValues, contentHash, source, title } =
-    document;
+  const { key, importance, filterValues, contentHash, title } = document;
 
   return {
     documentId: document._id as unknown as DocumentId,
@@ -419,7 +387,6 @@ export function publicDocument(document: Doc<"documents">): Document {
     importance,
     filterValues,
     contentHash,
-    source,
     status: document.status.kind,
   };
 }

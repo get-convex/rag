@@ -10,7 +10,6 @@ import type {
 } from "convex/server";
 import { type GenericId } from "convex/values";
 import type { Mounts } from "../component/_generated/api.js";
-import type { Source } from "../component/schema.js";
 import type { DocumentId, NamespaceId } from "../shared.js";
 
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
@@ -54,7 +53,6 @@ export type ChunkerAction = FunctionReference<
     namespaceId: NamespaceId;
     key: string;
     documentId: DocumentId;
-    source: Source;
   },
   null
 >;

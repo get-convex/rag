@@ -29,7 +29,6 @@ describe("documents", () => {
       key,
       importance: 0.5,
       filterValues: [],
-      source: { kind: "url" as const, url: "https://example.com/test" },
       contentHash: "hash123",
       title: "Test Document",
     };
@@ -231,84 +230,6 @@ describe("documents", () => {
     expect(newDoc!.filterValues[0].value).toBe("test");
   });
 
-  test("upsert creates new version when source URL changes", async () => {
-    const t = convexTest(schema, modules);
-    const namespaceId = await setupTestNamespace(t);
-
-    const document = createTestDocument(namespaceId);
-
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
-      document,
-      allChunks: [],
-    });
-
-    // Second upsert with different source URL
-    const modifiedDocument = {
-      ...document,
-      source: { kind: "url" as const, url: "https://example.com/different" },
-    };
-
-    const secondResult = await t.mutation(api.documents.upsert, {
-      document: modifiedDocument,
-      allChunks: [],
-    });
-
-    expect(secondResult.created).toBe(true);
-    expect(secondResult.documentId).not.toBe(firstResult.documentId);
-    expect(secondResult.replacedVersion).toBeNull();
-
-    // Verify new version was created with correct source
-    const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.documentId);
-    });
-
-    expect(newDoc!.version).toBe(1);
-    expect(newDoc!.source.kind).toBe("url");
-    if (newDoc!.source.kind === "url") {
-      expect(newDoc!.source.url).toBe("https://example.com/different");
-    }
-  });
-
-  test("upsert creates new version when source kind changes", async () => {
-    const t = convexTest(schema, modules);
-    const namespaceId = await setupTestNamespace(t);
-
-    const document = createTestDocument(namespaceId);
-
-    // First upsert with URL source
-    const firstResult = await t.mutation(api.documents.upsert, {
-      document,
-      allChunks: [],
-    });
-
-    // Second upsert with storage source
-    const modifiedDocument = {
-      ...document,
-      source: {
-        kind: "_storage" as const,
-        storageId: "storage123" as Id<"_storage">,
-      },
-    };
-
-    const secondResult = await t.mutation(api.documents.upsert, {
-      document: modifiedDocument,
-      allChunks: [],
-    });
-
-    expect(secondResult.created).toBe(true);
-    expect(secondResult.documentId).not.toBe(firstResult.documentId);
-    expect(secondResult.replacedVersion).toBeNull();
-
-    // Verify new version was created with correct source
-    const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.documentId);
-    });
-
-    expect(newDoc!.version).toBe(1);
-    expect(newDoc!.source.kind).toBe("_storage");
-  });
-
   test("upsert without allChunks creates pending document", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
@@ -366,47 +287,6 @@ describe("documents", () => {
     expect(allDocs).toHaveLength(2);
     const keys = allDocs.map((doc) => doc.key).sort();
     expect(keys).toEqual(["doc1", "doc2"]);
-  });
-
-  test("document with same content hash but different storage ID is considered the same", async () => {
-    const t = convexTest(schema, modules);
-    const namespaceId = await setupTestNamespace(t);
-
-    const document1 = {
-      ...createTestDocument(namespaceId),
-      source: {
-        kind: "_storage" as const,
-        storageId: "storage123" as Id<"_storage">,
-      },
-      contentHash: "samehash",
-    };
-
-    const document2 = {
-      ...createTestDocument(namespaceId),
-      source: {
-        kind: "_storage" as const,
-        storageId: "storage456" as Id<"_storage">,
-      },
-      contentHash: "samehash",
-    };
-
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
-      document: document1,
-      allChunks: [],
-    });
-
-    // Second upsert with different storageId but same contentHash
-    // This should return the existing document since content hash is the same
-    const secondResult = await t.mutation(api.documents.upsert, {
-      document: document2,
-      allChunks: [],
-    });
-
-    expect(firstResult.created).toBe(true);
-    expect(secondResult.created).toBe(false); // Should reuse existing document
-    expect(secondResult.documentId).toBe(firstResult.documentId); // Same document
-    expect(secondResult.replacedVersion).toBeNull(); // No replacement since it's the same document
   });
 
   test("pending to ready transition populates replacedVersion", async () => {

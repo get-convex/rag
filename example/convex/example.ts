@@ -6,6 +6,7 @@ import {
   QueryCtx,
   MutationCtx,
   ActionCtx,
+  internalQuery,
 } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import {
@@ -15,14 +16,16 @@ import {
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   InputChunk,
+  vDocument,
   vDocumentId,
 } from "@convex-dev/document-search";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import schema from "./schema";
 import { getText } from "./getText";
+import { assert } from "convex-helpers";
 
 type DocumentFilterValues = {
   documentKey: string;
@@ -71,7 +74,6 @@ export const upsertFile = action({
         chunks,
         key: filename,
         title: filename,
-        source: { kind: "_storage", storageId },
         filterValues: [
           { name: "documentKey", value: filename },
           { name: "documentMimeType", value: mimeType },
@@ -114,11 +116,7 @@ export const search = action({
     });
     return {
       ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
+      documents: await publicDocuments(ctx, results.documents),
     };
   },
 });
@@ -143,11 +141,7 @@ export const searchDocument = action({
     });
     return {
       ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
+      documents: await publicDocuments(ctx, results.documents),
     };
   },
 });
@@ -171,11 +165,7 @@ export const searchCategory = action({
     });
     return {
       ...results,
-      documents: await Promise.all(
-        results.documents.map((doc) =>
-          publicDocument(ctx, doc, args.globalNamespace)
-        )
-      ),
+      documents: await publicDocuments(ctx, results.documents),
     };
   },
 });
@@ -195,18 +185,14 @@ export const listDocuments = query({
     category: v.optional(v.string()),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<PaginationResult<PublicFile>> => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
     const namespace = await documentSearch.getNamespace(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
     });
     if (!namespace) {
-      return {
-        page: [],
-        isDone: true,
-        cursor: null,
-      };
+      return { page: [], isDone: true, continueCursor: "" };
     }
     const results = await documentSearch.listDocuments(ctx, {
       namespaceId: namespace.namespaceId,
@@ -214,11 +200,9 @@ export const listDocuments = query({
     });
     return {
       ...results,
-      page: await Promise.all(
-        results.page.map(async (file) =>
-          publicDocument(ctx, file, args.globalNamespace)
-        )
-      ),
+      page: await ctx.runQuery(internal.example.getPublicDocuments, {
+        documents: results.page,
+      }),
     };
   },
 });
@@ -233,27 +217,42 @@ export type PublicFile = {
   url: string | null;
 };
 
+async function publicDocuments(
+  ctx: ActionCtx,
+  documents: Document[]
+): Promise<PublicFile[]> {
+  return await ctx.runQuery(internal.example.getPublicDocuments, {
+    documents,
+  });
+}
+
+export const getPublicDocuments = internalQuery({
+  args: { documents: v.array(vDocument) },
+  handler: async (ctx, { documents }) => {
+    return Promise.all(documents.map((doc) => publicDocument(ctx, doc, false)));
+  },
+});
+
 async function publicDocument(
-  ctx: QueryCtx | ActionCtx,
-  doc: Document<DocumentFilterValues>,
+  ctx: QueryCtx,
+  doc: Document,
   global: boolean
 ): Promise<PublicFile> {
+  const fileMetadata = await ctx.db
+    .query("fileMetadata")
+    .withIndex("documentId", (q) => q.eq("documentId", doc.documentId))
+    .unique();
+  assert(fileMetadata, doc.documentId);
+  const storageMetadata = await ctx.db.system.get(fileMetadata.storageId);
+  assert(storageMetadata, doc.documentId);
   return {
     documentId: doc.documentId,
     filename: doc.key,
     global,
-    category: doc.filterValues.find((f) => f.name === "category")!.value,
+    category: fileMetadata.category,
     title: doc.title,
-    isImage:
-      doc.source.kind === "_storage"
-        ? await ctx.storage
-            .getMetadata(doc.source.storageId)
-            .then((m) => !!m?.contentType?.startsWith("image/"))
-        : false,
-    url:
-      doc.source.kind === "_storage"
-        ? await ctx.storage.getUrl(doc.source.storageId)
-        : doc.source.url,
+    isImage: storageMetadata.contentType?.startsWith("image/") ?? false,
+    url: await ctx.storage.getUrl(fileMetadata.storageId),
   };
 }
 
@@ -287,14 +286,7 @@ export const recordUploadMetadata = internalMutation({
     const { previousDocumentId, ...doc } = args;
     if (previousDocumentId) {
       console.debug("deleting previous document", previousDocumentId);
-      const previous = await ctx.db
-        .query("fileMetadata")
-        .withIndex("documentId", (q) => q.eq("documentId", previousDocumentId))
-        .first();
-      if (previous) {
-        await ctx.db.delete(previous._id);
-        await deleteFile(ctx, previousDocumentId);
-      }
+      await deleteFile(ctx, previousDocumentId);
     }
     const existing = await ctx.db
       .query("fileMetadata")
