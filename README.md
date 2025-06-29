@@ -177,6 +177,7 @@ export const search = action({
       namespace: "global",
       query: args.query,
       limit: 10
+      vectorScoreThreshold: 0.5, // Only return results with a score >= 0.5
     });
 
     return { results, text, entries };
