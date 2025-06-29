@@ -224,11 +224,11 @@ export const replaceChunksPage = mutation({
     const chunkStream = mergedStream(
       [entry, ...pendingEntries, previousEntry]
         .filter((d) => d !== null)
-        .map((doc) =>
+        .map((entry) =>
           stream(ctx.db, schema)
             .query("chunks")
             .withIndex("entryId_order", (q) =>
-              q.eq("entryId", doc._id).gte("order", startOrder)
+              q.eq("entryId", entry._id).gte("order", startOrder)
             )
         ),
       ["order"]

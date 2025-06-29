@@ -28,7 +28,7 @@ describe("chunks", () => {
   async function setupTestEntry(
     t: ConvexTest,
     namespaceId: Id<"namespaces">,
-    key = "test-doc",
+    key = "test-entry",
     version = 0,
     status: "ready" | "pending" = "ready"
   ) {
@@ -158,7 +158,7 @@ describe("chunks", () => {
     const namespaceId = await setupTestNamespace(t);
 
     // Create version 1 of entry
-    const docV1Id = await setupTestEntry(t, namespaceId, "versioned-doc", 1);
+    const docV1Id = await setupTestEntry(t, namespaceId, "versioned-entry", 1);
 
     // Insert chunks in version 1
     const v1Chunks = createTestChunks(2);
@@ -171,7 +171,7 @@ describe("chunks", () => {
     });
 
     // Create version 2 of the same entry
-    const docV2Id = await setupTestEntry(t, namespaceId, "versioned-doc", 2);
+    const docV2Id = await setupTestEntry(t, namespaceId, "versioned-entry", 2);
 
     // Insert chunks in version 2 (this should mark v1 chunks as replaced)
     const v2Chunks = createTestChunks(2);
@@ -544,7 +544,7 @@ describe("chunks", () => {
       const docV1Id = await setupTestEntry(
         t,
         namespaceId,
-        "versioned-doc",
+        "versioned-entry",
         1,
         "ready"
       );
@@ -562,7 +562,7 @@ describe("chunks", () => {
       const docV2Id = await setupTestEntry(
         t,
         namespaceId,
-        "versioned-doc",
+        "versioned-entry",
         2,
         "pending"
       );

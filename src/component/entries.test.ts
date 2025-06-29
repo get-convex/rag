@@ -23,7 +23,7 @@ describe("entries", () => {
     });
   }
 
-  function createTestEntry(namespaceId: Id<"namespaces">, key = "test-doc") {
+  function createTestEntry(namespaceId: Id<"namespaces">, key = "test-entry") {
     return {
       namespaceId,
       key,
@@ -152,7 +152,7 @@ describe("entries", () => {
 
     expect(allDocs).toHaveLength(2);
 
-    const versions = allDocs.map((doc) => doc.version).sort();
+    const versions = allDocs.map((entry) => entry.version).sort();
     expect(versions).toEqual([0, 1]);
   });
 
@@ -285,7 +285,7 @@ describe("entries", () => {
     });
 
     expect(allDocs).toHaveLength(2);
-    const keys = allDocs.map((doc) => doc.key).sort();
+    const keys = allDocs.map((entry) => entry.key).sort();
     expect(keys).toEqual(["doc1", "doc2"]);
   });
 

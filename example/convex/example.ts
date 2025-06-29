@@ -194,7 +194,7 @@ export const listFiles = query({
     return {
       ...results,
       page: await Promise.all(
-        results.page.map((doc) => toFile(ctx, doc, args.globalNamespace))
+        results.page.map((entry) => toFile(ctx, entry, args.globalNamespace))
       ),
     };
   },
@@ -217,27 +217,27 @@ async function toFiles(ctx: ActionCtx, files: Entry[]): Promise<PublicFile[]> {
 export const getFiles = internalQuery({
   args: { files: v.array(vEntry) },
   handler: async (ctx, { files }) => {
-    return Promise.all(files.map((doc) => toFile(ctx, doc, false)));
+    return Promise.all(files.map((entry) => toFile(ctx, entry, false)));
   },
 });
 
 async function toFile(
   ctx: QueryCtx,
-  doc: Entry,
+  entry: Entry,
   global: boolean
 ): Promise<PublicFile> {
   const fileMetadata = await ctx.db
     .query("fileMetadata")
-    .withIndex("entryId", (q) => q.eq("entryId", doc.entryId))
+    .withIndex("entryId", (q) => q.eq("entryId", entry.entryId))
     .unique();
   const storageMetadata =
     fileMetadata && (await ctx.db.system.get(fileMetadata.storageId));
   return {
-    entryId: doc.entryId,
-    filename: doc.key,
+    entryId: entry.entryId,
+    filename: entry.key,
     global,
     category: fileMetadata?.category ?? undefined,
-    title: doc.title,
+    title: entry.title,
     isImage: storageMetadata?.contentType?.startsWith("image/") ?? false,
     url: fileMetadata?.storageId
       ? await ctx.storage.getUrl(fileMetadata.storageId)
@@ -272,21 +272,21 @@ export const recordUploadMetadata = internalMutation({
     previousId: v.optional(vEntryId),
   },
   handler: async (ctx, args) => {
-    const { previousId, ...doc } = args;
+    const { previousId, ...entry } = args;
     if (previousId) {
       console.debug("deleting previous entry", previousId);
       await _deleteFile(ctx, previousId);
     }
     const existing = await ctx.db
       .query("fileMetadata")
-      .withIndex("entryId", (q) => q.eq("entryId", doc.entryId))
+      .withIndex("entryId", (q) => q.eq("entryId", entry.entryId))
       .unique();
     if (existing) {
-      console.debug("replacing file", existing._id, doc);
-      await ctx.db.replace(existing._id, doc);
+      console.debug("replacing file", existing._id, entry);
+      await ctx.db.replace(existing._id, entry);
     } else {
-      console.debug("inserting file", doc);
-      await ctx.db.insert("fileMetadata", doc);
+      console.debug("inserting file", entry);
+      await ctx.db.insert("fileMetadata", entry);
     }
   },
 });

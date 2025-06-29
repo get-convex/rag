@@ -300,7 +300,7 @@ export const findByContentHash = query({
       return null;
     }
     let attempts = 0;
-    for await (const doc of mergedStream(
+    for await (const entry of mergedStream(
       statuses.map((status) =>
         stream(ctx.db, schema)
           .query("entries")
@@ -322,14 +322,14 @@ export const findByContentHash = query({
         return null;
       }
       if (
-        entryIsSame(doc, {
+        entryIsSame(entry, {
           key: args.key,
           contentHash: args.contentHash,
-          filterValues: doc.filterValues,
-          importance: doc.importance,
+          filterValues: entry.filterValues,
+          importance: entry.importance,
         })
       ) {
-        return publicEntry(doc);
+        return publicEntry(entry);
       }
     }
     return null;

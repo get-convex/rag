@@ -33,7 +33,7 @@ describe("search", () => {
   async function setupTestEntry(
     t: ConvexTest,
     namespaceId: Id<"namespaces">,
-    key = "test-doc",
+    key = "test-entry",
     version = 0,
     filterValues: Array<{ name: string; value: Value }> = []
   ) {
