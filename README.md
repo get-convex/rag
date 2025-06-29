@@ -9,7 +9,7 @@ LLMs, e.g. for Retrieval-Augmented Generation (RAG).
 
 ## ✨ Key Features
 
-- **Document Upsert**: Add or replace documents with automatic text chunking and embedding.
+- **Document Add**: Add or replace documents with automatic text chunking and embedding.
 - **Semantic Search**: Vector-based search using configurable embedding models
 - **Namespaces**: Organize documents into namespaces for per-user search.
 - **Custom Filtering**: Filter documents with custom indexed fields.
@@ -71,7 +71,7 @@ const memory = new Memory(components.memory, {
 Upload documents with automatic text chunking and embedding:
 
 ```ts
-export const uploadDocument = action({
+export const add = action({
   args: {
     url: v.string(),
     category: v.string(),
@@ -83,7 +83,7 @@ export const uploadDocument = action({
     const chunks = await textSplitter.splitText(content);
     const documentType = response.headers.get("content-type");
 
-    const { documentId } = await memory.upsertDocument(ctx, {
+    const { documentId } = await memory.add(ctx, {
       namespace: "global", // namespace can be any string
       key: url,
       chunks,
@@ -131,7 +131,7 @@ export const uploadFile = action({
     const textContent = new TextDecoder().decode(bytes);
     const chunks = await textSplitter.splitText(textContent);
 
-    const { documentId } = await memory.upsertDocument(ctx, {
+    const { documentId } = await memory.add(ctx, {
       namespace: userId, // per-user namespace
       key: filename,
       title: filename,
@@ -263,7 +263,7 @@ export const uploadLargeDocument = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const { documentId } = await memory.upsertDocumentAsync(ctx, {
+    const { documentId } = await memory.addDocumentAsync(ctx, {
       namespace: userId,
       key: args.filename,
       source: { kind: "url", url: args.url },
