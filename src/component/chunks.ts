@@ -26,7 +26,7 @@ import { schema, v } from "./schema.js";
 import { publicDocument } from "./documents.js";
 import {
   filterFieldsFromNumbers,
-  namedFiltersToNumberedFilter,
+  numberedFilterFromNamedFilters,
 } from "./filters.js";
 
 const KB = 1_024;
@@ -98,7 +98,7 @@ export async function insertChunks(
       await ctx.db.delete(c._id);
     })
   );
-  const numberedFilter = namedFiltersToNumberedFilter(
+  const numberedFilter = numberedFilterFromNamedFilters(
     document.filterValues,
     namespace!.filterNames
   );
@@ -237,7 +237,7 @@ export const replaceChunksPage = mutation({
       ["order"]
     );
     const namespaceId = document.namespaceId;
-    const namedFilters = namedFiltersToNumberedFilter(
+    const namedFilters = numberedFilterFromNamedFilters(
       document.filterValues,
       namespace!.filterNames
     );

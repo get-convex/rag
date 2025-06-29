@@ -1,12 +1,7 @@
 import { v, type Infer } from "convex/values";
-import type { Doc } from "./_generated/dataModel.js";
 import { action } from "./_generated/server.js";
 import { searchEmbeddings } from "./embeddings/index.js";
-import {
-  vNamedFilter,
-  type NamedFilter,
-  type NumberedFilter,
-} from "./filters.js";
+import { numberedFiltersFromNamedFilters, vNamedFilter } from "./filters.js";
 import { internal } from "./_generated/api.js";
 import {
   vDocument,
@@ -63,7 +58,7 @@ export const search = action({
     const results = await searchEmbeddings(ctx, {
       embedding,
       namespaceId: namespace._id,
-      filters: numberedFiltersFromNamedFilters(namespace, filters),
+      filters: numberedFiltersFromNamedFilters(filters, namespace.filterNames),
       limit,
     });
 
@@ -99,23 +94,4 @@ function publicSearchResult(
     score,
     documentId: r.documentId as unknown as DocumentId,
   };
-}
-
-// This makes a list of filters with values into a list with their indices.
-// This is used for search, not inserting embeddings.
-function numberedFiltersFromNamedFilters(
-  namespace: Doc<"namespaces">,
-  filters: NamedFilter[]
-): Array<NumberedFilter> {
-  const filterFields: Array<NumberedFilter> = [];
-  for (const filter of filters) {
-    const index = namespace.filterNames.indexOf(filter.name);
-    if (index === -1) {
-      throw new Error(
-        `Unknown filter name: ${filter.name} for namespace ${namespace._id} (${namespace.namespace} version ${namespace.version})`
-      );
-    }
-    filterFields.push({ [index]: filter.value });
-  }
-  return filterFields;
 }

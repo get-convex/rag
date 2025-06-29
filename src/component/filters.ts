@@ -50,7 +50,8 @@ export type NamedFilter<K extends string = string, V = Value> = {
 };
 
 /**
- * { 1: "foo", 2: "bar" } -> { filter1: ["namespace", "foo"], filter2: ["namespace", "bar"] }
+ * { 1: "foo", 2: "bar" }
+ *   -> { filter1: ["namespace", "foo"], filter2: ["namespace", "bar"] }
  */
 export function filterFieldsFromNumbers(
   namespace: GenericId<"namespaces">,
@@ -72,9 +73,10 @@ export function filterFieldsFromNumbers(
 }
 
 /**
- * [{ name: "Foo", value: "foo" }, { name: "Baz", value: "baz" }] -> { 0: "foo", 2: "baz" }
+ * [{ name: "Foo", value: "foo" }, { name: "Baz", value: "baz" }]
+ *   -> { 0: "foo", 2: "baz" }
  */
-export function namedFiltersToNumberedFilter(
+export function numberedFilterFromNamedFilters(
   namedFilters: Array<{ name: string; value: Value }>,
   filterNames: string[]
 ): NumberedFilter {
@@ -91,4 +93,27 @@ export function namedFiltersToNumberedFilter(
     numberedFilter[index] = namedFilter.value;
   }
   return numberedFilter;
+}
+
+/**
+ * [{ name: "Foo", value: "foo" }, { name: "Baz", value: "baz" }]
+ *   -> [{ 0: "foo" }, { 2: "baz" }]
+ */
+export function numberedFiltersFromNamedFilters(
+  filters: NamedFilter[],
+  filterNames: string[]
+): Array<NumberedFilter> {
+  const filterFields: Array<NumberedFilter> = [];
+  for (const filter of filters) {
+    const index = filterNames.indexOf(filter.name);
+    if (index === -1) {
+      throw new Error(
+        `Unknown filter name: ${filter.name} for namespace with names ${filterNames.join(
+          ", "
+        )}`
+      );
+    }
+    filterFields.push({ [index]: filter.value });
+  }
+  return filterFields;
 }
