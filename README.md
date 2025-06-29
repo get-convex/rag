@@ -73,7 +73,7 @@ type FilterTypes = {
 
 ## Usage Examples
 
-### Add Content
+### Add Entries
 
 Add content with text chunks.
 It will embed the chunks automatically if you don't provide them.
@@ -95,7 +95,6 @@ export const add = action({
       namespace: "global", // namespace can be any string
       key: url,
       chunks,
-      source: { kind: "url", url },
       filterValues: [
         { name: "category", value: category },
         { name: "contentType", value: contentType },
@@ -112,7 +111,7 @@ export const add = action({
 Note: The `textSplitter` here could be LangChain, Mastra, or otherwise.
 See below for more details.
 
-### File Upload with Storage
+### Add Entries from Files Storage
 
 Upload files directly to a Convex action, httpAction, or upload url. See the
 [docs](https://docs.convex.dev/file-storage/upload-files) for more details.
@@ -125,15 +124,9 @@ export const uploadFile = action({
     bytes: v.bytes(),
     category: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { filename, contentType, bytes, category }) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-
-    const { filename, contentType, bytes, category } = args;
-    // Store file in Convex storage
-    const storageId = await ctx.storage.store(
-      new Blob([bytes], { type: contentType })
-    );
 
     // Extract and chunk text content
     const textContent = new TextDecoder().decode(bytes);
@@ -144,7 +137,6 @@ export const uploadFile = action({
       key: filename,
       title: filename,
       chunks,
-      source: { kind: "_storage", storageId },
       filterValues: [
         { name: "category", value: category },
         { name: "contentType", value: contentType },
@@ -152,6 +144,12 @@ export const uploadFile = action({
       ],
     });
 
+    // Store file in Convex storage
+    const storageId = await ctx.storage.store(
+      new Blob([bytes], { type: contentType })
+    );
+    // You could then associate it with the key and entryId in your own table,
+    // for your own bookkeeping.
     return { entryId, url: await ctx.storage.getUrl(storageId) };
   },
 });
@@ -173,13 +171,13 @@ export const search = action({
   },
   handler: async (ctx, args) => {
 
-    const { results, text, sources } = await memory.search(ctx, {
+    const { results, text, entries } = await memory.search(ctx, {
       namespace: "global",
       query: args.query,
       limit: 10
     });
 
-    return { results, text, sources };
+    return { results, text, entries };
   },
 });
 ```
@@ -257,7 +255,7 @@ export const chunkerAction = memory.defineChunkerAction(
   async (ctx, args) => {
     // Custom chunking logic for large files
     // This can be an async iterator if you can't fit it all in memory at once.
-    const chunks = await processLargeFile(args.source);
+    const chunks = await processLargeFile(args.key);
     return { chunks };
   }
 );
