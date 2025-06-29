@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.1.1 alpha
+## 0.1.2
+
+- Snips console logs
+
+## 0.1.1
 
 - Vector search over chunked content, with namespaces, search filters, etc.
 - You can also gracefully transition between models, embedding lengths,
