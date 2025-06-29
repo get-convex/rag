@@ -140,8 +140,9 @@ export class Memory<
       );
     }
 
-    const { entryId, status, created, replacedVersion } =
-      await ctx.runMutation(this.component.entries.add, {
+    const { entryId, status, created, replacedVersion } = await ctx.runMutation(
+      this.component.entries.add,
+      {
         entry: {
           key: args.key,
           namespaceId,
@@ -151,7 +152,8 @@ export class Memory<
           contentHash: args.contentHash,
         },
         allChunks,
-      });
+      }
+    );
     if (status === "ready") {
       return {
         entryId: entryId as EntryId,
@@ -316,6 +318,10 @@ export class Memory<
        * ]`
        */
       chunkContext?: { before: number; after: number };
+      /**
+       * The minimum score to return a result.
+       */
+      vectorScoreThreshold?: number;
     }
   ): Promise<{
     results: SearchResult[];
@@ -327,6 +333,7 @@ export class Memory<
       filters = [],
       limit = DEFAULT_SEARCH_LIMIT,
       chunkContext = { before: 0, after: 0 },
+      vectorScoreThreshold,
     } = args;
     const { embedding } = await embed({
       model: this.options.textEmbeddingModel,
