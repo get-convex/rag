@@ -80,7 +80,6 @@ export const add = action({
     contentHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    console.log("adding entry", args);
     return memory.add(ctx, args);
   },
 });

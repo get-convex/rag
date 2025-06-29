@@ -134,7 +134,6 @@ export class Memory<
 
     let allChunks: CreateChunkArgs[] | undefined;
     if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
-      console.debug("All chunks at once", args.chunks.length);
       allChunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         args.chunks

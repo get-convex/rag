@@ -137,9 +137,6 @@ export const getOrCreate = mutation({
     for await (const existing of iter) {
       if (!version) version = existing.version + 1;
       if (existing.status.kind !== args.status.kind) {
-        console.debug(
-          `Namespace ${args.namespace} has status ${existing.status.kind}, skipping...`
-        );
         continue;
       }
       // see if it's compatible
@@ -149,11 +146,6 @@ export const getOrCreate = mutation({
           status: existing.status.kind,
         };
       }
-      console.debug(
-        `Namespace ${args.namespace} is incompatible, creating new version ${existing.version + 1}`,
-        existing,
-        args
-      );
       return {
         namespaceId: await ctx.db.insert("namespaces", { ...args, version }),
         status: args.status.kind,

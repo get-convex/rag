@@ -216,25 +216,15 @@ async function enqueueOnComplete(
 
 function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
   if (!existing.contentHash || !newEntry.contentHash) {
-    console.debug(`Entry ${newEntry.key} has no content hash, replacing...`);
     return false;
   }
   if (existing.contentHash !== newEntry.contentHash) {
-    console.debug(
-      `Entry ${newEntry.key} content hash is different, replacing...`
-    );
     return false;
   }
   if (existing.importance !== newEntry.importance) {
-    console.debug(
-      `Entry ${newEntry.key} importance is different, replacing...`
-    );
     return false;
   }
   if (newEntry.filterValues.length !== existing.filterValues.length) {
-    console.debug(
-      `Entry ${newEntry.key} has a different number of filter values, replacing...`
-    );
     return false;
   }
   if (
@@ -244,20 +234,6 @@ function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
       )
     )
   ) {
-    console.debug(
-      `Entry ${newEntry.key} filter values are different, replacing...`
-    );
-    return false;
-  }
-  // At this point we check for the contents to be the same.
-  if (existing.contentHash && newEntry.contentHash) {
-    if (existing.contentHash === newEntry.contentHash) {
-      // Return early, even if the storageIds are different.
-      return true;
-    }
-    console.debug(
-      `Entry ${newEntry.key} content hash is different, replacing...`
-    );
     return false;
   }
   return true;
@@ -302,7 +278,6 @@ export const get = query({
   handler: async (ctx, args) => {
     const entry = await ctx.db.get(args.entryId);
     if (!entry) {
-      console.warn(`Entry ${args.entryId} not found`);
       return null;
     }
     return publicEntry(entry);
@@ -342,7 +317,7 @@ export const findByContentHash = query({
       attempts++;
       if (attempts > 20) {
         console.debug(
-          `Giving up after checking ${attempts} entries for ${args.key}, returning null`
+          `Giving up after checking ${attempts} entries for ${args.key} content hash ${args.contentHash}, returning null`
         );
         return null;
       }
