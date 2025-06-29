@@ -267,6 +267,9 @@ export const list = query({
   },
 });
 
+/**
+ * Gets a document by its id.
+ */
 export const get = query({
   args: {
     documentId: v.id("documents"),
@@ -282,6 +285,9 @@ export const get = query({
   },
 });
 
+/**
+ * Finds a document by its key and content hash.
+ */
 export const findByContentHash = query({
   args: {
     ...vNamespaceLookupArgs,
@@ -331,6 +337,14 @@ export const findByContentHash = query({
   },
 });
 
+/**
+ * Promotes a document to ready, replacing any existing ready document by key.
+ * It will also call the associated onComplete function if it was pending.
+ * Note: this will not replace the chunks automatically, so you should first
+ * call `replaceChunksPage` on all its chunks.
+ * Edge case: if the document has already been replaced, it will return the
+ * same document (replacedVersion.documentId === args.documentId).
+ */
 export const promoteToReady = mutation({
   args: v.object({
     documentId: v.id("documents"),

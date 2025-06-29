@@ -78,22 +78,25 @@ export type DocumentFilterValues<
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Document<Filters extends Record<string, Value> = any> = {
-  // User-defined key. You can re-use a key to replace it with new contents.
+  /** User-defined key. You can re-use a key to replace it with new contents. */
   key: string;
-  // User-defined title
+  /** User-defined title. */
   title?: string | undefined;
-  // The document's id, uniquely identifying the key + contents + namespace etc.
+  /** The document's id, uniquely identifying the key + contents + namespace etc. */
   documentId: DocumentId;
-  // How important this document is. Defaults to 1.
-  // Think of it as multiplying by the vector search score.
+  /** How important this document is. Defaults to 1.
+   * Think of it as multiplying by the vector search score.
+   */
   importance: number;
-  // Filters that can be used to search for this document.
-  // Up to 4 filters are supported, of any type.
+  /** Filters that can be used to search for this document.
+   * Up to 4 filters are supported, of any type.
+   */
   filterValues: DocumentFilterValues<Filters>[];
-  // Hash of the document contents.
-  // If supplied, it will avoid upserting if the hash is the same.
+  /** Hash of the document contents.
+   * If supplied, it will avoid upserting if the hash is the same.
+   */
   contentHash?: string | undefined;
-  // Whether this document's contents have all been inserted and indexed.
+  /** Whether this document's contents have all been inserted and indexed. */
   status: Status;
 };
 
