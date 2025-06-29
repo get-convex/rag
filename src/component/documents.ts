@@ -266,6 +266,9 @@ function documentIsSame(
   return true;
 }
 
+/**
+ * Lists documents in order of their most recent change
+ */
 export const list = query({
   args: {
     namespaceId: v.id("namespaces"),
@@ -277,10 +280,10 @@ export const list = query({
   handler: async (ctx, args) => {
     const results = await stream(ctx.db, schema)
       .query("documents")
-      .withIndex("namespaceId_status_key_version", (q) =>
+      .withIndex("status_namespaceId", (q) =>
         q
-          .eq("namespaceId", args.namespaceId)
           .eq("status.kind", args.status ?? "ready")
+          .eq("namespaceId", args.namespaceId)
       )
       .order(args.order ?? "asc")
       .paginate(args.paginationOpts);
