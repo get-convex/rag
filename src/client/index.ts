@@ -36,7 +36,12 @@ import {
 } from "./types.js";
 import type { NamedFilter } from "../component/filters.js";
 
-export { vDocument, vSearchResult, contentHashFromBlob } from "../shared.js";
+export {
+  vDocument,
+  vSearchResult,
+  contentHashFromBlob,
+  type VDocument,
+} from "../shared.js";
 export { vDocumentId, vNamespaceId };
 
 export type {

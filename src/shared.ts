@@ -59,19 +59,25 @@ export const vDocument = v.object({
   status: vStatus,
 });
 
+export type VDocument<Filters extends Record<string, Value>> = VObject<
+  Document<Filters>,
+  typeof vDocument.fields,
+  "required",
+  typeof vDocument.fieldPaths
+>;
+
 // Type assertion to keep us honest
 const _1: Document = {} as Infer<typeof vDocument>;
 const _2: Infer<typeof vDocument> = {} as Document;
 
 export type DocumentFilterValues<
-  Filters extends { [name: string]: Value } = { [name: string]: Value },
+  Filters extends Record<string, Value> = Record<string, Value>,
 > = {
   [K in keyof Filters & string]: NamedFilter<K, Filters[K]>;
 }[keyof Filters & string];
 
-export type Document<
-  Filters extends { [name: string]: Value } = { [name: string]: Value },
-> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Document<Filters extends Record<string, Value> = any> = {
   // User-defined key. You can re-use a key to replace it with new contents.
   key: string;
   // User-defined title
