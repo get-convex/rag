@@ -93,7 +93,7 @@ export type Document<Filters extends Record<string, Value> = any> = {
    */
   filterValues: DocumentFilterValues<Filters>[];
   /** Hash of the document contents.
-   * If supplied, it will avoid upserting if the hash is the same.
+   * If supplied, it will avoid adding if the hash is the same.
    */
   contentHash?: string | undefined;
   /** Whether this document's contents have all been inserted and indexed. */

@@ -16,7 +16,7 @@ interface UISearchResult {
 }
 
 function Example() {
-  const [isUpserting, setIsUpserting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState({
     globalNamespace: false,
@@ -41,7 +41,7 @@ function Example() {
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
 
   // Actions and queries
-  const upsertFile = useAction(api.example.upsertFile);
+  const addFile = useAction(api.example.addFile);
   const search = useAction(api.example.search);
   const searchDocument = useAction(api.example.searchDocument);
   const searchCategory = useAction(api.example.searchCategory);
@@ -93,9 +93,9 @@ function Example() {
       return;
     }
 
-    setIsUpserting(true);
+    setIsAdding(true);
     try {
-      await upsertFile({
+      await addFile({
         bytes: await selectedFile.arrayBuffer(),
         filename: uploadForm.filename || selectedFile.name,
         mimeType: selectedFile.type || "text/plain",
@@ -121,9 +121,9 @@ function Example() {
         `Upload failed. ${error instanceof Error ? error.message : String(error)}`
       );
     } finally {
-      setIsUpserting(false);
+      setIsAdding(false);
     }
-  }, [upsertFile, uploadForm, selectedFile]);
+  }, [addFile, uploadForm, selectedFile]);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -330,13 +330,13 @@ function Example() {
                         handleFileSelect(file);
                       }
                     }}
-                    disabled={isUpserting}
+                    disabled={isAdding}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
                   <label
                     htmlFor="file-upload"
                     className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                      isUpserting
+                      isAdding
                         ? "border-gray-300 bg-gray-50 cursor-not-allowed"
                         : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
                     }`}
@@ -375,7 +375,7 @@ function Example() {
                   </div>
                   <button
                     onClick={handleFileClear}
-                    disabled={isUpserting}
+                    disabled={isAdding}
                     className="ml-3 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Remove file"
                   >
@@ -400,19 +400,17 @@ function Example() {
             <button
               onClick={handleFileUpload}
               disabled={
-                isUpserting || !selectedFile || !uploadForm.category.trim()
+                isAdding || !selectedFile || !uploadForm.category.trim()
               }
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isUpserting
-                ? "Creating or updating document..."
-                : "Add Document"}
+              {isAdding ? "Creating or updating document..." : "Add Document"}
             </button>
 
-            {isUpserting && (
+            {isAdding && (
               <div className="text-sm text-blue-600 flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                Uploading...
+                Adding...
               </div>
             )}
           </div>

@@ -22,7 +22,7 @@ import {
   vNamespaceLookupArgs,
 } from "./namespaces.js";
 
-export const upsertAsync = mutation({
+export const addAsync = mutation({
   args: {
     document: v.object({
       ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
@@ -64,7 +64,7 @@ export const upsertAsync = mutation({
       version,
       status,
     });
-    await enqueueUpsert(ctx, {
+    await enqueueAdd(ctx, {
       documentId,
       chunker: args.chunker,
     });
@@ -72,7 +72,7 @@ export const upsertAsync = mutation({
   },
 });
 
-async function enqueueUpsert(
+async function enqueueAdd(
   _ctx: MutationCtx,
   _args: {
     documentId: Id<"documents">;
@@ -82,7 +82,7 @@ async function enqueueUpsert(
   // TODO: enqueue into workpool
 }
 
-type UpsertDocumentArgs = Pick<
+type AddDocumentArgs = Pick<
   Doc<"documents">,
   "key" | "contentHash" | "importance" | "filterValues"
 >;
@@ -109,7 +109,7 @@ async function findExistingDocument(
   return existing;
 }
 
-export const upsert = mutation({
+export const add = mutation({
   args: {
     document: v.object({
       ...omit(schema.tables.documents.validator.fields, ["version", "status"]),
@@ -187,7 +187,7 @@ async function enqueueOnComplete(
 
 function documentIsSame(
   existing: Doc<"documents">,
-  newDocument: UpsertDocumentArgs
+  newDocument: AddDocumentArgs
 ) {
   if (!existing.contentHash || !newDocument.contentHash) {
     console.debug(

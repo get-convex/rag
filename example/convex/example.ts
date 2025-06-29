@@ -42,7 +42,7 @@ const documentSearch = new DocumentSearch<DocumentFilterValues>(
   }
 );
 
-export const upsertFile = action({
+export const addFile = action({
   args: {
     globalNamespace: v.boolean(),
     filename: v.string(),
@@ -68,8 +68,9 @@ export const upsertFile = action({
       chunkSize: 1000,
     });
     const chunks = await textSplitter.splitText(text);
-    const { documentId, created, replacedVersion } =
-      await documentSearch.upsertDocument(ctx, {
+    const { documentId, created, replacedVersion } = await documentSearch.add(
+      ctx,
+      {
         namespace: globalNamespace ? "global" : userId,
         chunks,
         key: filename,
@@ -79,7 +80,8 @@ export const upsertFile = action({
           { name: "documentMimeType", value: mimeType },
           { name: "category", value: category },
         ],
-      });
+      }
+    );
     if (created) {
       await ctx.runMutation(internal.example.recordUploadMetadata, {
         global: args.globalNamespace,

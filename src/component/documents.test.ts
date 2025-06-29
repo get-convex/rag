@@ -34,13 +34,13 @@ describe("documents", () => {
     };
   }
 
-  test("upsert creates a new document when none exists", async () => {
+  test("add creates a new document when none exists", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
     const document = createTestDocument(namespaceId);
 
-    const result = await t.mutation(api.documents.upsert, {
+    const result = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
@@ -61,14 +61,14 @@ describe("documents", () => {
     expect(createdDoc!.status.kind).toBe("ready");
   });
 
-  test("upsert returns existing document when upserting identical content", async () => {
+  test("add returns existing document when adding identical content", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
     const document = createTestDocument(namespaceId);
 
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
+    // First add
+    const firstResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
@@ -77,8 +77,8 @@ describe("documents", () => {
     expect(firstResult.status).toBe("ready");
     expect(firstResult.replacedVersion).toBeNull();
 
-    // Second upsert with identical content
-    const secondResult = await t.mutation(api.documents.upsert, {
+    // Second add with identical content
+    const secondResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
@@ -105,14 +105,14 @@ describe("documents", () => {
     expect(allDocs[0]._id).toBe(firstResult.documentId);
   });
 
-  test("upsert creates new version when content hash changes", async () => {
+  test("add creates new version when content hash changes", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
     const document = createTestDocument(namespaceId);
 
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
+    // First add
+    const firstResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
@@ -120,13 +120,13 @@ describe("documents", () => {
     expect(firstResult.created).toBe(true);
     expect(firstResult.replacedVersion).toBeNull();
 
-    // Second upsert with different content hash
+    // Second add with different content hash
     const modifiedDocument = {
       ...document,
       contentHash: "hash456", // Different hash
     };
 
-    const secondResult = await t.mutation(api.documents.upsert, {
+    const secondResult = await t.mutation(api.documents.add, {
       document: modifiedDocument,
       allChunks: [],
     });
@@ -156,25 +156,25 @@ describe("documents", () => {
     expect(versions).toEqual([0, 1]);
   });
 
-  test("upsert creates new version when importance changes", async () => {
+  test("add creates new version when importance changes", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
     const document = createTestDocument(namespaceId);
 
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
+    // First add
+    const firstResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
 
-    // Second upsert with different importance
+    // Second add with different importance
     const modifiedDocument = {
       ...document,
       importance: 0.8, // Changed from 0.5
     };
 
-    const secondResult = await t.mutation(api.documents.upsert, {
+    const secondResult = await t.mutation(api.documents.add, {
       document: modifiedDocument,
       allChunks: [],
     });
@@ -192,25 +192,25 @@ describe("documents", () => {
     expect(newDoc!.importance).toBe(0.8);
   });
 
-  test("upsert creates new version when filter values change", async () => {
+  test("add creates new version when filter values change", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t, ["category"]); // Add filter name
 
     const document = createTestDocument(namespaceId);
 
-    // First upsert
-    const firstResult = await t.mutation(api.documents.upsert, {
+    // First add
+    const firstResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
 
-    // Second upsert with different filter values
+    // Second add with different filter values
     const modifiedDocument = {
       ...document,
       filterValues: [{ name: "category", value: "test" }],
     };
 
-    const secondResult = await t.mutation(api.documents.upsert, {
+    const secondResult = await t.mutation(api.documents.add, {
       document: modifiedDocument,
       allChunks: [],
     });
@@ -230,13 +230,13 @@ describe("documents", () => {
     expect(newDoc!.filterValues[0].value).toBe("test");
   });
 
-  test("upsert without allChunks creates pending document", async () => {
+  test("add without allChunks creates pending document", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
     const document = createTestDocument(namespaceId);
 
-    const result = await t.mutation(api.documents.upsert, {
+    const result = await t.mutation(api.documents.add, {
       document,
       // No allChunks provided
     });
@@ -260,12 +260,12 @@ describe("documents", () => {
     const document1 = createTestDocument(namespaceId, "doc1");
     const document2 = createTestDocument(namespaceId, "doc2");
 
-    const result1 = await t.mutation(api.documents.upsert, {
+    const result1 = await t.mutation(api.documents.add, {
       document: document1,
       allChunks: [],
     });
 
-    const result2 = await t.mutation(api.documents.upsert, {
+    const result2 = await t.mutation(api.documents.add, {
       document: document2,
       allChunks: [],
     });
@@ -295,8 +295,8 @@ describe("documents", () => {
 
     const document = createTestDocument(namespaceId);
 
-    // First upsert - create as ready
-    const firstResult = await t.mutation(api.documents.upsert, {
+    // First add - create as ready
+    const firstResult = await t.mutation(api.documents.add, {
       document,
       allChunks: [],
     });
@@ -305,13 +305,13 @@ describe("documents", () => {
     expect(firstResult.status).toBe("ready");
     expect(firstResult.replacedVersion).toBeNull();
 
-    // Second upsert - create as pending (no allChunks)
+    // Second add - create as pending (no allChunks)
     const modifiedDocument = {
       ...document,
       contentHash: "hash456",
     };
 
-    const pendingResult = await t.mutation(api.documents.upsert, {
+    const pendingResult = await t.mutation(api.documents.add, {
       document: modifiedDocument,
       // No allChunks - creates pending document
     });

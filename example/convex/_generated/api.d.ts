@@ -92,6 +92,61 @@ export declare const components: {
       >;
     };
     documents: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          allChunks?: Array<{
+            content: { metadata?: Record<string, any>; text: string };
+            embedding: Array<number>;
+            searchableText?: string;
+          }>;
+          document: {
+            contentHash?: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            namespaceId: string;
+            title?: string;
+          };
+          onComplete?: string;
+        },
+        {
+          created: boolean;
+          documentId: string;
+          replacedVersion: {
+            contentHash?: string;
+            documentId: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            status: "pending" | "ready" | "replaced";
+            title?: string;
+          } | null;
+          status: "pending" | "ready" | "replaced";
+        }
+      >;
+      addAsync: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          chunker: string;
+          document: {
+            contentHash?: string;
+            filterValues: Array<{ name: string; value: any }>;
+            importance: number;
+            key: string;
+            namespaceId: string;
+            title?: string;
+          };
+          onComplete?: string;
+        },
+        {
+          created: boolean;
+          documentId: string;
+          status: "pending" | "ready" | "replaced";
+        }
+      >;
       deleteDocumentAsync: FunctionReference<
         "mutation",
         "internal",
@@ -179,61 +234,6 @@ export declare const components: {
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
-        }
-      >;
-      upsert: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          allChunks?: Array<{
-            content: { metadata?: Record<string, any>; text: string };
-            embedding: Array<number>;
-            searchableText?: string;
-          }>;
-          document: {
-            contentHash?: string;
-            filterValues: Array<{ name: string; value: any }>;
-            importance: number;
-            key: string;
-            namespaceId: string;
-            title?: string;
-          };
-          onComplete?: string;
-        },
-        {
-          created: boolean;
-          documentId: string;
-          replacedVersion: {
-            contentHash?: string;
-            documentId: string;
-            filterValues: Array<{ name: string; value: any }>;
-            importance: number;
-            key: string;
-            status: "pending" | "ready" | "replaced";
-            title?: string;
-          } | null;
-          status: "pending" | "ready" | "replaced";
-        }
-      >;
-      upsertAsync: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          chunker: string;
-          document: {
-            contentHash?: string;
-            filterValues: Array<{ name: string; value: any }>;
-            importance: number;
-            key: string;
-            namespaceId: string;
-            title?: string;
-          };
-          onComplete?: string;
-        },
-        {
-          created: boolean;
-          documentId: string;
-          status: "pending" | "ready" | "replaced";
         }
       >;
     };

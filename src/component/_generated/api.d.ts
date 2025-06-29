@@ -92,6 +92,61 @@ export type Mounts = {
     >;
   };
   documents: {
+    add: FunctionReference<
+      "mutation",
+      "public",
+      {
+        allChunks?: Array<{
+          content: { metadata?: Record<string, any>; text: string };
+          embedding: Array<number>;
+          searchableText?: string;
+        }>;
+        document: {
+          contentHash?: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          namespaceId: string;
+          title?: string;
+        };
+        onComplete?: string;
+      },
+      {
+        created: boolean;
+        documentId: string;
+        replacedVersion: {
+          contentHash?: string;
+          documentId: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          status: "pending" | "ready" | "replaced";
+          title?: string;
+        } | null;
+        status: "pending" | "ready" | "replaced";
+      }
+    >;
+    addAsync: FunctionReference<
+      "mutation",
+      "public",
+      {
+        chunker: string;
+        document: {
+          contentHash?: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key: string;
+          namespaceId: string;
+          title?: string;
+        };
+        onComplete?: string;
+      },
+      {
+        created: boolean;
+        documentId: string;
+        status: "pending" | "ready" | "replaced";
+      }
+    >;
     deleteDocumentAsync: FunctionReference<
       "mutation",
       "public",
@@ -179,61 +234,6 @@ export type Mounts = {
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null;
-      }
-    >;
-    upsert: FunctionReference<
-      "mutation",
-      "public",
-      {
-        allChunks?: Array<{
-          content: { metadata?: Record<string, any>; text: string };
-          embedding: Array<number>;
-          searchableText?: string;
-        }>;
-        document: {
-          contentHash?: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key: string;
-          namespaceId: string;
-          title?: string;
-        };
-        onComplete?: string;
-      },
-      {
-        created: boolean;
-        documentId: string;
-        replacedVersion: {
-          contentHash?: string;
-          documentId: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key: string;
-          status: "pending" | "ready" | "replaced";
-          title?: string;
-        } | null;
-        status: "pending" | "ready" | "replaced";
-      }
-    >;
-    upsertAsync: FunctionReference<
-      "mutation",
-      "public",
-      {
-        chunker: string;
-        document: {
-          contentHash?: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key: string;
-          namespaceId: string;
-          title?: string;
-        };
-        onComplete?: string;
-      },
-      {
-        created: boolean;
-        documentId: string;
-        status: "pending" | "ready" | "replaced";
       }
     >;
   };

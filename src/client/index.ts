@@ -101,7 +101,7 @@ export class DocumentSearch<
     }
   ) {}
 
-  async upsertDocument(
+  async add(
     ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
@@ -130,7 +130,7 @@ export class DocumentSearch<
       namespaceId = namespace.namespaceId;
     }
 
-    validateUpsertFilterValues(args.filterValues, this.options.filterNames);
+    validateAddFilterValues(args.filterValues, this.options.filterNames);
 
     let allChunks: CreateChunkArgs[] | undefined;
     if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
@@ -142,7 +142,7 @@ export class DocumentSearch<
     }
 
     const { documentId, status, created, replacedVersion } =
-      await ctx.runMutation(this.component.documents.upsert, {
+      await ctx.runMutation(this.component.documents.add, {
         document: {
           key: args.key,
           namespaceId,
@@ -213,7 +213,7 @@ export class DocumentSearch<
     };
   }
 
-  async upsertDocumentAsync(
+  async addAsync(
     ctx: ActionCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
@@ -225,7 +225,7 @@ export class DocumentSearch<
        * export const myChunkerAction = documentSearch.defineChunkerAction();
        *
        * // in your mutation
-       *   const documentId = await documentSearch.upsertDocumentAsync(ctx, {
+       *   const documentId = await documentSearch.addAsync(ctx, {
        *     key: "myfile.txt",
        *     namespace: "my-namespace",
        *     chunker: internal.foo.myChunkerAction,
@@ -252,7 +252,7 @@ export class DocumentSearch<
       namespaceId = namespace.namespaceId;
     }
 
-    validateUpsertFilterValues(args.filterValues, this.options.filterNames);
+    validateAddFilterValues(args.filterValues, this.options.filterNames);
 
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)
@@ -260,7 +260,7 @@ export class DocumentSearch<
     const chunker = await createFunctionHandle(args.chunkerAction);
 
     const { documentId, status } = await ctx.runMutation(
-      this.component.documents.upsertAsync,
+      this.component.documents.addAsync,
       {
         document: {
           key: args.key,
@@ -566,7 +566,7 @@ async function* batchIterator<T>(
   }
 }
 
-function validateUpsertFilterValues(
+function validateAddFilterValues(
   filterValues: NamedFilter[] | undefined,
   filterNames: string[] | undefined
 ) {
@@ -575,7 +575,7 @@ function validateUpsertFilterValues(
   }
   if (!filterNames) {
     throw new Error(
-      "You must provide filter names to DocumentSearch to upsert documents with filters."
+      "You must provide filter names to DocumentSearch to add documents with filters."
     );
   }
   const seen = new Set<string>();

@@ -46,7 +46,7 @@ export const testMutation = mutation({
   },
 });
 
-export const upsertDocument = action({
+export const add = action({
   args: {
     key: v.string(),
     chunks: v.array(
@@ -80,8 +80,8 @@ export const upsertDocument = action({
     contentHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    console.log("upserting document", args);
-    return documentSearch.upsertDocument(ctx, args);
+    console.log("adding document", args);
+    return documentSearch.add(ctx, args);
   },
 });
 
@@ -89,7 +89,7 @@ const testApi: ApiFromModules<{
   fns: {
     testQuery: typeof testQuery;
     testMutation: typeof testMutation;
-    upsertDocument: typeof upsertDocument;
+    add: typeof add;
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["index.test"] as any;
@@ -101,9 +101,9 @@ function dummyEmbeddings(text: string) {
 }
 
 describe("DocumentSearch thick client", () => {
-  test("should upsert a document and be able to list it", async () => {
+  test("should add a document and be able to list it", async () => {
     const t = initConvexTest(schema);
-    const { documentId, status } = await t.action(testApi.upsertDocument, {
+    const { documentId, status } = await t.action(testApi.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
