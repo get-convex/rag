@@ -27,8 +27,8 @@
     "all": "run-p -r 'example' 'build:watch' 'test:watch'",
     "setup": "npm i && npm run build && cd example && npm i && npx convex dev --once",
     "build:watch": "cd src && npx chokidar -d 1000 '../tsconfig.json' '*.ts' 'react/**/*.ts' 'component/**/*.ts' 'client/**/*.ts' -c 'npm run build' --initial",
-    "build": "tsc --project ./esm.json && npm run copy:dts && echo '{\\n  \"type\": \"module\"\\n}' > dist/esm/package.json",
-    "copy:dts": "rsync -a --include='*/' --include='*.d.ts' --exclude='*' src/ dist/esm/ || cpy 'src/**/*.d.ts' 'dist/esm/' --parents",
+    "build": "tsc --project ./esm.json && npm run copy:dts && echo '{\\n  \"type\": \"module\"\\n}' > dist/package.json",
+    "copy:dts": "rsync -a --include='*/' --include='*.d.ts' --exclude='*' src/ dist/ || cpy 'src/**/*.d.ts' 'dist/' --parents",
     "typecheck": "tsc --noEmit",
     "alpha": "rm -rf dist && npm run build && run-p test lint typecheck attw && npm version prerelease --preid alpha && npm publish --tag alpha && git push --tags",
     "release": "rm -rf dist && npm run build && run-p test lint typecheck attw && npm version patch && npm publish && git push --tags",
@@ -48,18 +48,18 @@
     "./package.json": "./package.json",
     ".": {
       "@convex-dev/component-source": "./src/client/index.ts",
-      "types": "./dist/esm/client/index.d.ts",
-      "default": "./dist/esm/client/index.js"
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
     },
     "./react": {
       "@convex-dev/component-source": "./src/react/index.ts",
-      "types": "./dist/esm/react/index.d.ts",
-      "default": "./dist/esm/react/index.js"
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
     },
     "./convex.config": {
       "@convex-dev/component-source": "./src/component/convex.config.ts",
-      "types": "./dist/esm/component/convex.config.d.ts",
-      "default": "./dist/esm/component/convex.config.js"
+      "types": "./dist/component/convex.config.d.ts",
+      "default": "./dist/component/convex.config.js"
     }
   },
   "peerDependencies": {
@@ -89,7 +89,7 @@
     "typescript-eslint": "8.4.0",
     "vitest": "3.2.4"
   },
-  "main": "./dist/esm/client/index.js",
-  "types": "./dist/esm/client/index.d.ts",
-  "module": "./dist/esm/client/index.js"
+  "main": "./dist/client/index.js",
+  "types": "./dist/client/index.d.ts",
+  "module": "./dist/client/index.js"
 }

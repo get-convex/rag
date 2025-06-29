@@ -4,7 +4,6 @@
   "exclude": ["src/**/*.test.*", "../src/package.json"],
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "outDir": "./dist/esm"
+    "moduleResolution": "Bundler"
   }
 }
