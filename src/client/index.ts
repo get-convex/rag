@@ -280,9 +280,28 @@ export class Memory<
 
   async search(
     ctx: RunActionCtx,
-    args: {
-      /** The search query. */
-      query: string;
+    args: (
+      | {
+          /**
+           * The query to search for. Optional if embedding is provided.
+           */
+          query: string;
+          /**
+           * You may specify an embedding or query, but not both for now.
+           */
+          embedding?: undefined;
+        }
+      | {
+          /**
+           * The embedding to search for.
+           */
+          embedding: Array<number>;
+          /**
+           * You may specify an embedding or query, but not both for now.
+           */
+          query?: undefined;
+        }
+    ) & {
       /** The namespace to search in. e.g. a userId if entries are per-user. */
       namespace: string;
       /**
@@ -335,10 +354,14 @@ export class Memory<
       chunkContext = { before: 0, after: 0 },
       vectorScoreThreshold,
     } = args;
-    const { embedding } = await embed({
-      model: this.options.textEmbeddingModel,
-      value: args.query,
-    });
+    let embedding = args.embedding;
+    if (!embedding) {
+      const embedResult = await embed({
+        model: this.options.textEmbeddingModel,
+        value: args.query,
+      });
+      embedding = embedResult.embedding;
+    }
     const { results, entries } = await ctx.runAction(
       this.component.search.search,
       {
