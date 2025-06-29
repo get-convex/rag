@@ -364,6 +364,11 @@ async function promoteToReadyHandler(
   if (document.status.kind === "ready") {
     console.debug(`Document ${args.documentId} is already ready, skipping...`);
     return { replacedVersion: null };
+  } else if (document.status.kind === "replaced") {
+    console.debug(
+      `Document ${args.documentId} is already replaced, returning the current version...`
+    );
+    return { replacedVersion: publicDocument(document) };
   }
   const previousDocument = await ctx.db
     .query("documents")
