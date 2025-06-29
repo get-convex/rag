@@ -102,7 +102,7 @@ export class Memory<
   ) {}
 
   async add(
-    ctx: ActionCtx,
+    ctx: RunMutationCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
@@ -215,7 +215,7 @@ export class Memory<
   }
 
   async addAsync(
-    ctx: ActionCtx,
+    ctx: RunMutationCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
       key: string;
       /**

@@ -32,21 +32,18 @@ const memory = new Memory(components.memory, {
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
 });
 
-export const testQuery = query({
-  args: { name: v.string() },
+export const findExistingEntryByContentHash = query({
+  args: { namespace: v.string(), key: v.string(), contentHash: v.string() },
   handler: async (ctx, args) => {
-    // return await memory.count(ctx, args.name);
+    return memory.findExistingEntryByContentHash(ctx, {
+      namespace: args.namespace,
+      key: args.key,
+      contentHash: args.contentHash,
+    });
   },
 });
 
-export const testMutation = mutation({
-  args: { name: v.string(), count: v.number() },
-  handler: async (ctx, args) => {
-    // return await memory.add(ctx, args.name, args.count);
-  },
-});
-
-export const add = action({
+export const add = mutation({
   args: {
     key: v.string(),
     chunks: v.array(
@@ -114,8 +111,7 @@ export const search = action({
 
 const testApi: ApiFromModules<{
   fns: {
-    testQuery: typeof testQuery;
-    testMutation: typeof testMutation;
+    findExistingEntryByContentHash: typeof findExistingEntryByContentHash;
     add: typeof add;
     search: typeof search;
   };
@@ -131,7 +127,7 @@ function dummyEmbeddings(text: string) {
 describe("Memory thick client", () => {
   test("should add a entry and be able to list it", async () => {
     const t = initConvexTest(schema);
-    const { entryId, status } = await t.action(testApi.add, {
+    const { entryId, status } = await t.mutation(testApi.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
@@ -154,11 +150,17 @@ describe("Memory thick client", () => {
       expect(page[2].order).toBe(2);
     });
   });
+
   test("should work from a test function", async () => {
     const t = initConvexTest(schema);
-    const result = await t.mutation(testApi.testMutation, {
-      name: "beans",
-      count: 1,
+    await t.mutation(testApi.add, {
+      key: "test",
+      chunks: [
+        { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
+        { text: "B", metadata: {}, embedding: dummyEmbeddings("B") },
+        { text: "C", metadata: {}, embedding: dummyEmbeddings("C") },
+      ],
+      namespace: "test",
     });
     // expect(result).toBe(1);
   });
