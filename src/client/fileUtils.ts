@@ -137,11 +137,9 @@ export function guessMimeTypeFromContents(buf: ArrayBuffer | string): string {
  * @returns sha256 hash of the contents
  */
 
-export async function contentHashFromBlob(blob: Blob) {
+export async function contentHashFromArrayBuffer(buffer: ArrayBuffer) {
   return Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())
-    )
+    new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))
   )
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

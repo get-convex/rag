@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import {
-  contentHashFromBlob,
+  contentHashFromArrayBuffer,
   Entry,
   EntryId,
   guessMimeTypeFromContents,
@@ -73,7 +73,7 @@ export const addFile = action({
         { name: "category", value: category ?? null },
       ],
       metadata: { storageId, uploadedBy: userId }, // Any other metadata here that isn't used for filtering.
-      contentHash: await contentHashFromBlob(blob), // To avoid re-inserting if the file contents haven't changed.
+      contentHash: await contentHashFromArrayBuffer(bytes), // To avoid re-inserting if the file contents haven't changed.
       onComplete: internal.example.recordUploadMetadata, // Called when the entry is ready (transactionally safe with listing).
     });
     if (!created) {
@@ -176,7 +176,7 @@ export const addFileAsync = action({
 
     const mimeType = args.mimeType || guessMimeType(filename, bytes);
     const blob = new Blob([bytes], { type: mimeType });
-    const contentHash = await contentHashFromBlob(blob);
+    const contentHash = await contentHashFromArrayBuffer(bytes);
     const namespace = globalNamespace ? "global" : userId;
     const existing = await memory.findExistingEntryByContentHash(ctx, {
       contentHash,

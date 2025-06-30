@@ -54,7 +54,7 @@ export {
 } from "../shared.js";
 export { vEntryId, vNamespaceId };
 export {
-  contentHashFromBlob,
+  contentHashFromArrayBuffer,
   guessMimeTypeFromExtension,
   guessMimeTypeFromContents,
 } from "./fileUtils.js";
