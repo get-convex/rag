@@ -152,17 +152,17 @@ export type OnCompleteNamespace = FunctionReference<
   string
 >;
 
+export const vOnCompleteArgs = v.object({
+  namespace: vNamespace,
+  entry: vEntry,
+  previousEntry: v.optional(vEntry),
+  success: v.boolean(),
+});
+
 export type OnComplete = FunctionReference<
   "mutation",
   "internal",
-  {
-    namespace: string;
-    namespaceId: NamespaceId;
-    key?: string | undefined;
-    entryId: EntryId;
-    previousEntryId: EntryId | null;
-    success: boolean;
-  },
+  Infer<typeof vOnCompleteArgs>,
   null,
   string
 >;

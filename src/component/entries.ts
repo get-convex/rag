@@ -1,12 +1,7 @@
 import { assert, omit } from "convex-helpers";
 import { createFunctionHandle, paginationOptsValidator } from "convex/server";
-import { v } from "convex/values";
-import type {
-  ChunkerAction,
-  EntryFilterValues,
-  EntryId,
-  NamespaceId,
-} from "../shared.js";
+import { v, type Value } from "convex/values";
+import type { ChunkerAction, EntryFilterValues, EntryId } from "../shared.js";
 import {
   statuses,
   vActiveStatus,
@@ -250,9 +245,7 @@ export const add = mutation({
     const entryId = await ctx.db.insert("entries", {
       ...args.entry,
       version,
-      status: args.allChunks
-        ? { kind: "ready" }
-        : { kind: "pending", onComplete: args.onComplete },
+      status: { kind: "pending", onComplete: args.onComplete },
     });
     if (args.allChunks) {
       await insertChunks(ctx, {
@@ -288,11 +281,9 @@ async function runOnComplete(
   success: boolean
 ) {
   await ctx.runMutation(onComplete as unknown as OnComplete, {
-    namespace: namespace.namespace,
-    namespaceId: namespace._id as unknown as NamespaceId,
-    key: entry.key,
-    entryId: entry._id as unknown as EntryId,
-    previousEntryId: previousEntry?._id as unknown as EntryId | null,
+    namespace: publicNamespace(namespace),
+    entry: publicEntry(entry),
+    previousEntry: previousEntry ? publicEntry(previousEntry) : undefined,
     success,
   });
 }

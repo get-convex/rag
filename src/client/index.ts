@@ -41,7 +41,12 @@ import {
 } from "../shared.js";
 import type { NamedFilter } from "../component/filters.js";
 
-export { vEntry, vSearchResult, type VEntry } from "../shared.js";
+export {
+  type VEntry,
+  vEntry,
+  vSearchResult,
+  vOnCompleteArgs,
+} from "../shared.js";
 export { vEntryId, vNamespaceId };
 export {
   contentHashFromBlob,
@@ -117,6 +122,7 @@ export class Memory<
       filterValues?: EntryFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
+      onComplete?: OnComplete;
     }
   ): Promise<{
     entryId: EntryId;
@@ -145,6 +151,9 @@ export class Memory<
       );
     }
 
+    const onComplete =
+      args.onComplete && (await createFunctionHandle(args.onComplete));
+
     const { entryId, status, created, replacedVersion } = await ctx.runMutation(
       this.component.entries.add,
       {
@@ -156,6 +165,7 @@ export class Memory<
           importance: args.importance ?? 1,
           contentHash: args.contentHash,
         },
+        onComplete,
         allChunks,
       }
     );
