@@ -353,9 +353,7 @@ export const list = query({
  * Gets a entry by its id.
  */
 export const get = query({
-  args: {
-    entryId: v.id("entries"),
-  },
+  args: { entryId: v.id("entries") },
   returns: v.union(vEntry, v.null()),
   handler: async (ctx, args) => {
     const entry = await ctx.db.get(args.entryId);

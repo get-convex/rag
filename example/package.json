@@ -7,7 +7,6 @@
     "dev": "run-p -r dev:frontend dev:backend",
     "dev:backend": "convex dev --live-component-sources --typecheck-components",
     "dev:frontend": "vite",
-    "predev": "npx convex dev --until-success",
     "dashboard": "convex dashboard",
     "logs": "convex logs",
     "lint": "tsc -p convex && eslint convex"
