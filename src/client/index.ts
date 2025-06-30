@@ -11,9 +11,10 @@ import {
   type PaginationResult,
   type RegisteredAction,
 } from "convex/server";
-import { v, type Value, type VString } from "convex/values";
+import { type Value } from "convex/values";
 import {
   CHUNK_BATCH_SIZE,
+  vChunkerArgs,
   vEntryId,
   vNamespaceId,
   type Chunk,
@@ -171,16 +172,16 @@ export class Memory<
     let startOrder = 0;
     let isPending = false;
     for await (const batch of batchIterator(args.chunks, CHUNK_BATCH_SIZE)) {
-      const createChunkArgs = await createChunkArgsBatch(
+      const chunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         batch
       );
       const { status } = await ctx.runMutation(this.component.chunks.insert, {
         entryId,
         startOrder,
-        chunks: createChunkArgs,
+        chunks,
       });
-      startOrder += createChunkArgs.length;
+      startOrder += chunks.length;
       if (status === "pending") {
         isPending = true;
       }
@@ -539,12 +540,7 @@ export class Memory<
     // TODO: make this optional if you want to use the default chunker
     fn: (
       ctx: ActionCtx,
-      args: {
-        namespace: string;
-        namespaceId: NamespaceId;
-        key: string; // entry key
-        entryId: EntryId;
-      }
+      args: { namespace: Namespace; entry: Entry }
     ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
   ): RegisteredAction<
     "internal",
@@ -552,29 +548,12 @@ export class Memory<
     FunctionReturnType<ChunkerAction>
   > {
     return internalActionGeneric({
-      args: v.object({
-        namespace: v.string(),
-        namespaceId: vNamespaceId,
-        modelId: v.string(),
-        dimension: v.number(),
-        key: v.string(),
-        entryId: vEntryId,
-        insertChunksHandle: v.string() as VString<
-          FunctionHandle<
-            "mutation",
-            FunctionArgs<MemoryComponent["chunks"]["insert"]>,
-            null
-          >
-        >,
-        importance: v.number(),
-      }),
+      args: vChunkerArgs,
       handler: async (ctx, args) => {
-        const { namespace, namespaceId, key, entryId } = args;
+        const { namespace, entry } = args;
         const chunksPromise = fn(ctx, {
           namespace,
-          namespaceId,
-          key,
-          entryId,
+          entry,
         });
         let chunkIterator: AsyncIterable<InputChunk>;
         if (chunksPromise instanceof Promise) {
@@ -596,11 +575,18 @@ export class Memory<
             this.options.textEmbeddingModel,
             batch
           );
-          await ctx.runMutation(args.insertChunksHandle, {
-            entryId,
-            startOrder: batchOrder,
-            chunks: createChunkArgs,
-          });
+          await ctx.runMutation(
+            args.insertChunks as FunctionHandle<
+              "mutation",
+              FunctionArgs<MemoryComponent["chunks"]["insert"]>,
+              null
+            >,
+            {
+              entryId: entry.entryId,
+              startOrder: batchOrder,
+              chunks: createChunkArgs,
+            }
+          );
           batchOrder += createChunkArgs.length;
         }
       },

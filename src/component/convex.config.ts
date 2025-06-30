@@ -1,3 +1,7 @@
 import { defineComponent } from "convex/server";
+import workpool from "@convex-dev/workpool/convex.config";
 
-export default defineComponent("memory");
+const component = defineComponent("memory");
+component.use(workpool);
+
+export default component;

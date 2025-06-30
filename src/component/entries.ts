@@ -1,7 +1,12 @@
 import { assert, omit } from "convex-helpers";
-import { paginationOptsValidator } from "convex/server";
+import { createFunctionHandle, paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { EntryId, NamespaceId } from "../shared.js";
+import type {
+  ChunkerAction,
+  EntryFilterValues,
+  EntryId,
+  NamespaceId,
+} from "../shared.js";
 import {
   statuses,
   vCreateChunkArgs,
@@ -10,18 +15,41 @@ import {
   vStatus,
   type Entry,
 } from "../shared.js";
-import { api } from "./_generated/api.js";
+import { api, internal } from "./_generated/api.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
-import { mutation, query, type MutationCtx } from "./_generated/server.js";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server.js";
 import { deleteChunksPage, insertChunks } from "./chunks.js";
 import schema, { type StatusWithOnComplete } from "./schema.js";
 import { mergedStream } from "convex-helpers/server/stream";
 import { stream } from "convex-helpers/server/stream";
 import {
   getCompatibleNamespaceHandler,
+  publicNamespace,
   vNamespaceLookupArgs,
 } from "./namespaces.js";
 import type { OnComplete } from "../shared.js";
+import {
+  vResultValidator,
+  vWorkIdValidator,
+  Workpool,
+} from "@convex-dev/workpool";
+import { components } from "./_generated/api.js";
+
+const workpool = new Workpool(components.workpool, {
+  retryActionsByDefault: true,
+  defaultRetryBehavior: {
+    maxAttempts: 3,
+    initialBackoffMs: 1000,
+    base: 2,
+  },
+  maxParallelism: 10,
+});
 
 export const addAsync = mutation({
   args: {
@@ -47,7 +75,7 @@ export const addAsync = mutation({
       entryIsSame(existing, args.entry)
     ) {
       if (args.onComplete) {
-        await enqueueOnComplete(
+        await runOnComplete(
           ctx,
           args.onComplete,
           namespace,
@@ -73,23 +101,76 @@ export const addAsync = mutation({
       version,
       status,
     });
-    await enqueueAdd(ctx, {
-      entryId,
-      chunker: args.chunker,
-    });
+    const chunkerAction = args.chunker as unknown as ChunkerAction;
+    // TODO: Cancel any existing chunker actions for this entry?
+    await workpool.enqueueAction(
+      ctx,
+      chunkerAction,
+      {
+        namespace: publicNamespace(namespace),
+        entry: publicEntry({
+          ...args.entry,
+          _id: entryId,
+          status: status,
+        }),
+        insertChunks: await createFunctionHandle(api.chunks.insert),
+      },
+      {
+        name: workpoolName(namespace.namespace, args.entry.key, entryId),
+        onComplete: internal.entries.addAsyncOnComplete,
+        context: entryId,
+      }
+    );
     return { entryId, status: status.kind, created: true };
   },
 });
 
-async function enqueueAdd(
-  _ctx: MutationCtx,
-  _args: {
-    entryId: Id<"entries">;
-    chunker: string;
-  }
+function workpoolName(
+  namespace: string,
+  key: string | undefined,
+  entryId: Id<"entries">
 ) {
-  // TODO: enqueue into workpool
+  return `async-chunker-${namespace}-${key ? key + "-" + entryId : entryId}`;
 }
+
+export const addAsyncOnComplete = internalMutation({
+  args: {
+    workId: vWorkIdValidator,
+    context: v.id("entries"),
+    result: vResultValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const entryId = args.context;
+    const entry = await ctx.db.get(args.context);
+    if (!entry) {
+      console.error(
+        `Entry ${args.context} not found when trying to complete chunker for async add`
+      );
+      return;
+    }
+    if (args.result.kind === "success") {
+      await promoteToReadyHandler(ctx, { entryId });
+    } else {
+      // await deleteAsyncHandler(ctx, { entryId, startOrder: 0 });
+      await ctx.db.patch(entryId, {
+        status: { kind: "replaced", replacedAt: Date.now() },
+      });
+      const namespace = await ctx.db.get(entry.namespaceId);
+      assert(namespace, `Namespace ${entry.namespaceId} not found`);
+      if (entry.status.kind === "pending" && entry.status.onComplete) {
+        await runOnComplete(
+          ctx,
+          entry.status.onComplete,
+          namespace,
+          entry,
+          null,
+          false
+        );
+      }
+    }
+  },
+});
 
 type AddEntryArgs = Pick<
   Doc<"entries">,
@@ -144,7 +225,7 @@ export const add = mutation({
       entryIsSame(existing, args.entry)
     ) {
       if (args.onComplete) {
-        await enqueueOnComplete(
+        await runOnComplete(
           ctx,
           args.onComplete,
           namespace,
@@ -194,7 +275,7 @@ export const add = mutation({
   },
 });
 
-async function enqueueOnComplete(
+async function runOnComplete(
   ctx: MutationCtx,
   onComplete: string,
   namespace: Doc<"namespaces">,
@@ -390,7 +471,7 @@ async function promoteToReadyHandler(
   if (entry.status.kind === "pending" && entry.status.onComplete) {
     const namespace = await ctx.db.get(entry.namespaceId);
     assert(namespace, `Namespace for ${entry.namespaceId} not found`);
-    await enqueueOnComplete(
+    await runOnComplete(
       ctx,
       entry.status.onComplete,
       namespace,
@@ -404,7 +485,30 @@ async function promoteToReadyHandler(
   };
 }
 
-export function publicEntry(entry: Doc<"entries">): Entry {
+export async function getPreviousEntry(ctx: QueryCtx, entry: Doc<"entries">) {
+  if (!entry.key) {
+    return null;
+  }
+  return await ctx.db
+    .query("entries")
+    .withIndex("namespaceId_status_key_version", (q) =>
+      q
+        .eq("namespaceId", entry.namespaceId)
+        .eq("status.kind", "ready")
+        .eq("key", entry.key)
+    )
+    .unique();
+}
+
+export function publicEntry(entry: {
+  _id: Id<"entries">;
+  key: string;
+  importance: number;
+  filterValues: EntryFilterValues[];
+  contentHash?: string | undefined;
+  title?: string | undefined;
+  status: StatusWithOnComplete;
+}): Entry {
   const { key, importance, filterValues, contentHash, title } = entry;
 
   return {
@@ -424,21 +528,25 @@ export const deleteAsync = mutation({
     startOrder: v.number(),
   }),
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const { entryId, startOrder } = args;
-    const entry = await ctx.db.get(entryId);
-    if (!entry) {
-      throw new Error(`Entry ${entryId} not found`);
-    }
-    const status = await deleteChunksPage(ctx, { entryId, startOrder });
-    if (status.isDone) {
-      await ctx.db.delete(entryId);
-    } else {
-      // TODO: schedule follow-up - workpool?
-      await ctx.scheduler.runAfter(0, api.entries.deleteAsync, {
-        entryId,
-        startOrder: status.nextStartOrder,
-      });
-    }
-  },
+  handler: deleteAsyncHandler,
 });
+
+async function deleteAsyncHandler(
+  ctx: MutationCtx,
+  args: { entryId: Id<"entries">; startOrder: number }
+) {
+  const { entryId, startOrder } = args;
+  const entry = await ctx.db.get(entryId);
+  if (!entry) {
+    throw new Error(`Entry ${entryId} not found`);
+  }
+  const status = await deleteChunksPage(ctx, { entryId, startOrder });
+  if (status.isDone) {
+    await ctx.db.delete(entryId);
+  } else {
+    await workpool.enqueueMutation(ctx, api.entries.deleteAsync, {
+      entryId,
+      startOrder: status.nextStartOrder,
+    });
+  }
+}

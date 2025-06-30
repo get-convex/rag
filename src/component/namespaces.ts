@@ -180,7 +180,7 @@ export const list = query({
   },
 });
 
-function publicNamespace(namespace: Doc<"namespaces">): Namespace {
+export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   const { _id, _creationTime, status, ...rest } = namespace;
   return {
     namespaceId: _id as unknown as NamespaceId,

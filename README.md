@@ -334,7 +334,9 @@ export const delete = mutation({
 });
 ```
 
-### Asynchronous Processing
+### Asynchronous Processing (Coming Soon)
+
+NOTE: This is not yet implemented.
 
 For large files, use async processing:
 
@@ -359,8 +361,8 @@ export const uploadLargeFile = action({
 
     const { entryId } = await memory.addAsync(ctx, {
       namespace: userId,
-      key: args.filename,
-      source: { kind: "url", url: args.url },
+      key: args.url,
+      title: args.filename,
       chunkerAction: internal.example.chunkerAction,
     });
 
