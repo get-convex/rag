@@ -467,7 +467,10 @@ export class Memory<
     ctx: RunMutationCtx,
     args: {
       namespace: string;
-      status?: Status;
+      /**
+       * If it isn't in existence, what the new namespace status should be.
+       */
+      status?: "pending" | "ready";
       /**
        * This will be called when then namespace leaves the "pending" state.
        * Either if the namespace is created or if the namespace is replaced
@@ -483,17 +486,15 @@ export class Memory<
       ? await createFunctionHandle(args.onComplete)
       : undefined;
     assert(
-      args.status !== "replaced",
-      "Creating replaced namespaces is not supported"
+      !onComplete || args.status === "pending",
+      "You can only supply an onComplete handler for pending namespaces"
     );
     const { namespaceId, status } = await ctx.runMutation(
       this.component.namespaces.getOrCreate,
       {
         namespace: args.namespace,
-        status:
-          args.status === "pending"
-            ? { kind: "pending", onComplete }
-            : { kind: "ready" },
+        status: args.status ?? "ready",
+        onComplete,
         modelId: this.options.textEmbeddingModel.modelId,
         dimension: this.options.embeddingDimension,
         filterNames: this.options.filterNames ?? [],

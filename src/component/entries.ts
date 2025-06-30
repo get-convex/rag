@@ -286,8 +286,7 @@ async function runOnComplete(
   previousEntry: Doc<"entries"> | null,
   success: boolean
 ) {
-  // TODO: use a workpool
-  await ctx.scheduler.runAfter(0, onComplete as unknown as OnComplete, {
+  await ctx.runMutation(onComplete as unknown as OnComplete, {
     namespace: namespace.namespace,
     namespaceId: namespace._id as unknown as NamespaceId,
     key: entry.key,
@@ -295,7 +294,6 @@ async function runOnComplete(
     previousEntryId: previousEntry?._id as unknown as EntryId | null,
     success,
   });
-  throw new Error("Not implemented");
 }
 
 function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
@@ -444,6 +442,8 @@ async function promoteToReadyHandler(
 ) {
   const entry = await ctx.db.get(args.entryId);
   assert(entry, `Entry ${args.entryId} not found`);
+  const namespace = await ctx.db.get(entry.namespaceId);
+  assert(namespace, `Namespace for ${entry.namespaceId} not found`);
   if (entry.status.kind === "ready") {
     console.debug(`Entry ${args.entryId} is already ready, skipping...`);
     return { replacedVersion: null };
@@ -454,17 +454,18 @@ async function promoteToReadyHandler(
     return { replacedVersion: publicEntry(entry) };
   }
   const previousEntry = await getPreviousEntry(ctx, entry);
+  // First mark the previous entry as replaced,
+  // so there are never two "ready" entries.
   if (previousEntry) {
     await ctx.db.patch(previousEntry._id, {
       status: { kind: "replaced", replacedAt: Date.now() },
     });
   }
-  await ctx.db.patch(args.entryId, {
-    status: { kind: "ready" },
-  });
+  // Only then mark the current entry as ready,
+  // so there are never two "ready" entries.
+  await ctx.db.patch(args.entryId, { status: { kind: "ready" } });
+  // Then run the onComplete function where it can observe itself as "ready".
   if (entry.status.kind === "pending" && entry.status.onComplete) {
-    const namespace = await ctx.db.get(entry.namespaceId);
-    assert(namespace, `Namespace for ${entry.namespaceId} not found`);
     await runOnComplete(
       ctx,
       entry.status.onComplete,
@@ -472,6 +473,37 @@ async function promoteToReadyHandler(
       entry,
       previousEntry,
       true
+    );
+  }
+  // Then mark all previous pending entries as replaced,
+  // so they can observe the new entry and onComplete side-effects.
+  if (entry.key) {
+    const previousPendingEntries = await ctx.db
+      .query("entries")
+      .withIndex("namespaceId_status_key_version", (q) =>
+        q
+          .eq("namespaceId", entry.namespaceId)
+          .eq("status.kind", "pending")
+          .eq("key", entry.key)
+          .lt("version", entry.version)
+      )
+      .collect();
+    await Promise.all(
+      previousPendingEntries.map(async (entry) => {
+        await ctx.db.patch(entry._id, {
+          status: { kind: "replaced", replacedAt: Date.now() },
+        });
+        if (entry.status.kind === "pending" && entry.status.onComplete) {
+          await runOnComplete(
+            ctx,
+            entry.status.onComplete,
+            namespace,
+            entry,
+            previousEntry,
+            false
+          );
+        }
+      })
     );
   }
   return {

@@ -1,11 +1,12 @@
-import type { Doc } from "./_generated/dataModel.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import {
   internalQuery,
   mutation,
   query,
+  type MutationCtx,
   type QueryCtx,
 } from "./_generated/server.js";
-import { schema, v, vStatusWithOnComplete } from "./schema.js";
+import { schema, v } from "./schema.js";
 import {
   statuses,
   vNamespace,
@@ -13,11 +14,13 @@ import {
   vStatus,
   type Namespace,
   type NamespaceId,
+  type OnCompleteNamespace,
 } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { ObjectType } from "convex/values";
 import { mergedStream, stream } from "convex-helpers/server/stream";
+import { assert } from "convex-helpers";
 
 function namespaceIsCompatible(
   existing: Doc<"namespaces">,
@@ -111,7 +114,8 @@ export const lookup = query({
 export const getOrCreate = mutation({
   args: {
     namespace: v.string(),
-    status: vStatusWithOnComplete,
+    status: vStatus,
+    onComplete: v.optional(v.string()),
     modelId: v.string(),
     dimension: v.number(),
     filterNames: v.array(v.string()),
@@ -121,6 +125,8 @@ export const getOrCreate = mutation({
     status: vStatus,
   }),
   handler: async (ctx, args) => {
+    const { status, onComplete, ...rest } = args;
+    assert(status !== "replaced", "You cannot create a replaced namespace");
     const iter = mergedStream(
       statuses.map((status) =>
         stream(ctx.db, schema)
@@ -136,7 +142,7 @@ export const getOrCreate = mutation({
     let version: number = 0;
     for await (const existing of iter) {
       if (!version) version = existing.version + 1;
-      if (existing.status.kind !== args.status.kind) {
+      if (existing.status.kind !== args.status) {
         continue;
       }
       // see if it's compatible
@@ -146,18 +152,139 @@ export const getOrCreate = mutation({
           status: existing.status.kind,
         };
       }
-      return {
-        namespaceId: await ctx.db.insert("namespaces", { ...args, version }),
-        status: args.status.kind,
-      };
     }
-    const namespaceId = await ctx.db.insert("namespaces", { ...args, version });
+    const namespaceId = await ctx.db.insert("namespaces", {
+      status: { kind: "pending", onComplete },
+      version,
+      ...rest,
+    });
+    if (status === "ready") {
+      await promoteToReadyHandler(ctx, { namespaceId });
+    }
     return {
       namespaceId,
-      status: args.status.kind,
+      status,
     };
   },
 });
+
+async function runOnComplete(
+  ctx: MutationCtx,
+  onComplete: string | undefined,
+  namespace: Doc<"namespaces">,
+  previousNamespaceId: NamespaceId | null,
+  success: boolean
+) {
+  const onCompleteFn = onComplete as unknown as OnCompleteNamespace;
+  if (!onCompleteFn) {
+    throw new Error(`On complete function ${onComplete} not found`);
+  }
+  await ctx.runMutation(onCompleteFn, {
+    namespace: namespace.namespace,
+    namespaceId: namespace._id as unknown as NamespaceId,
+    previousNamespaceId,
+    success,
+  });
+}
+
+export const promoteToReady = mutation({
+  args: {
+    namespaceId: v.id("namespaces"),
+  },
+  returns: v.object({
+    replacedVersion: v.union(v.null(), vNamespace),
+  }),
+  handler: promoteToReadyHandler,
+});
+
+async function promoteToReadyHandler(
+  ctx: MutationCtx,
+  args: { namespaceId: Id<"namespaces"> }
+) {
+  const namespace = await ctx.db.get(args.namespaceId);
+  assert(namespace, `Namespace ${args.namespaceId} not found`);
+  if (namespace.status.kind === "ready") {
+    console.debug(
+      `Namespace ${args.namespaceId} is already ready, not promoting`
+    );
+    return { replacedVersion: null };
+  } else if (namespace.status.kind === "replaced") {
+    console.debug(
+      `Namespace ${args.namespaceId} is already replaced, not promoting and returning itself`
+    );
+    return { replacedVersion: publicNamespace(namespace) };
+  }
+  const previousNamespace = await ctx.db
+    .query("namespaces")
+    .withIndex("status_namespace_version", (q) =>
+      q.eq("status.kind", "ready").eq("namespace", namespace.namespace)
+    )
+    .order("desc")
+    .unique();
+  if (previousNamespace) {
+    // First mark the previous namespace as replaced,
+    // so there are never two "ready" namespaces.
+    await markNamespaceAsReplaced(ctx, previousNamespace);
+  }
+  // Only then mark the current namespace as ready,
+  // so there are never two "ready" namespaces.
+  await ctx.db.patch(args.namespaceId, { status: { kind: "ready" } });
+  // Then run the onComplete function where it can observe itself as "ready".
+  if (namespace.status.onComplete) {
+    await runOnComplete(
+      ctx,
+      namespace.status.onComplete,
+      namespace,
+      previousNamespace?._id as unknown as NamespaceId,
+      true
+    );
+  }
+  const previousPendingNamespaces = await ctx.db
+    .query("namespaces")
+    .withIndex("status_namespace_version", (q) =>
+      q
+        .eq("status.kind", "pending")
+        .eq("namespace", namespace.namespace)
+        .lt("version", namespace.version)
+    )
+    .collect();
+  // Then mark all previous pending namespaces as replaced,
+  // so they can observe the new namespace and onComplete side-effects.
+  await Promise.all(
+    previousPendingNamespaces.map(async (namespace) => {
+      await markNamespaceAsReplaced(ctx, namespace);
+    })
+  );
+  return {
+    replacedVersion: previousNamespace
+      ? publicNamespace(previousNamespace)
+      : null,
+  };
+}
+
+export async function markNamespaceAsReplaced(
+  ctx: MutationCtx,
+  namespace: Doc<"namespaces">
+) {
+  if (namespace.status.kind === "replaced") {
+    console.debug(
+      `Namespace ${namespace._id} is already replaced, not marking as replaced`
+    );
+    return;
+  }
+  if (namespace.status.kind === "pending") {
+    await runOnComplete(
+      ctx,
+      namespace.status.onComplete,
+      namespace,
+      null,
+      false
+    );
+  }
+  await ctx.db.patch(namespace._id, {
+    status: { kind: "replaced", replacedAt: Date.now() },
+  });
+}
 
 export const list = query({
   args: v.object({

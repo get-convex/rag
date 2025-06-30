@@ -266,10 +266,8 @@ export type Mounts = {
         filterNames: Array<string>;
         modelId: string;
         namespace: string;
-        status:
-          | { kind: "pending"; onComplete?: string }
-          | { kind: "ready" }
-          | { kind: "replaced"; replacedAt: number };
+        onComplete?: string;
+        status: "pending" | "ready" | "replaced";
       },
       { namespaceId: string; status: "pending" | "ready" | "replaced" }
     >;
@@ -314,6 +312,23 @@ export type Mounts = {
         namespace: string;
       },
       null | string
+    >;
+    promoteToReady: FunctionReference<
+      "mutation",
+      "public",
+      { namespaceId: string },
+      {
+        replacedVersion: null | {
+          createdAt: number;
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+          namespaceId: string;
+          status: "pending" | "ready" | "replaced";
+          version: number;
+        };
+      }
     >;
   };
   search: {
