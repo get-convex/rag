@@ -73,28 +73,43 @@ type FilterTypes = {
 
 ## Usage Examples
 
-### Add Entries
+### Add Memory Entries
 
 Add content with text chunks.
 It will embed the chunks automatically if you don't provide them.
 
 ```ts
 export const add = action({
-  args: {
-    url: v.string(),
-    category: v.string(),
+  args: { text: v.string() },
+  handler: async (ctx, { text }) => {
+    // Add the text to a namespace shared by all users.
+    await memory.add(ctx, {
+      namespace: "all-users",
+      chunks: text.split("\n\n"),
+    });
   },
-  handler: async (ctx, args) => {
-    const { url, category } = args;
+});
+```
+
+### Add Entries with filters from a URL
+
+Here's a simple example fetching content from a URL to add.
+
+It also adds filters to the entry, so you can search for it later by
+category, contentType, or both.
+
+```ts
+export const add = action({
+  args: { url: v.string(), category: v.string() },
+  handler: async (ctx, { url, category }) => {
     const response = await fetch(url);
     const content = await response.text();
-    const chunks = await textSplitter.splitText(content);
     const contentType = response.headers.get("content-type");
 
     const { entryId } = await memory.add(ctx, {
       namespace: "global", // namespace can be any string
       key: url,
-      chunks,
+      chunks: content.split("\n\n"),
       filterValues: [
         { name: "category", value: category },
         { name: "contentType", value: contentType },
@@ -111,49 +126,60 @@ export const add = action({
 Note: The `textSplitter` here could be LangChain, Mastra, or otherwise.
 See below for more details.
 
-### Add Entries from Files Storage
+### Add Entries Asynchronously using File Storage
 
-Upload files directly to a Convex action, httpAction, or upload url. See the
-[docs](https://docs.convex.dev/file-storage/upload-files) for more details.
+For large files, you can upload them to file storage, then provide a chunker
+action to split them into chunks.
 
+In `convex/http.ts`:
 ```ts
-export const uploadFile = action({
-  args: {
-    filename: v.string(),
-    contentType: v.string(),
-    bytes: v.bytes(),
-    category: v.string(),
-  },
-  handler: async (ctx, { filename, contentType, bytes, category }) => {
-    const userId = await getUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
+import { corsRouter } from "convex-helpers/server/cors";
+import { httpRouter } from "convex/server";
+import { internal } from "./_generated/api.js";
+import { DataModel } from "./_generated/dataModel.js";
+import { httpAction } from "./_generated/server.js";
+import { memory } from "./example.js";
 
-    // Extract and chunk text content
-    const textContent = new TextDecoder().decode(bytes);
-    const chunks = await textSplitter.splitText(textContent);
+const cors = corsRouter(httpRouter());
 
-    const { entryId } = await memory.add(ctx, {
-      namespace: userId, // per-user namespace
-      key: filename,
-      title: filename,
-      chunks,
-      filterValues: [
-        { name: "category", value: category },
-        { name: "contentType", value: contentType },
-        { name: "categoryAndType", value: { category, contentType } },
-      ],
+cors.route({
+  path: "/upload",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const storageId = await ctx.storage.store(await request.blob());
+    await memory.addAsync(ctx, {
+      namespace: "all-files",
+      chunkerAction: internal.http.chunkerAction,
+      onComplete: internal.http.handleEntryComplete,
+      metadata: { storageId },
     });
-
-    // Store file in Convex storage
-    const storageId = await ctx.storage.store(
-      new Blob([bytes], { type: contentType })
-    );
-    // You could then associate it with the key and entryId in your own table,
-    // for your own bookkeeping.
-    return { entryId, url: await ctx.storage.getUrl(storageId) };
-  },
+    return new Response();
+  }),
 });
+
+export const chunkerAction = memory.defineChunkerAction(async (ctx, args) => {
+  const storageId = args.entry.metadata!.storageId;
+  const file = await ctx.storage.get(storageId);
+  const text = await new TextDecoder().decode(await file!.arrayBuffer());
+  return { chunks: text.split("\n\n") };
+});
+
+export const handleEntryComplete = memory.defineOnComplete<DataModel>(
+  async (ctx, { previousEntry, entry, success, namespace, error }) => {
+    if (error) {
+      await memory.delete(ctx, { entryId: entry.entryId });
+      return;
+    }
+    // You can associate the entry with your own data here. This will commit
+    // in the same transaction as the entry becoming ready.
+  }
+);
+
+export default cors.http;
 ```
+
+You can upload files directly to a Convex action, httpAction, or upload url.
+See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
 
 ### Semantic Search
 
@@ -262,6 +288,11 @@ For convenienct, the `text` field of the search results is a string formatted
 with `...` separating non-sequential chunks, `---` separating entries, and
 `# Title:` at each entry boundary (if titles are available).
 
+```ts
+const { text } = await memory.search(ctx, { ... });
+console.log(text);
+```
+
 ```txt
 # Title 1:
 Chunk 1 contents
@@ -330,43 +361,6 @@ export const delete = mutation({
     await memory.delete(ctx, {
       entryId: args.entryId,
     });
-  },
-});
-```
-
-### Asynchronous Processing (Coming Soon)
-
-NOTE: This is not yet implemented.
-
-For large files, use async processing:
-
-```ts
-export const chunkerAction = memory.defineChunkerAction(
-  async (ctx, args) => {
-    // Custom chunking logic for large files
-    // This can be an async iterator if you can't fit it all in memory at once.
-    const chunks = await processLargeFile(args.key);
-    return { chunks };
-  }
-);
-
-export const uploadLargeFile = action({
-  args: {
-    filename: v.string(),
-    url: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    if (!userId) throw new Error("Unauthorized");
-
-    const { entryId } = await memory.addAsync(ctx, {
-      namespace: userId,
-      key: args.url,
-      title: args.filename,
-      chunkerAction: internal.example.chunkerAction,
-    });
-
-    return { entryId };
   },
 });
 ```
