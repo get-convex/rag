@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- Renamed doc to entry
+- Allows passing vectorScoreThreshold to search
+- More convenient `text` returned from search
+- Enables passing in your own embedding parameter to add
+  -> Allows adding (a few chunks) from a mutation.
+
 ## 0.1.2
 
 - Snips console logs
