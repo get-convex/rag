@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4
+
+- Allow adding files asynchronously
+- Allow passing an onComplete handler to creating entries
+  or namespaces, that is called when they are no longer pending.
+- Support generic type-safe metadata to be stored on the entry.
+- Updated the example to also show uploading files via http.
+
 ## 0.1.3
 
 - Renamed doc to entry
