@@ -270,7 +270,11 @@ export type PublicFile = {
   url: string | null;
 };
 
-async function toFiles(ctx: ActionCtx, files: Entry[]): Promise<PublicFile[]> {
+async function toFiles(
+  ctx: ActionCtx,
+  filesWithText: (Entry & { text: string })[]
+): Promise<PublicFile[]> {
+  const files = filesWithText.map(({ text: _, ...entry }) => entry);
   return await ctx.runQuery(internal.example.getFiles, { files });
 }
 
