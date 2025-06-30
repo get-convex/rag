@@ -76,8 +76,7 @@ export const addAsync = mutation({
           args.onComplete,
           namespace,
           existing,
-          // Note: we pass the existing entry as the previous entry too.
-          existing,
+          null,
           true
         );
       }
@@ -149,9 +148,6 @@ export const addAsyncOnComplete = internalMutation({
       await promoteToReadyHandler(ctx, { entryId });
     } else {
       // await deleteAsyncHandler(ctx, { entryId, startOrder: 0 });
-      await ctx.db.patch(entryId, {
-        status: { kind: "replaced", replacedAt: Date.now() },
-      });
       const namespace = await ctx.db.get(entry.namespaceId);
       assert(namespace, `Namespace ${entry.namespaceId} not found`);
       if (entry.status.kind === "pending" && entry.status.onComplete) {
@@ -161,7 +157,8 @@ export const addAsyncOnComplete = internalMutation({
           namespace,
           entry,
           null,
-          false
+          false,
+          args.result.kind === "canceled" ? "Canceled" : args.result.error
         );
       }
     }
@@ -278,13 +275,15 @@ async function runOnComplete(
   namespace: Doc<"namespaces">,
   entry: Doc<"entries">,
   previousEntry: Doc<"entries"> | null,
-  success: boolean
+  success: boolean,
+  error?: string
 ) {
   await ctx.runMutation(onComplete as unknown as OnComplete, {
     namespace: publicNamespace(namespace),
     entry: publicEntry(entry),
     previousEntry: previousEntry ? publicEntry(previousEntry) : undefined,
     success,
+    error,
   });
 }
 

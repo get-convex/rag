@@ -164,6 +164,7 @@ export const vOnCompleteArgs = v.object({
   entry: vEntry,
   previousEntry: v.optional(vEntry),
   success: v.boolean(),
+  error: v.optional(v.string()),
 });
 
 export type OnComplete<
@@ -179,6 +180,7 @@ export type OnComplete<
     entry: Entry<Filters, EntryMetadata>;
     previousEntry: Entry<Filters, EntryMetadata> | undefined;
     success: boolean;
+    error: string | undefined;
   },
   null
 >;
