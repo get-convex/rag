@@ -11,7 +11,7 @@ interface UISearchResult {
   results: (SearchResult & {
     entry: PublicFile;
   })[];
-  text: string[];
+  text: string;
   files: Array<PublicFile>;
 }
 
@@ -533,7 +533,6 @@ function Example() {
               ))}
             </div>
           </div>
-          ;
         </div>
       </div>
       {/* Right Panel - Search */}
