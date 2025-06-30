@@ -5,12 +5,12 @@ import { vEntryId } from "@convex-dev/memory";
 export default defineSchema({
   // We can use a table with extra metadata to track extra things
   fileMetadata: defineTable({
-    global: v.boolean(),
+    entryId: vEntryId,
     filename: v.string(),
     storageId: v.id("_storage"),
-    entryId: vEntryId,
-    uploadedBy: v.string(),
+    global: v.boolean(),
     category: v.optional(v.string()),
+    uploadedBy: v.string(),
   })
     .index("global_category", ["global", "category"])
     .index("entryId", ["entryId"]),

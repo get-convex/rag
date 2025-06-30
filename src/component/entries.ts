@@ -525,14 +525,16 @@ export function publicEntry(entry: {
   filterValues: EntryFilterValues[];
   contentHash?: string | undefined;
   title?: string | undefined;
+  metadata?: Record<string, Value> | undefined;
   status: StatusWithOnComplete;
 }): Entry {
-  const { key, importance, filterValues, contentHash, title } = entry;
+  const { key, importance, filterValues, contentHash, title, metadata } = entry;
 
   return {
     entryId: entry._id as unknown as EntryId,
     key,
     title,
+    metadata,
     importance,
     filterValues,
     contentHash,

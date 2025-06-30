@@ -4,12 +4,17 @@ import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
   internalActionGeneric,
+  internalMutationGeneric,
   type FunctionArgs,
   type FunctionHandle,
   type FunctionReturnType,
+  type GenericActionCtx,
+  type GenericDataModel,
+  type GenericMutationCtx,
   type PaginationOptions,
   type PaginationResult,
   type RegisteredAction,
+  type RegisteredMutation,
 } from "convex/server";
 import { type Value } from "convex/values";
 import {
@@ -17,6 +22,7 @@ import {
   vChunkerArgs,
   vEntryId,
   vNamespaceId,
+  vOnCompleteArgs,
   type Chunk,
   type CreateChunkArgs,
   type Entry,
@@ -28,7 +34,6 @@ import {
   type Status,
 } from "../shared.js";
 import {
-  type ActionCtx,
   type MemoryComponent,
   type RunActionCtx,
   type RunMutationCtx,
@@ -96,16 +101,19 @@ export type InputChunk =
       // filters?: EntryFilterValues<FitlerSchemas>[];
     });
 
+type FilterNames<FiltersSchemas extends Record<string, Value>> =
+  (keyof FiltersSchemas & string)[];
+
 export class Memory<
-  FitlerSchemas extends Record<FilterNames, Value> = Record<string, Value>,
-  FilterNames extends string = string,
+  FitlerSchemas extends Record<string, Value> = Record<string, Value>,
+  EntryMetadata extends Record<string, Value> = Record<string, Value>,
 > {
   constructor(
     public component: MemoryComponent,
     public options: {
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModelV1<string>;
-      filterNames?: FilterNames[];
+      filterNames?: FilterNames<FitlerSchemas>;
       // Common parameters:
       // logLevel
     }
@@ -117,8 +125,7 @@ export class Memory<
       key?: string | undefined;
       chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
       title?: string;
-      // mimeType: string;
-      // metadata?: Record<string, Value>;
+      metadata?: EntryMetadata;
       filterValues?: EntryFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
@@ -128,7 +135,7 @@ export class Memory<
     entryId: EntryId;
     status: Status;
     created: boolean;
-    replacedVersion: Entry | null;
+    replacedVersion: Entry<FitlerSchemas, EntryMetadata> | null;
   }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -174,7 +181,10 @@ export class Memory<
         entryId: entryId as EntryId,
         status,
         created,
-        replacedVersion: replacedVersion as Entry | null,
+        replacedVersion: replacedVersion as Entry<
+          FitlerSchemas,
+          EntryMetadata
+        > | null,
       };
     }
 
@@ -224,7 +234,10 @@ export class Memory<
     return {
       entryId: entryId as EntryId,
       status: "ready" as const,
-      replacedVersion: promoted.replacedVersion as Entry | null,
+      replacedVersion: promoted.replacedVersion as Entry<
+        FitlerSchemas,
+        EntryMetadata
+      > | null,
       created: true,
     };
   }
@@ -249,14 +262,13 @@ export class Memory<
        */
       chunkerAction: ChunkerAction;
       title?: string;
-      // mimeType: string;
-      // metadata?: Record<string, Value>;
+      metadata?: EntryMetadata;
       filterValues?: EntryFilterValues<FitlerSchemas>[];
       importance?: Importance;
       contentHash?: string;
       onComplete?: OnComplete;
     }
-  ): Promise<{ entryId: EntryId; status: Status }> {
+  ): Promise<{ entryId: EntryId; status: "ready" | "pending" }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
       namespaceId = args.namespaceId;
@@ -360,7 +372,7 @@ export class Memory<
   ): Promise<{
     results: SearchResult[];
     text: string;
-    entries: (Entry<FitlerSchemas> & { text: string })[];
+    entries: (Entry<FitlerSchemas, EntryMetadata> & { text: string })[];
   }> {
     const {
       namespace,
@@ -406,12 +418,8 @@ export class Memory<
         text += range.content.map((c) => c.text).join("\n");
         previousEnd = range.startOrder + range.content.length;
       }
-      return {
-        ...e,
-        entryId: e.entryId as EntryId,
-        filterValues: e.filterValues as EntryFilterValues<FitlerSchemas>[],
-        text,
-      };
+      const cast = e as Entry<FitlerSchemas, EntryMetadata>;
+      return { ...cast, text };
     });
 
     return {
@@ -419,7 +427,9 @@ export class Memory<
       text: entriesWithTexts
         .map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text))
         .join(`\n---\n`),
-      entries: entriesWithTexts,
+      entries: entriesWithTexts as (Entry<FitlerSchemas, EntryMetadata> & {
+        text: string;
+      })[],
     };
   }
 
@@ -431,14 +441,14 @@ export class Memory<
       order?: "desc" | "asc";
       status?: Status;
     }
-  ): Promise<PaginationResult<Entry<FitlerSchemas>>> {
+  ): Promise<PaginationResult<Entry<FitlerSchemas, EntryMetadata>>> {
     const results = await ctx.runQuery(this.component.entries.list, {
       namespaceId: args.namespaceId,
       paginationOpts: args.paginationOpts,
       order: args.order ?? "asc",
       status: args.status ?? "ready",
     });
-    return results as PaginationResult<Entry<FitlerSchemas>>;
+    return results as PaginationResult<Entry<FitlerSchemas, EntryMetadata>>;
   }
 
   async getEntry(
@@ -446,11 +456,11 @@ export class Memory<
     args: {
       entryId: EntryId;
     }
-  ): Promise<Entry<FitlerSchemas> | null> {
+  ): Promise<Entry<FitlerSchemas, EntryMetadata> | null> {
     const entry = await ctx.runQuery(this.component.entries.get, {
       entryId: args.entryId,
     });
-    return entry as Entry<FitlerSchemas> | null;
+    return entry as Entry<FitlerSchemas, EntryMetadata> | null;
   }
 
   async findExistingEntryByContentHash(
@@ -461,7 +471,7 @@ export class Memory<
       /** The hash of the entry contents to try to match. */
       contentHash: string;
     }
-  ): Promise<Entry<FitlerSchemas> | null> {
+  ): Promise<Entry<FitlerSchemas, EntryMetadata> | null> {
     const entry = await ctx.runQuery(this.component.entries.findByContentHash, {
       namespace: args.namespace,
       dimension: this.options.embeddingDimension,
@@ -470,7 +480,7 @@ export class Memory<
       key: args.key,
       contentHash: args.contentHash,
     });
-    return entry as Entry<FitlerSchemas> | null;
+    return entry as Entry<FitlerSchemas, EntryMetadata> | null;
   }
 
   async getOrCreateNamespace(
@@ -547,11 +557,26 @@ export class Memory<
     });
   }
 
-  defineChunkerAction(
-    // TODO: make this optional if you want to use the default chunker
+  defineOnComplete<DataModel extends GenericDataModel>(
     fn: (
-      ctx: ActionCtx,
-      args: { namespace: Namespace; entry: Entry }
+      ctx: GenericMutationCtx<DataModel>,
+      args: FunctionArgs<OnComplete<FitlerSchemas, EntryMetadata>>
+    ) => Promise<void>
+  ): RegisteredMutation<
+    "internal",
+    FunctionArgs<OnComplete<FitlerSchemas, EntryMetadata>>,
+    null
+  > {
+    return internalMutationGeneric({
+      args: vOnCompleteArgs,
+      handler: fn,
+    });
+  }
+
+  defineChunkerAction<DataModel extends GenericDataModel>(
+    fn: (
+      ctx: GenericActionCtx<DataModel>,
+      args: { namespace: Namespace; entry: Entry<FitlerSchemas, EntryMetadata> }
     ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
   ): RegisteredAction<
     "internal",
@@ -564,7 +589,7 @@ export class Memory<
         const { namespace, entry } = args;
         const chunksPromise = fn(ctx, {
           namespace,
-          entry,
+          entry: entry as Entry<FitlerSchemas, EntryMetadata>,
         });
         let chunkIterator: AsyncIterable<InputChunk>;
         if (chunksPromise instanceof Promise) {

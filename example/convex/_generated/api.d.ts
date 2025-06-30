@@ -106,6 +106,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             namespaceId: string;
             title?: string;
           };
@@ -120,6 +121,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -136,6 +138,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             namespaceId: string;
             title?: string;
           };
@@ -166,6 +169,7 @@ export declare const components: {
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key?: string;
+          metadata?: Record<string, any>;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -180,6 +184,7 @@ export declare const components: {
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
           key?: string;
+          metadata?: Record<string, any>;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -209,6 +214,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;
@@ -227,6 +233,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -347,6 +354,7 @@ export declare const components: {
             filterValues: Array<{ name: string; value: any }>;
             importance: number;
             key?: string;
+            metadata?: Record<string, any>;
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;

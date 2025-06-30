@@ -48,7 +48,7 @@ export const schema = defineSchema({
     contentHash: v.optional(v.string()),
     // conveneient metadata
     title: v.optional(v.string()),
-    // metadata: v.optional(v.record(v.string(), v.any())),
+    metadata: v.optional(v.record(v.string(), v.any())),
     status: vStatusWithOnComplete,
   })
     .index("namespaceId_status_key_version", [

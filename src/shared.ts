@@ -54,6 +54,7 @@ export type Namespace = Infer<typeof vNamespace>;
 export const vEntry = v.object({
   key: v.optional(v.string()),
   title: v.optional(v.string()),
+  metadata: v.optional(v.record(v.string(), v.any())),
   entryId: vEntryId,
   importance: v.number(),
   filterValues: v.array(vNamedFilter),
@@ -78,14 +79,20 @@ export type EntryFilterValues<
   [K in keyof Filters & string]: NamedFilter<K, Filters[K]>;
 }[keyof Filters & string];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Entry<Filters extends Record<string, Value> = any> = {
+export type Entry<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Filters extends Record<string, Value> = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Metadata extends Record<string, Value> = any,
+> = {
   /** The entry's id, uniquely identifying the key + contents + namespace etc. */
   entryId: EntryId;
   /** User-defined key. You can re-use a key to replace it with new contents. */
   key?: string | undefined;
   /** User-defined title. */
   title?: string | undefined;
+  /** User-defined metadata. */
+  metadata?: Metadata | undefined;
   /** How important this entry is. Defaults to 1.
    * Think of it as multiplying by the vector search score.
    */
@@ -159,12 +166,21 @@ export const vOnCompleteArgs = v.object({
   success: v.boolean(),
 });
 
-export type OnComplete = FunctionReference<
+export type OnComplete<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Filters extends Record<string, Value> = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  EntryMetadata extends Record<string, Value> = any,
+> = FunctionReference<
   "mutation",
   "internal",
-  Infer<typeof vOnCompleteArgs>,
-  null,
-  string
+  {
+    namespace: Namespace;
+    entry: Entry<Filters, EntryMetadata>;
+    previousEntry: Entry<Filters, EntryMetadata> | undefined;
+    success: boolean;
+  },
+  null
 >;
 
 export const vChunkerArgs = v.object({
