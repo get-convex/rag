@@ -138,22 +138,6 @@ export function vPaginationResult<
   });
 }
 
-/**
- * Make a contentHash of a Blob that matches the File Storage metadata, allowing
- * identifying when content is identical.
- * @param blob The contents to hash
- * @returns sha256 hash of the contents
- */
-export async function contentHashFromBlob(blob: Blob) {
-  return Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())
-    )
-  )
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export type OnCompleteNamespace = FunctionReference<
   "mutation",
   "internal",
