@@ -1,5 +1,6 @@
 import "./Example.css";
 import { useQuery, useConvex } from "convex/react";
+import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
 import type { SearchResult } from "@convex-dev/memory";
@@ -43,15 +44,23 @@ function Example() {
   // Convex functions
   const convex = useConvex();
 
-  const globalFiles = useQuery(api.example.listFiles, {
-    globalNamespace: true,
-    paginationOpts: { numItems: 50, cursor: null },
-  });
+  const globalFiles = usePaginatedQuery(
+    api.example.listFiles,
+    {
+      globalNamespace: true,
+    },
+    { initialNumItems: 50 }
+  );
 
-  const userFiles = useQuery(api.example.listFiles, {
-    globalNamespace: false,
-    paginationOpts: { numItems: 50, cursor: null },
-  });
+  const userFiles = usePaginatedQuery(
+    api.example.listFiles,
+    {
+      globalNamespace: false,
+    },
+    { initialNumItems: 50 }
+  );
+
+  const pendingFiles = useQuery(api.example.listPendingFiles);
 
   const documentChunks = useQuery(
     api.example.listChunks,
@@ -86,13 +95,26 @@ function Example() {
 
     setIsAdding(true);
     try {
-      await convex.action(api.example.addFile, {
-        bytes: await selectedFile.arrayBuffer(),
-        filename: uploadForm.filename || selectedFile.name,
-        mimeType: selectedFile.type || "text/plain",
-        category: uploadForm.category,
-        globalNamespace: uploadForm.globalNamespace,
-      });
+      if (selectedFile.size > 1024 * 1024) {
+        // For big files let's do it asynchronously
+        await fetch(`${import.meta.env.VITE_CONVEX_SITE_URL}/upload`, {
+          method: "POST",
+          headers: {
+            "x-filename": uploadForm.filename || selectedFile.name,
+            "x-category": uploadForm.category,
+            "x-global-namespace": uploadForm.globalNamespace.toString(),
+          },
+          body: new Blob([selectedFile], { type: selectedFile.type }),
+        });
+      } else {
+        await convex.action(api.example.addFile, {
+          bytes: await selectedFile.arrayBuffer(),
+          filename: uploadForm.filename || selectedFile.name,
+          mimeType: selectedFile.type || "text/plain",
+          category: uploadForm.category,
+          globalNamespace: uploadForm.globalNamespace,
+        });
+      }
 
       // Reset form and file
       setUploadForm((prev) => ({
@@ -108,6 +130,11 @@ function Example() {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Upload failed:", error);
+      setUploadForm((prev) => ({
+        ...prev,
+        filename: prev.filename,
+      }));
+      setSelectedFile(selectedFile);
       alert(
         `Upload failed. ${error instanceof Error ? error.message : String(error)}`
       );
@@ -199,10 +226,10 @@ function Example() {
 
   const getUniqueCategories = () => {
     const categories = new Set<string>();
-    globalFiles?.page?.forEach(
+    globalFiles?.results?.forEach(
       (doc) => doc.category && categories.add(doc.category)
     );
-    userFiles?.page?.forEach(
+    userFiles?.results?.forEach(
       (doc) => doc.category && categories.add(doc.category)
     );
     return Array.from(categories).sort();
@@ -394,9 +421,46 @@ function Example() {
             </button>
 
             {isAdding && (
-              <div className="text-sm text-blue-600 flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <div className="text-sm text-orange-600 flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
                 Adding...
+              </div>
+            )}
+
+            {pendingFiles && pendingFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center mb-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+                  <h4 className="text-sm font-medium text-orange-800">
+                    Processing {pendingFiles.length} document
+                    {pendingFiles.length !== 1 ? "s" : ""}...
+                  </h4>
+                </div>
+                {pendingFiles.map((doc) => (
+                  <div
+                    key={doc.entryId}
+                    className="group p-2 border-2 border-orange-200 bg-orange-50 rounded transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <div className="text-sm font-medium text-orange-900 truncate">
+                            {doc.filename}
+                          </div>
+                        </div>
+                        {doc.category && (
+                          <div className="text-xs text-orange-700 ml-4">
+                            {doc.category}
+                          </div>
+                        )}
+                        <div className="text-xs text-orange-600 ml-4">
+                          {doc.global ? "Global" : "User"} • Processing...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -419,7 +483,7 @@ function Example() {
               </button>
             </div>
             <div className="space-y-2">
-              {globalFiles?.page?.map((doc) => (
+              {globalFiles?.results?.map((doc) => (
                 <div
                   key={doc.entryId}
                   className={`group p-2 border rounded transition-colors ${
@@ -468,7 +532,7 @@ function Example() {
               ))}
             </div>
           </div>
-          ;{/* User Files */}
+          {/* User Files */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-gray-900">User Files</h3>
@@ -484,7 +548,7 @@ function Example() {
               </button>
             </div>
             <div className="space-y-2">
-              {userFiles?.page?.map((doc) => (
+              {userFiles?.results?.map((doc) => (
                 <div
                   key={doc.entryId}
                   className={`group p-2 border rounded transition-colors ${

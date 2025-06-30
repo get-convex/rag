@@ -13,13 +13,19 @@ export async function getText(
   {
     storageId,
     filename,
-    blob,
-  }: { storageId: Id<"_storage">; filename: string; blob: Blob }
+    bytes,
+    mimeType,
+  }: {
+    storageId: Id<"_storage">;
+    filename: string;
+    bytes?: ArrayBuffer;
+    mimeType: string;
+  }
 ) {
   const url = await ctx.storage.getUrl(storageId);
   assert(url);
   if (
-    ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(blob.type)
+    ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType)
   ) {
     const imageResult = await generateText({
       model: describeImage,
@@ -33,13 +39,13 @@ export async function getText(
       ],
     });
     return imageResult.text;
-  } else if (blob.type.startsWith("audio/")) {
+  } else if (mimeType.startsWith("audio/")) {
     const audioResult = await transcribe({
       model: describeAudio,
       audio: new URL(url),
     });
     return audioResult.text;
-  } else if (blob.type.toLowerCase().includes("pdf")) {
+  } else if (mimeType.toLowerCase().includes("pdf")) {
     const pdfResult = await generateText({
       model: describePdf,
       system: "You transform PDF files into text.",
@@ -47,7 +53,7 @@ export async function getText(
         {
           role: "user",
           content: [
-            { type: "file", data: new URL(url), mimeType: blob.type, filename },
+            { type: "file", data: new URL(url), mimeType, filename },
             {
               type: "text",
               text: "Extract the text from the PDF and print it without explaining that you'll do so.",
@@ -57,9 +63,11 @@ export async function getText(
       ],
     });
     return pdfResult.text;
-  } else if (blob.type.toLowerCase().includes("text")) {
-    return new TextDecoder().decode(await blob.arrayBuffer());
+  } else if (mimeType.toLowerCase().includes("text")) {
+    const arrayBuffer =
+      bytes || (await (await ctx.storage.get(storageId))!.arrayBuffer());
+    return new TextDecoder().decode(arrayBuffer);
   } else {
-    throw new Error(`Unsupported mime type: ${blob.type}`);
+    throw new Error(`Unsupported mime type: ${mimeType}`);
   }
 }

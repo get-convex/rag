@@ -6,18 +6,20 @@ import {
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   Memory,
-  vEntry,
   vEntryId,
 } from "@convex-dev/memory";
 import { assert } from "convex-helpers";
-import { paginationOptsValidator, PaginationResult } from "convex/server";
+import {
+  paginationOptsValidator,
+  PaginationResult,
+  StorageReader,
+} from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { DataModel, Id } from "./_generated/dataModel";
 import {
   action,
   ActionCtx,
-  internalQuery,
   mutation,
   MutationCtx,
   query,
@@ -58,7 +60,7 @@ export const addFile = action({
     const mimeType = args.mimeType || guessMimeType(filename, bytes);
     const blob = new Blob([bytes], { type: mimeType });
     const storageId = await ctx.storage.store(blob);
-    const text = await getText(ctx, { storageId, filename, blob });
+    const text = await getText(ctx, { storageId, filename, bytes, mimeType });
     const { entryId, created } = await memory.add(ctx, {
       // What search space to add this to. You cannot search across namespaces.
       namespace: globalNamespace ? "global" : userId,
@@ -160,67 +162,65 @@ export const searchCategory = action({
  * Uploading asynchronously
  */
 
-export const addFileAsync = action({
+// Called from the /upload http endpoint.
+export async function addFileAsync(
+  ctx: ActionCtx,
   args: {
-    globalNamespace: v.boolean(),
-    filename: v.string(),
-    mimeType: v.string(),
-    bytes: v.bytes(),
-    category: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getUserId(ctx);
-    // Maybe rate limit how often a user can upload a file / attribute?
-    if (!userId) throw new Error("Unauthorized");
-    const { globalNamespace, bytes, filename, category } = args;
+    globalNamespace: boolean;
+    filename: string;
+    blob: Blob;
+    category: string | null;
+  }
+) {
+  const userId = await getUserId(ctx);
+  // Maybe rate limit how often a user can upload a file / attribute?
+  if (!userId) throw new Error("Unauthorized");
+  const { globalNamespace, blob, filename, category } = args;
 
-    const mimeType = args.mimeType || guessMimeType(filename, bytes);
-    const blob = new Blob([bytes], { type: mimeType });
-    const contentHash = await contentHashFromArrayBuffer(bytes);
-    const namespace = globalNamespace ? "global" : userId;
-    const existing = await memory.findExistingEntryByContentHash(ctx, {
-      contentHash,
-      key: filename,
-      namespace,
-    });
-    if (existing) {
-      console.debug("entry already exists, skipping async add");
-      return {
-        entryId: existing.entryId,
-      };
-    }
-    // If it doesn't exist, we need to store the file and chunk it asynchronously.
-    const storageId = await ctx.storage.store(blob);
-    const { entryId } = await memory.addAsync(ctx, {
-      namespace,
-      key: filename,
-      title: filename,
-      metadata: { storageId, uploadedBy: userId },
-      filterValues: [
-        { name: "filename", value: filename },
-        { name: "category", value: category ?? null },
-      ],
-      chunkerAction: internal.example.chunkerAction,
-      onComplete: internal.example.recordUploadMetadata,
-    });
+  const namespace = globalNamespace ? "global" : userId;
+  const bytes = await blob.arrayBuffer();
+  const existing = await memory.findExistingEntryByContentHash(ctx, {
+    contentHash: await contentHashFromArrayBuffer(bytes),
+    key: filename,
+    namespace,
+  });
+  if (existing) {
+    console.debug("entry already exists, skipping async add");
     return {
-      url: (await ctx.storage.getUrl(storageId))!,
-      entryId,
+      entryId: existing.entryId,
     };
-  },
-});
+  }
+  // If it doesn't exist, we need to store the file and chunk it asynchronously.
+  const storageId = await ctx.storage.store(
+    new Blob([bytes], { type: blob.type })
+  );
+  const { entryId } = await memory.addAsync(ctx, {
+    namespace,
+    key: filename,
+    title: filename,
+    filterValues: [
+      { name: "filename", value: filename },
+      { name: "category", value: category ?? null },
+    ],
+    metadata: { storageId, uploadedBy: userId },
+    chunkerAction: internal.example.chunkerAction,
+    onComplete: internal.example.recordUploadMetadata,
+  });
+  return {
+    url: (await ctx.storage.getUrl(storageId))!,
+    entryId,
+  };
+}
 
 export const chunkerAction = memory.defineChunkerAction(async (ctx, args) => {
-  const [fileMetadata] = await ctx.runQuery(internal.example.getFiles, {
-    files: [args.entry],
-  });
-  assert(fileMetadata, "File metadata not found");
-  const blob = await ctx.storage.get(fileMetadata.storageId);
-  assert(blob, "File not found");
+  assert(args.entry.metadata, "Entry metadata not found");
+  const storageId = args.entry.metadata.storageId;
+  const metadata = await ctx.storage.getMetadata(storageId);
+  assert(metadata, "Metadata not found");
   const text = await getText(ctx, {
-    storageId: fileMetadata.storageId,
-    filename: fileMetadata.filename,
-    blob,
+    storageId,
+    filename: args.entry.title!,
+    mimeType: metadata.contentType!,
   });
   return { chunks: text.split("\n\n") };
 });
@@ -250,12 +250,45 @@ export const listFiles = query({
     });
     return {
       ...results,
-      page: (
-        await Promise.all(
-          results.page.map((entry) => toFile(ctx, entry, args.globalNamespace))
-        )
-      ).filter((file) => file !== null),
+      page: await Promise.all(
+        results.page.map((entry) => toFile(ctx, entry, args.globalNamespace))
+      ),
     };
+  },
+});
+
+export const listPendingFiles = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const globalNamespace = await memory.getNamespace(ctx, {
+      namespace: "global",
+    });
+    const userNamespace = await memory.getNamespace(ctx, { namespace: userId });
+    const paginationOpts = { numItems: 10, cursor: null };
+    const globalResults =
+      globalNamespace &&
+      (await memory.list(ctx, {
+        namespaceId: globalNamespace.namespaceId,
+        status: "pending",
+        paginationOpts,
+      }));
+    const userResults =
+      userNamespace &&
+      (await memory.list(ctx, {
+        namespaceId: userNamespace.namespaceId,
+        status: "pending",
+        paginationOpts,
+      }));
+
+    const globalFiles =
+      globalResults?.page.map((entry) => toFile(ctx, entry, true)) ?? [];
+    const userFiles =
+      userResults?.page.map((entry) => toFile(ctx, entry, false)) ?? [];
+
+    const allFiles = await Promise.all([...globalFiles, ...userFiles]);
+    return allFiles.filter((file) => file !== null);
   },
 });
 
@@ -272,46 +305,30 @@ export type PublicFile = {
 
 async function toFiles(
   ctx: ActionCtx,
-  filesWithText: (Entry & { text: string })[]
+  files: (Entry & { text: string })[]
 ): Promise<PublicFile[]> {
-  const files = filesWithText.map(({ text: _, ...entry }) => entry);
-  return await ctx.runQuery(internal.example.getFiles, { files });
+  return await Promise.all(files.map((entry) => toFile(ctx, entry, false)));
 }
 
-export const getFiles = internalQuery({
-  args: { files: v.array(vEntry) },
-  handler: async (ctx, { files }) => {
-    return (
-      await Promise.all(files.map((entry) => toFile(ctx, entry, false)))
-    ).filter((file) => file !== null);
-  },
-});
-
 async function toFile(
-  ctx: QueryCtx,
+  ctx: { storage: StorageReader },
   entry: Entry,
   global: boolean
-): Promise<PublicFile | null> {
-  // Note: Illustrative only, we technically could get all this info from the entry metadata.
-  const fileMetadata = await ctx.db
-    .query("fileMetadata")
-    .withIndex("entryId", (q) => q.eq("entryId", entry.entryId))
-    .unique();
-  assert(fileMetadata, "File metadata not found");
-  const storageMetadata =
-    fileMetadata && (await ctx.db.system.get(fileMetadata.storageId));
-  if (!storageMetadata) {
-    return null;
-  }
+): Promise<PublicFile> {
+  assert(entry.metadata, "Entry metadata not found");
+  const storageId = entry.metadata.storageId;
+  const storageMetadata = await ctx.storage.getMetadata(storageId);
+  assert(storageMetadata, "Storage metadata not found");
   return {
     entryId: entry.entryId,
     filename: entry.key!,
-    storageId: fileMetadata.storageId,
+    storageId,
     global,
-    category: fileMetadata.category ?? undefined,
+    category:
+      entry.filterValues.find((f) => f.name === "category")?.value ?? undefined,
     title: entry.title,
     isImage: storageMetadata.contentType?.startsWith("image/") ?? false,
-    url: await ctx.storage.getUrl(fileMetadata.storageId),
+    url: await ctx.storage.getUrl(storageId),
   };
 }
 
@@ -338,7 +355,7 @@ export const listChunks = query({
 // You can track other file metadata in your own tables.
 export const recordUploadMetadata = memory.defineOnComplete<DataModel>(
   async (ctx, args) => {
-    const { previousEntry, entry, success, namespace } = args;
+    const { previousEntry, entry, success, namespace, error } = args;
     if (previousEntry && success) {
       console.debug("deleting previous entry", previousEntry.entryId);
       await _deleteFile(ctx, previousEntry.entryId);
@@ -360,9 +377,12 @@ export const recordUploadMetadata = memory.defineOnComplete<DataModel>(
     if (existing) {
       console.debug("replacing file", existing._id, entry);
       await ctx.db.replace(existing._id, metadata);
-    } else {
+    } else if (success) {
       console.debug("inserting file", entry);
       await ctx.db.insert("fileMetadata", metadata);
+    } else if (error) {
+      console.debug("adding file failed", entry, error);
+      await memory.delete(ctx, { entryId: entry.entryId });
     }
   }
 );
