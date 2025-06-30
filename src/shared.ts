@@ -34,6 +34,7 @@ export const vStatus = v.union(
   v.literal("ready"),
   v.literal("replaced")
 );
+export const vActiveStatus = v.union(v.literal("pending"), v.literal("ready"));
 export type Status = Infer<typeof vStatus>;
 export const statuses = vStatus.members.map((s) => s.value);
 

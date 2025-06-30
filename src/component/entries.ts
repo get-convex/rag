@@ -9,6 +9,7 @@ import type {
 } from "../shared.js";
 import {
   statuses,
+  vActiveStatus,
   vCreateChunkArgs,
   vEntry,
   vPaginationResult,
@@ -61,7 +62,7 @@ export const addAsync = mutation({
   },
   returns: v.object({
     entryId: v.id("entries"),
-    status: vStatus,
+    status: vActiveStatus,
     created: v.boolean(),
   }),
   handler: async (ctx, args) => {

@@ -480,7 +480,7 @@ export class Memory<
     }
   ): Promise<{
     namespaceId: NamespaceId;
-    status: "pending" | "ready" | "replaced";
+    status: "pending" | "ready";
   }> {
     const onComplete = args.onComplete
       ? await createFunctionHandle(args.onComplete)

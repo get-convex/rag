@@ -8,13 +8,14 @@ import {
 } from "./_generated/server.js";
 import { schema, v } from "./schema.js";
 import {
-  statuses,
   vNamespace,
   vPaginationResult,
-  vStatus,
+  vActiveStatus,
   type Namespace,
   type NamespaceId,
   type OnCompleteNamespace,
+  vStatus,
+  statuses,
 } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
@@ -114,7 +115,7 @@ export const lookup = query({
 export const getOrCreate = mutation({
   args: {
     namespace: v.string(),
-    status: vStatus,
+    status: vActiveStatus,
     onComplete: v.optional(v.string()),
     modelId: v.string(),
     dimension: v.number(),
@@ -122,11 +123,10 @@ export const getOrCreate = mutation({
   },
   returns: v.object({
     namespaceId: v.id("namespaces"),
-    status: vStatus,
+    status: vActiveStatus,
   }),
   handler: async (ctx, args) => {
     const { status, onComplete, ...rest } = args;
-    assert(status !== "replaced", "You cannot create a replaced namespace");
     const iter = mergedStream(
       statuses.map((status) =>
         stream(ctx.db, schema)

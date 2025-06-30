@@ -141,11 +141,7 @@ export type Mounts = {
         };
         onComplete?: string;
       },
-      {
-        created: boolean;
-        entryId: string;
-        status: "pending" | "ready" | "replaced";
-      }
+      { created: boolean; entryId: string; status: "pending" | "ready" }
     >;
     deleteAsync: FunctionReference<
       "mutation",
@@ -267,9 +263,9 @@ export type Mounts = {
         modelId: string;
         namespace: string;
         onComplete?: string;
-        status: "pending" | "ready" | "replaced";
+        status: "pending" | "ready";
       },
-      { namespaceId: string; status: "pending" | "ready" | "replaced" }
+      { namespaceId: string; status: "pending" | "ready" }
     >;
     list: FunctionReference<
       "query",
