@@ -180,8 +180,11 @@ type AddEntryArgs = Pick<
 async function findExistingEntry(
   ctx: MutationCtx,
   namespaceId: Id<"namespaces">,
-  key: string
+  key: string | undefined
 ) {
+  if (!key) {
+    return null;
+  }
   const existing = await mergedStream(
     statuses.map((status) =>
       stream(ctx.db, schema)
@@ -450,16 +453,7 @@ async function promoteToReadyHandler(
     );
     return { replacedVersion: publicEntry(entry) };
   }
-  const previousEntry = await ctx.db
-    .query("entries")
-    .withIndex("namespaceId_status_key_version", (q) =>
-      q
-        .eq("namespaceId", entry.namespaceId)
-        .eq("status.kind", "ready")
-        .eq("key", entry.key)
-    )
-    .order("desc")
-    .unique();
+  const previousEntry = await getPreviousEntry(ctx, entry);
   if (previousEntry) {
     await ctx.db.patch(previousEntry._id, {
       status: { kind: "replaced", replacedAt: Date.now() },
@@ -489,7 +483,7 @@ export async function getPreviousEntry(ctx: QueryCtx, entry: Doc<"entries">) {
   if (!entry.key) {
     return null;
   }
-  return await ctx.db
+  const previousEntry = await ctx.db
     .query("entries")
     .withIndex("namespaceId_status_key_version", (q) =>
       q
@@ -498,11 +492,13 @@ export async function getPreviousEntry(ctx: QueryCtx, entry: Doc<"entries">) {
         .eq("key", entry.key)
     )
     .unique();
+  if (previousEntry?._id === entry._id) return null;
+  return previousEntry;
 }
 
 export function publicEntry(entry: {
   _id: Id<"entries">;
-  key: string;
+  key?: string | undefined;
   importance: number;
   filterValues: EntryFilterValues[];
   contentHash?: string | undefined;

@@ -51,7 +51,7 @@ export const vNamespace = v.object({
 export type Namespace = Infer<typeof vNamespace>;
 
 export const vEntry = v.object({
-  key: v.string(),
+  key: v.optional(v.string()),
   title: v.optional(v.string()),
   entryId: vEntryId,
   importance: v.number(),
@@ -79,12 +79,12 @@ export type EntryFilterValues<
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Entry<Filters extends Record<string, Value> = any> = {
-  /** User-defined key. You can re-use a key to replace it with new contents. */
-  key: string;
-  /** User-defined title. */
-  title?: string | undefined;
   /** The entry's id, uniquely identifying the key + contents + namespace etc. */
   entryId: EntryId;
+  /** User-defined key. You can re-use a key to replace it with new contents. */
+  key?: string | undefined;
+  /** User-defined title. */
+  title?: string | undefined;
   /** How important this entry is. Defaults to 1.
    * Think of it as multiplying by the vector search score.
    */
@@ -157,7 +157,7 @@ export type OnComplete = FunctionReference<
   {
     namespace: string;
     namespaceId: NamespaceId;
-    key: string;
+    key?: string | undefined;
     entryId: EntryId;
     previousEntryId: EntryId | null;
     success: boolean;

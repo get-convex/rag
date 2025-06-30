@@ -37,7 +37,7 @@ export const schema = defineSchema({
   }).index("status_namespace_version", ["status.kind", "namespace", "version"]),
   entries: defineTable({
     // user-specified id, eg. storage ID or "myfile.txt". Used for adding.
-    key: v.string(),
+    key: v.optional(v.string()),
     namespaceId: v.id("namespaces"),
     version: v.number(),
     importance: v.number(),

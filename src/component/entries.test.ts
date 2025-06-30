@@ -11,19 +11,17 @@ type ConvexTest = TestConvex<typeof schema>;
 
 describe("entries", () => {
   async function setupTestNamespace(t: ConvexTest, filterNames: string[] = []) {
-    return await t.run(async (ctx) => {
-      return ctx.db.insert("namespaces", {
-        namespace: "test-namespace",
-        version: 1,
-        modelId: "test-model",
-        dimension: 128,
-        filterNames,
-        status: { kind: "ready" },
-      });
+    const namespace = await t.mutation(api.namespaces.getOrCreate, {
+      namespace: "test-namespace",
+      status: "ready",
+      modelId: "test-model",
+      dimension: 128,
+      filterNames,
     });
+    return namespace.namespaceId;
   }
 
-  function createTestEntry(namespaceId: Id<"namespaces">, key = "test-entry") {
+  function testEntryArgs(namespaceId: Id<"namespaces">, key = "test-entry") {
     return {
       namespaceId,
       key,
@@ -38,7 +36,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     const result = await t.mutation(api.entries.add, {
       entry,
@@ -65,7 +63,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     // First add
     const firstResult = await t.mutation(api.entries.add, {
@@ -109,7 +107,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     // First add
     const firstResult = await t.mutation(api.entries.add, {
@@ -135,7 +133,9 @@ describe("entries", () => {
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
     // When creating a entry as "ready" initially, replacedVersion is null
     // Replacement only happens during pending -> ready transitions
-    expect(secondResult.replacedVersion).toBeNull();
+    expect(secondResult.replacedVersion).toMatchObject({
+      entryId: firstResult.entryId,
+    });
 
     // Verify both entries exist with different versions
     const allDocs = await t.run(async (ctx) => {
@@ -160,7 +160,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     // First add
     const firstResult = await t.mutation(api.entries.add, {
@@ -181,7 +181,9 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedVersion).toBeNull();
+    expect(secondResult.replacedVersion).toMatchObject({
+      entryId: firstResult.entryId,
+    });
 
     // Verify new version was created
     const newDoc = await t.run(async (ctx) => {
@@ -196,7 +198,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t, ["category"]); // Add filter name
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     // First add
     const firstResult = await t.mutation(api.entries.add, {
@@ -217,7 +219,9 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedVersion).toBeNull();
+    expect(secondResult.replacedVersion).toMatchObject({
+      entryId: firstResult.entryId,
+    });
 
     // Verify new version was created with correct filter values
     const newDoc = await t.run(async (ctx) => {
@@ -234,7 +238,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     const result = await t.mutation(api.entries.add, {
       entry,
@@ -257,8 +261,8 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry1 = createTestEntry(namespaceId, "doc1");
-    const entry2 = createTestEntry(namespaceId, "doc2");
+    const entry1 = testEntryArgs(namespaceId, "doc1");
+    const entry2 = testEntryArgs(namespaceId, "doc2");
 
     const result1 = await t.mutation(api.entries.add, {
       entry: entry1,
@@ -293,7 +297,7 @@ describe("entries", () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
-    const entry = createTestEntry(namespaceId);
+    const entry = testEntryArgs(namespaceId);
 
     // First add - create as ready
     const firstResult = await t.mutation(api.entries.add, {
@@ -326,9 +330,7 @@ describe("entries", () => {
     });
 
     expect(promoteResult.replacedVersion).not.toBeNull();
-    expect(promoteResult.replacedVersion!.entryId).toBe(
-      firstResult.entryId
-    );
+    expect(promoteResult.replacedVersion!.entryId).toBe(firstResult.entryId);
 
     // Verify the first entry is now replaced
     const firstDoc = await t.run(async (ctx) => {

@@ -109,7 +109,7 @@ export class Memory<
   async add(
     ctx: RunMutationCtx,
     args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
-      key: string;
+      key?: string | undefined;
       chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
       title?: string;
       // mimeType: string;

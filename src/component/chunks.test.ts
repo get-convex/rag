@@ -171,7 +171,13 @@ describe("chunks", () => {
     });
 
     // Create version 2 of the same entry
-    const docV2Id = await setupTestEntry(t, namespaceId, "versioned-entry", 2);
+    const docV2Id = await setupTestEntry(
+      t,
+      namespaceId,
+      "versioned-entry",
+      2,
+      "pending"
+    );
 
     // Insert chunks in version 2 (this should mark v1 chunks as replaced)
     const v2Chunks = createTestChunks(2);

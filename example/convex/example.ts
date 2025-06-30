@@ -234,7 +234,7 @@ async function toFile(
     fileMetadata && (await ctx.db.system.get(fileMetadata.storageId));
   return {
     entryId: entry.entryId,
-    filename: entry.key,
+    filename: entry.key!,
     global,
     category: fileMetadata?.category ?? undefined,
     title: entry.title,

@@ -23,7 +23,7 @@ import {
 import { insertEmbedding } from "./embeddings/index.js";
 import { vVectorId } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
-import { publicEntry } from "./entries.js";
+import { getPreviousEntry, publicEntry } from "./entries.js";
 import {
   filterFieldsFromNumbers,
   numberedFilterFromNamedFilters,
@@ -61,20 +61,9 @@ export async function insertChunks(
   const namespace = await ctx.db.get(entry.namespaceId);
   assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
-  const previousEntry = await ctx.db
-    .query("entries")
-    .withIndex("namespaceId_status_key_version", (q) =>
-      q
-        .eq("namespaceId", entry.namespaceId)
-        .eq("status.kind", "ready")
-        .eq("key", entry.key)
-        .lt("version", entry.version)
-    )
-    .order("desc")
-    .first();
+  const previousEntry = await getPreviousEntry(ctx, entry);
   let order = startOrder;
   const chunkIds: Id<"chunks">[] = [];
-  // TODO: avoid writing if they're the same
   const existingChunks = await ctx.db
     .query("chunks")
     .withIndex("entryId_order", (q) =>
@@ -89,6 +78,7 @@ export async function insertChunks(
       `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`
     );
   }
+  // TODO: avoid writing if they're the same
   await Promise.all(
     existingChunks.map(async (c) => {
       if (c.state.kind === "ready") {
@@ -145,6 +135,9 @@ export async function insertChunks(
 }
 
 async function ensureLatestEntryVersion(ctx: QueryCtx, entry: Doc<"entries">) {
+  if (!entry.key) {
+    return true;
+  }
   const newerEntry = await mergedStream(
     statuses.map((status) =>
       stream(ctx.db, schema)
@@ -196,31 +189,19 @@ export const replaceChunksPage = mutation({
     const namespace = await ctx.db.get(entry.namespaceId);
     assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
-    const previousEntry = await ctx.db
-      .query("entries")
-      .withIndex("namespaceId_status_key_version", (q) =>
-        q
-          .eq("namespaceId", entry.namespaceId)
-          .eq("status.kind", "ready")
-          .eq("key", entry.key)
-          .lt("version", entry.version)
-      )
-      .order("desc")
-      .first();
-    const pendingEntries = previousEntry
-      ? await ctx.db
-          .query("entries")
-          .withIndex("namespaceId_status_key_version", (q) =>
-            q
-              .eq("namespaceId", entry.namespaceId)
-              .eq("status.kind", "pending")
-              .eq("key", entry.key)
-              .gt("version", previousEntry.version)
-              .lt("version", entry.version)
-          )
-          .order("desc")
-          .collect()
-      : [];
+    const previousEntry = await getPreviousEntry(ctx, entry);
+    const pendingEntries =
+      entry.key && previousEntry
+        ? await ctx.db
+            .query("entries")
+            .withIndex("namespaceId_status_key_version", (q) =>
+              q
+                .eq("namespaceId", entry.namespaceId)
+                .eq("status.kind", "pending")
+                .eq("key", entry.key)
+            )
+            .collect()
+        : [];
     const chunkStream = mergedStream(
       [entry, ...pendingEntries, previousEntry]
         .filter((d) => d !== null)

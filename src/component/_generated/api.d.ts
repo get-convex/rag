@@ -105,7 +105,7 @@ export type Mounts = {
           contentHash?: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           namespaceId: string;
           title?: string;
         };
@@ -119,7 +119,7 @@ export type Mounts = {
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null;
@@ -135,7 +135,7 @@ export type Mounts = {
           contentHash?: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           namespaceId: string;
           title?: string;
         };
@@ -169,7 +169,7 @@ export type Mounts = {
         entryId: string;
         filterValues: Array<{ name: string; value: any }>;
         importance: number;
-        key: string;
+        key?: string;
         status: "pending" | "ready" | "replaced";
         title?: string;
       } | null
@@ -183,7 +183,7 @@ export type Mounts = {
         entryId: string;
         filterValues: Array<{ name: string; value: any }>;
         importance: number;
-        key: string;
+        key?: string;
         status: "pending" | "ready" | "replaced";
         title?: string;
       } | null
@@ -212,7 +212,7 @@ export type Mounts = {
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           status: "pending" | "ready" | "replaced";
           title?: string;
         }>;
@@ -230,7 +230,7 @@ export type Mounts = {
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null;
@@ -335,7 +335,7 @@ export type Mounts = {
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
           importance: number;
-          key: string;
+          key?: string;
           status: "pending" | "ready" | "replaced";
           title?: string;
         }>;
