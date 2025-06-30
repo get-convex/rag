@@ -166,14 +166,21 @@ export type OnComplete = FunctionReference<
   string
 >;
 
+export const vChunkerArgs = v.object({
+  namespace: v.string(),
+  namespaceId: vNamespaceId,
+  key: v.string(),
+  entryId: vEntryId,
+  modelId: v.string(),
+  dimension: v.number(),
+  insertChunks: v.string(),
+  importance: v.number(),
+  filterNames: v.array(v.string()),
+});
+
 export type ChunkerAction = FunctionReference<
   "action",
   "internal",
-  {
-    namespace: string;
-    namespaceId: NamespaceId;
-    key: string;
-    entryId: EntryId;
-  },
+  Infer<typeof vChunkerArgs>,
   null
 >;
