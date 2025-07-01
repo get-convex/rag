@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import {
   contentHashFromArrayBuffer,
+  defaultChunker,
   Entry,
   EntryId,
   guessMimeTypeFromContents,
@@ -65,8 +66,8 @@ export const addFile = action({
     const { entryId, created } = await rag.add(ctx, {
       // What search space to add this to. You cannot search across namespaces.
       namespace: globalNamespace ? "global" : userId,
-      // The parts of the entry to semantically search across.
-      chunks: text.split("\n\n"),
+      // The text to embed. If you want to control chunking, pass `chunks` instead.
+      text,
       /** The following fields are optional: */
       key: filename, // will replace any existing entry with the same key & namespace.
       title: filename, // A readable title for the entry.
@@ -223,7 +224,7 @@ export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
     filename: args.entry.title!,
     mimeType: metadata.contentType!,
   });
-  return { chunks: text.split("\n\n") };
+  return { chunks: defaultChunker(text) };
 });
 
 /**

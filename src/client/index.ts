@@ -47,22 +47,9 @@ import {
   type OnCompleteNamespace,
 } from "../shared.js";
 import type { NamedFilter } from "../component/filters.js";
+import { defaultChunker } from "./defaultChunker.js";
 
-export {
-  type VEntry,
-  type VSearchEntry,
-  vEntry,
-  vSearchEntry,
-  vSearchResult,
-  vOnCompleteArgs,
-} from "../shared.js";
-export { vEntryId, vNamespaceId };
-export {
-  contentHashFromArrayBuffer,
-  guessMimeTypeFromExtension,
-  guessMimeTypeFromContents,
-} from "./fileUtils.js";
-
+export { defaultChunker, vEntryId, vNamespaceId };
 export type {
   ChunkerAction,
   Entry,
@@ -75,6 +62,20 @@ export type {
   SearchResult,
   Status,
 };
+
+export {
+  type VEntry,
+  type VSearchEntry,
+  vEntry,
+  vSearchEntry,
+  vSearchResult,
+  vOnCompleteArgs,
+} from "../shared.js";
+export {
+  contentHashFromArrayBuffer,
+  guessMimeTypeFromExtension,
+  guessMimeTypeFromContents,
+} from "./fileUtils.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
 
@@ -126,16 +127,73 @@ export class RAG<
 
   async add(
     ctx: RunMutationCtx,
-    args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
-      key?: string | undefined;
-      chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
-      title?: string;
-      metadata?: EntryMetadata;
-      filterValues?: EntryFilterValues<FitlerSchemas>[];
-      importance?: Importance;
-      contentHash?: string;
-      onComplete?: OnComplete;
-    }
+    args: ({ namespace: string } | { namespaceId: NamespaceId }) &
+      (
+        | {
+            /**
+             * You can provide your own chunks to finely control the splitting.
+             * These can also include your own provided embeddings, so you can
+             * control what content is embedded, which can differ from the content
+             * in the chunks.
+             */
+            chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
+            /** @deprecated You cannot specify both chunks and text currently. */
+            text?: undefined;
+          }
+        | {
+            /**
+             * If you don't provide chunks, we will split the text into chunks
+             * using the default chunker and embed them with the default model.
+             */
+            text: string;
+            /** @deprecated You cannot specify both chunks and text currently. */
+            chunks?: undefined;
+          }
+      ) & {
+        /**
+         * This key allows replacing an existing entry by key.
+         * Within a namespace, there will only be one "ready" entry per key.
+         * When adding a new one, it will start as "pending" and after all
+         * chunks are added, it will be promoted to "ready".
+         */
+        key?: string | undefined;
+        /**
+         * The title of the entry. Used for default prompting to contextualize
+         * the entry results. Also may be used for keyword search in the future.
+         */
+        title?: string;
+        /**
+         * Metadata about the entry that is not indexed or filtered or searched.
+         * Provided as a convenience to store associated information, such as
+         * the storageId or url to the source material.
+         */
+        metadata?: EntryMetadata;
+        /**
+         * Filters to apply to the entry. These can be OR'd together in search.
+         * To represent AND logic, your filter can be an object or array with
+         * multiple values. e.g. saving the result with:
+         * `{ name: "categoryAndPriority", value: ["articles", "high"] }`
+         * and searching with the same value will return entries that match that
+         * value exactly.
+         */
+        filterValues?: EntryFilterValues<FitlerSchemas>[];
+        /**
+         * The importance of the entry. This is used to scale the vector search
+         * score of each chunk.
+         */
+        importance?: Importance;
+        /**
+         * The hash of the entry contents. This is used to deduplicate entries.
+         * You can look up existing entries by content hash within a namespace.
+         * It will also return an existing entry if you add an entry with the
+         * same content hash.
+         */
+        contentHash?: string;
+        /**
+         * A function that is called when the entry is added.
+         */
+        onComplete?: OnComplete;
+      }
   ): Promise<{
     entryId: EntryId;
     status: Status;
@@ -155,11 +213,12 @@ export class RAG<
 
     validateAddFilterValues(args.filterValues, this.options.filterNames);
 
+    const chunks = args.chunks ?? defaultChunker(args.text);
     let allChunks: CreateChunkArgs[] | undefined;
-    if (Array.isArray(args.chunks) && args.chunks.length < CHUNK_BATCH_SIZE) {
+    if (Array.isArray(chunks) && chunks.length < CHUNK_BATCH_SIZE) {
       allChunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
-        args.chunks
+        chunks
       );
     }
 
@@ -197,7 +256,7 @@ export class RAG<
     // break chunks up into batches, respecting soft limit
     let startOrder = 0;
     let isPending = false;
-    for await (const batch of batchIterator(args.chunks, CHUNK_BATCH_SIZE)) {
+    for await (const batch of batchIterator(chunks, CHUNK_BATCH_SIZE)) {
       const chunks = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         batch
