@@ -1,4 +1,4 @@
-# Convex Memory Component
+# Convex Agent RAG Component
 
 [![npm version](https://badge.fury.io/js/@convex-dev%2Fmemory.svg)](https://badge.fury.io/js/@convex-dev%2Fmemory)
 
@@ -17,7 +17,7 @@ Use with an Agent for Retrieval-Augmented Generation (RAG).
 - **Chunk Context**: Get surrounding chunks for better context.
 - **Graceful Migrations**: Migrate content or whole namespaces without disruption.
 
-Found a bug? Feature request? [File it here](https://github.com/get-convex/memory/issues).
+Found a bug? Feature request? [File it here](https://github.com/get-convex/rag/issues).
 
 ## Pre-requisite: Convex
 
@@ -32,7 +32,7 @@ Run `npm create convex` or follow any of the [quickstarts](https://docs.convex.d
 Install the component package:
 
 ```ts
-npm install @convex-dev/memory
+npm install @convex-dev/rag
 ```
 
 Create a `convex.config.ts` file in your app's `convex/` folder and install the component by calling `use`:
@@ -40,10 +40,10 @@ Create a `convex.config.ts` file in your app's `convex/` folder and install the 
 ```ts
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import memory from "@convex-dev/memory/convex.config";
+import rag from "@convex-dev/rag/convex.config";
 
 const app = defineApp();
-app.use(memory);
+app.use(rag);
 
 export default app;
 ```
@@ -53,11 +53,11 @@ export default app;
 ```ts
 // convex/example.ts
 import { components } from "./_generated/api";
-import { Memory } from "@convex-dev/memory";
+import { RAG } from "@convex-dev/rag";
 // Any AI SDK model that supports embeddings will work.
 import { openai } from "@ai-sdk/openai";
 
-const memory = new Memory<FilterTypes>(components.memory, {
+const rag = new RAG<FilterTypes>(components.rag, {
   filterNames: ["category", "contentType", "categoryAndType"],
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536,
@@ -73,7 +73,7 @@ type FilterTypes = {
 
 ## Usage Examples
 
-### Add Memory Entries
+### Add RAG Entries
 
 Add content with text chunks.
 It will embed the chunks automatically if you don't provide them.
@@ -83,7 +83,7 @@ export const add = action({
   args: { text: v.string() },
   handler: async (ctx, { text }) => {
     // Add the text to a namespace shared by all users.
-    await memory.add(ctx, {
+    await rag.add(ctx, {
       namespace: "all-users",
       chunks: text.split("\n\n"),
     });
@@ -106,7 +106,7 @@ export const add = action({
     const content = await response.text();
     const contentType = response.headers.get("content-type");
 
-    const { entryId } = await memory.add(ctx, {
+    const { entryId } = await rag.add(ctx, {
       namespace: "global", // namespace can be any string
       key: url,
       chunks: content.split("\n\n"),
@@ -138,7 +138,7 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api.js";
 import { DataModel } from "./_generated/dataModel.js";
 import { httpAction } from "./_generated/server.js";
-import { memory } from "./example.js";
+import { rag } from "./example.js";
 
 const cors = corsRouter(httpRouter());
 
@@ -147,7 +147,7 @@ cors.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const storageId = await ctx.storage.store(await request.blob());
-    await memory.addAsync(ctx, {
+    await rag.addAsync(ctx, {
       namespace: "all-files",
       chunkerAction: internal.http.chunkerAction,
       onComplete: internal.http.handleEntryComplete,
@@ -157,17 +157,17 @@ cors.route({
   }),
 });
 
-export const chunkerAction = memory.defineChunkerAction(async (ctx, args) => {
+export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
   const storageId = args.entry.metadata!.storageId;
   const file = await ctx.storage.get(storageId);
   const text = await new TextDecoder().decode(await file!.arrayBuffer());
   return { chunks: text.split("\n\n") };
 });
 
-export const handleEntryComplete = memory.defineOnComplete<DataModel>(
+export const handleEntryComplete = rag.defineOnComplete<DataModel>(
   async (ctx, { previousEntry, entry, success, namespace, error }) => {
     if (error) {
-      await memory.delete(ctx, { entryId: entry.entryId });
+      await rag.delete(ctx, { entryId: entry.entryId });
       return;
     }
     // You can associate the entry with your own data here. This will commit
@@ -199,7 +199,7 @@ export const search = action({
   },
   handler: async (ctx, args) => {
 
-    const { results, text, entries } = await memory.search(ctx, {
+    const { results, text, entries } = await rag.search(ctx, {
       namespace: "global",
       query: args.query,
       limit: 10
@@ -225,7 +225,7 @@ export const searchByCategory = action({
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const results = await memory.search(ctx, {
+    const results = await rag.search(ctx, {
       namespace: userId,
       query: args.query,
       filters: [{ name: "category", value: args.category }],
@@ -265,7 +265,7 @@ export const searchWithContext = action({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { results, text, entries } = await memory.search(ctx, {
+    const { results, text, entries } = await rag.search(ctx, {
       namespace: args.userId,
       query: args.query,
       chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
@@ -289,7 +289,7 @@ with `...` separating non-sequential chunks, `---` separating entries, and
 `# Title:` at each entry boundary (if titles are available).
 
 ```ts
-const { text } = await memory.search(ctx, { ... });
+const { text } = await rag.search(ctx, { ... });
 console.log(text);
 ```
 
@@ -313,7 +313,7 @@ to format each entry differently.
 For a fully custom format, you can use the `results` field and entries directly:
 
 ```ts
-const { results, text, entries } = await memory.search(ctx, {
+const { results, text, entries } = await rag.search(ctx, {
   namespace: args.userId,
   query: args.query,
   chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
@@ -358,7 +358,7 @@ Delete an entry:
 export const delete = mutation({
   args: { entryId: vEntry },
   handler: async (ctx, args) => {
-    await memory.delete(ctx, {
+    await rag.delete(ctx, {
       entryId: args.entryId,
     });
   },

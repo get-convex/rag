@@ -43,7 +43,7 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  memory: {
+  rag: {
     chunks: {
       insert: FunctionReference<
         "mutation",

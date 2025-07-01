@@ -12,7 +12,7 @@
     "lint": "tsc -p convex && eslint convex"
   },
   "dependencies": {
-    "@convex-dev/memory": "file:..",
+    "@convex-dev/rag": "file:..",
     "@langchain/textsplitters": "^0.1.0",
     "convex": "file:../node_modules/convex",
     "react": "^18.3.1",

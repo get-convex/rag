@@ -36,7 +36,7 @@ import {
   type Status,
 } from "../shared.js";
 import {
-  type MemoryComponent,
+  type RAGComponent,
   type RunActionCtx,
   type RunMutationCtx,
   type RunQueryCtx,
@@ -67,7 +67,7 @@ export type {
   ChunkerAction,
   Entry,
   EntryId,
-  MemoryComponent,
+  RAGComponent,
   NamespaceId,
   OnComplete,
   OnCompleteNamespace,
@@ -109,12 +109,12 @@ export type InputChunk =
 type FilterNames<FiltersSchemas extends Record<string, Value>> =
   (keyof FiltersSchemas & string)[];
 
-export class Memory<
+export class RAG<
   FitlerSchemas extends Record<string, Value> = Record<string, Value>,
   EntryMetadata extends Record<string, Value> = Record<string, Value>,
 > {
   constructor(
-    public component: MemoryComponent,
+    public component: RAGComponent,
     public options: {
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModelV1<string>;
@@ -257,10 +257,10 @@ export class Memory<
        * This should be passed as internal.foo.myChunkerAction
        * e.g.
        * ```ts
-       * export const myChunkerAction = memory.defineChunkerAction();
+       * export const myChunkerAction = rag.defineChunkerAction();
        *
        * // in your mutation
-       *   const entryId = await memory.addAsync(ctx, {
+       *   const entryId = await rag.addAsync(ctx, {
        *     key: "myfile.txt",
        *     namespace: "my-namespace",
        *     chunker: internal.foo.myChunkerAction,
@@ -644,7 +644,7 @@ export class Memory<
           await ctx.runMutation(
             args.insertChunks as FunctionHandle<
               "mutation",
-              FunctionArgs<MemoryComponent["chunks"]["insert"]>,
+              FunctionArgs<RAGComponent["chunks"]["insert"]>,
               null
             >,
             {
@@ -686,7 +686,7 @@ function validateAddFilterValues(
   }
   if (!filterNames) {
     throw new Error(
-      "You must provide filter names to Memory to add entries with filters."
+      "You must provide filter names to RAG to add entries with filters."
     );
   }
   const seen = new Set<string>();

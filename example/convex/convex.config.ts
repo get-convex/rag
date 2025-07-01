@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import memory from "@convex-dev/memory/convex.config";
+import rag from "@convex-dev/rag/convex.config";
 
 const app = defineApp();
-app.use(memory);
+app.use(rag);
 
 export default app;

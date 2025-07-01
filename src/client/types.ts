@@ -14,7 +14,7 @@ import type { Mounts } from "../component/_generated/api.js";
 // UseApi<typeof api> is an alternative that has jump-to-definition but is
 // less stable and reliant on types within the component files, which can cause
 // issues where passing `components.foo` doesn't match the argument
-export type MemoryComponent = UseApi<Mounts>;
+export type RAGComponent = UseApi<Mounts>;
 
 // Type utils follow
 

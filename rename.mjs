@@ -138,7 +138,7 @@ async function setup() {
   // Prompt for component name
   const componentName = await new Promise((resolve) => {
     rl.question(
-      `Enter your component name (e.g., "memory" or "RAG") [${currentDirName}]: `,
+      `Enter your component name (e.g., "rag" or "RAG") [${currentDirName}]: `,
       (answer) => {
         resolve(answer.trim() || currentDirName);
       }
@@ -195,24 +195,24 @@ async function setup() {
   // Define all replacements
   const replacements = [
     // NPM package name
-    ["@convex-dev/memory", npmPackageName],
+    ["@convex-dev/rag", npmPackageName],
 
     // Repository name
-    ["get-convex/memory", repoName],
+    ["get-convex/rag", repoName],
 
     // Component name variations
-    ["Memory", cases.pascal],
-    ["memory", cases.camel],
-    ["memory", cases.kebab],
-    ["memory", cases.snake],
-    ["memory", cases.space],
-    ["Memory", cases.title],
+    ["RAG", cases.pascal],
+    ["rag", cases.camel],
+    ["rag", cases.kebab],
+    ["rag", cases.snake],
+    ["rag", cases.space],
+    ["RAG", cases.title],
 
     // // Handle the component definition in convex.config.ts
-    // ['"memory"', `"${cases.camel}"`],
+    // ['"rag"', `"${cases.camel}"`],
 
     // // Handle description (appears in package.json)
-    // ["A memory component for Convex.", `A ${cases.space} component for Convex.`],
+    // ["A rag component for Convex.", `A ${cases.space} component for Convex.`],
   ];
 
   console.log("🔍 Finding files to update...");

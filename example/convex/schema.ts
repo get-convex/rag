@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { vEntryId } from "@convex-dev/memory";
+import { vEntryId } from "@convex-dev/rag";
 
 export default defineSchema({
   // We can use a table with extra metadata to track extra things

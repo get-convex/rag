@@ -3,7 +3,7 @@ import { useQuery, useConvex } from "convex/react";
 import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { SearchResult } from "@convex-dev/memory";
+import type { SearchResult } from "@convex-dev/rag";
 import type { PublicFile } from "../convex/example";
 
 type SearchType = "global" | "user" | "category" | "file";
@@ -602,9 +602,7 @@ function Example() {
       {/* Right Panel - Search */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Memory Search
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">RAG Search</h1>
 
           {/* Search Type Selector */}
           <div className="flex space-x-4 mb-4">
@@ -678,7 +676,7 @@ function Example() {
             </div>
           )}
 
-          {/* Document Info for Memory */}
+          {/* Document Info for RAG */}
           {searchType === "file" && selectedDocument && (
             <div className="mb-4 p-3 bg-blue-50 rounded-md">
               <div className="flex items-center justify-between">
@@ -728,7 +726,7 @@ function Example() {
 
         {/* Search Results */}
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Document Chunks for Memory */}
+          {/* Document Chunks for RAG */}
           {searchType === "file" &&
             selectedDocument &&
             documentChunks &&

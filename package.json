@@ -1,11 +1,11 @@
 {
-  "name": "@convex-dev/memory",
-  "description": "A memory component for Convex.",
-  "repository": "github:get-convex/memory",
-  "homepage": "https://github.com/get-convex/memory#readme",
+  "name": "@convex-dev/rag",
+  "description": "A rag component for Convex.",
+  "repository": "github:get-convex/rag",
+  "homepage": "https://github.com/get-convex/rag#readme",
   "bugs": {
     "email": "support@convex.dev",
-    "url": "https://github.com/get-convex/memory/issues"
+    "url": "https://github.com/get-convex/rag/issues"
   },
   "version": "0.1.6",
   "license": "Apache-2.0",

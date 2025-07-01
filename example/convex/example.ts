@@ -5,10 +5,10 @@ import {
   EntryId,
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
-  Memory,
+  RAG,
   SearchEntry,
   vEntryId,
-} from "@convex-dev/memory";
+} from "@convex-dev/rag";
 import { assert } from "convex-helpers";
 import {
   paginationOptsValidator,
@@ -38,7 +38,7 @@ type Metadata = {
   uploadedBy: string;
 };
 
-const memory = new Memory<Filters, Metadata>(components.memory, {
+const rag = new RAG<Filters, Metadata>(components.rag, {
   filterNames: ["filename", "category"],
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536,
@@ -62,7 +62,7 @@ export const addFile = action({
     const blob = new Blob([bytes], { type: mimeType });
     const storageId = await ctx.storage.store(blob);
     const text = await getText(ctx, { storageId, filename, bytes, mimeType });
-    const { entryId, created } = await memory.add(ctx, {
+    const { entryId, created } = await rag.add(ctx, {
       // What search space to add this to. You cannot search across namespaces.
       namespace: globalNamespace ? "global" : userId,
       // The parts of the entry to semantically search across.
@@ -98,7 +98,7 @@ export const search = action({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const results = await memory.search(ctx, {
+    const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
@@ -121,7 +121,7 @@ export const searchFile = action({
     if (!userId) {
       throw new Error("Unauthorized");
     }
-    const results = await memory.search(ctx, {
+    const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       chunkContext: { before: 1, after: 1 },
@@ -146,7 +146,7 @@ export const searchCategory = action({
     if (!userId) {
       throw new Error("Unauthorized");
     }
-    const results = await memory.search(ctx, {
+    const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
       limit: 10,
@@ -180,7 +180,7 @@ export async function addFileAsync(
 
   const namespace = globalNamespace ? "global" : userId;
   const bytes = await blob.arrayBuffer();
-  const existing = await memory.findExistingEntryByContentHash(ctx, {
+  const existing = await rag.findExistingEntryByContentHash(ctx, {
     contentHash: await contentHashFromArrayBuffer(bytes),
     key: filename,
     namespace,
@@ -195,7 +195,7 @@ export async function addFileAsync(
   const storageId = await ctx.storage.store(
     new Blob([bytes], { type: blob.type })
   );
-  const { entryId } = await memory.addAsync(ctx, {
+  const { entryId } = await rag.addAsync(ctx, {
     namespace,
     key: filename,
     title: filename,
@@ -213,7 +213,7 @@ export async function addFileAsync(
   };
 }
 
-export const chunkerAction = memory.defineChunkerAction(async (ctx, args) => {
+export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
   assert(args.entry.metadata, "Entry metadata not found");
   const storageId = args.entry.metadata.storageId;
   const metadata = await ctx.storage.getMetadata(storageId);
@@ -239,13 +239,13 @@ export const listFiles = query({
   handler: async (ctx, args): Promise<PaginationResult<PublicFile>> => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const namespace = await memory.getNamespace(ctx, {
+    const namespace = await rag.getNamespace(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
     });
     if (!namespace) {
       return { page: [], isDone: true, continueCursor: "" };
     }
-    const results = await memory.list(ctx, {
+    const results = await rag.list(ctx, {
       namespaceId: namespace.namespaceId,
       paginationOpts: args.paginationOpts,
     });
@@ -263,21 +263,21 @@ export const listPendingFiles = query({
   handler: async (ctx) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const globalNamespace = await memory.getNamespace(ctx, {
+    const globalNamespace = await rag.getNamespace(ctx, {
       namespace: "global",
     });
-    const userNamespace = await memory.getNamespace(ctx, { namespace: userId });
+    const userNamespace = await rag.getNamespace(ctx, { namespace: userId });
     const paginationOpts = { numItems: 10, cursor: null };
     const globalResults =
       globalNamespace &&
-      (await memory.list(ctx, {
+      (await rag.list(ctx, {
         namespaceId: globalNamespace.namespaceId,
         status: "pending",
         paginationOpts,
       }));
     const userResults =
       userNamespace &&
-      (await memory.list(ctx, {
+      (await rag.list(ctx, {
         namespaceId: userNamespace.namespaceId,
         status: "pending",
         paginationOpts,
@@ -341,7 +341,7 @@ export const listChunks = query({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const paginatedChunks = await memory.listChunks(ctx, {
+    const paginatedChunks = await rag.listChunks(ctx, {
       entryId: args.entryId,
       paginationOpts: args.paginationOpts,
     });
@@ -354,7 +354,7 @@ export const listChunks = query({
  */
 
 // You can track other file metadata in your own tables.
-export const recordUploadMetadata = memory.defineOnComplete<DataModel>(
+export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
   async (ctx, args) => {
     const { previousEntry, entry, success, namespace, error } = args;
     if (previousEntry && success) {
@@ -383,7 +383,7 @@ export const recordUploadMetadata = memory.defineOnComplete<DataModel>(
       await ctx.db.insert("fileMetadata", metadata);
     } else if (error) {
       console.debug("adding file failed", entry, error);
-      await memory.delete(ctx, { entryId: entry.entryId });
+      await rag.delete(ctx, { entryId: entry.entryId });
     }
   }
 );
@@ -405,7 +405,7 @@ async function _deleteFile(ctx: MutationCtx, entryId: EntryId) {
   if (file) {
     await ctx.db.delete(file._id);
     await ctx.storage.delete(file.storageId);
-    await memory.delete(ctx, { entryId });
+    await rag.delete(ctx, { entryId });
   }
 }
 

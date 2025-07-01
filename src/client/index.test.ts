@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Memory } from "./index.js";
+import { RAG } from "./index.js";
 import type { DataModelFromSchemaDefinition } from "convex/server";
 import {
   anyApi,
@@ -26,7 +26,7 @@ const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
-const memory = new Memory(components.memory, {
+const rag = new RAG(components.rag, {
   embeddingDimension: 1536,
   textEmbeddingModel: openai.textEmbeddingModel("text-embedding-3-small"),
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
@@ -35,7 +35,7 @@ const memory = new Memory(components.memory, {
 export const findExistingEntryByContentHash = query({
   args: { namespace: v.string(), key: v.string(), contentHash: v.string() },
   handler: async (ctx, args) => {
-    return memory.findExistingEntryByContentHash(ctx, {
+    return rag.findExistingEntryByContentHash(ctx, {
       namespace: args.namespace,
       key: args.key,
       contentHash: args.contentHash,
@@ -77,7 +77,7 @@ export const add = mutation({
     contentHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return memory.add(ctx, args);
+    return rag.add(ctx, args);
   },
 });
 
@@ -94,7 +94,7 @@ export const search = action({
     ),
   },
   handler: async (ctx, args) => {
-    const { results, entries, text } = await memory.search(ctx, {
+    const { results, entries, text } = await rag.search(ctx, {
       embedding: args.embedding,
       namespace: args.namespace,
       limit: args.limit ?? 10,
@@ -124,7 +124,7 @@ function dummyEmbeddings(text: string) {
   );
 }
 
-describe("Memory thick client", () => {
+describe("RAG thick client", () => {
   test("should add a entry and be able to list it", async () => {
     const t = initConvexTest(schema);
     const { entryId, status } = await t.mutation(testApi.add, {
@@ -139,7 +139,7 @@ describe("Memory thick client", () => {
     expect(entryId).toBeDefined();
     expect(status).toBe("ready");
     await t.run(async (ctx) => {
-      const { isDone, page } = await memory.listChunks(ctx, {
+      const { isDone, page } = await rag.listChunks(ctx, {
         entryId,
         paginationOpts: { numItems: 10, cursor: null },
       });
