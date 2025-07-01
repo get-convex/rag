@@ -6,6 +6,7 @@ import {
   guessMimeTypeFromContents,
   guessMimeTypeFromExtension,
   Memory,
+  SearchEntry,
   vEntryId,
 } from "@convex-dev/memory";
 import { assert } from "convex-helpers";
@@ -305,14 +306,14 @@ export type PublicFile = {
 
 async function toFiles(
   ctx: ActionCtx,
-  files: (Entry & { text: string })[]
+  files: SearchEntry<Filters, Metadata>[]
 ): Promise<PublicFile[]> {
   return await Promise.all(files.map((entry) => toFile(ctx, entry, false)));
 }
 
 async function toFile(
   ctx: { storage: StorageReader },
-  entry: Entry,
+  entry: Entry<Filters, Metadata>,
   global: boolean
 ): Promise<PublicFile> {
   assert(entry.metadata, "Entry metadata not found");

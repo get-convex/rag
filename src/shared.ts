@@ -62,8 +62,11 @@ export const vEntry = v.object({
   status: vStatus,
 });
 
-export type VEntry<Filters extends Record<string, Value>> = VObject<
-  Entry<Filters>,
+export type VEntry<
+  Filters extends Record<string, Value>,
+  Metadata extends Record<string, Value>,
+> = VObject<
+  Entry<Filters, Metadata>,
   typeof vEntry.fields,
   "required",
   typeof vEntry.fieldPaths
@@ -72,6 +75,28 @@ export type VEntry<Filters extends Record<string, Value>> = VObject<
 // Type assertion to keep us honest
 const _1: Entry = {} as Infer<typeof vEntry>;
 const _2: Infer<typeof vEntry> = {} as Entry;
+
+export const vSearchEntry = v.object({
+  ...vEntry.fields,
+  text: v.string(),
+});
+
+export type VSearchEntry<
+  Filters extends Record<string, Value>,
+  Metadata extends Record<string, Value>,
+> = VObject<
+  SearchEntry<Filters, Metadata>,
+  typeof vSearchEntry.fields,
+  "required",
+  typeof vSearchEntry.fieldPaths
+>;
+
+export type SearchEntry<
+  Filters extends Record<string, Value>,
+  Metadata extends Record<string, Value>,
+> = Entry<Filters, Metadata> & {
+  text: string;
+};
 
 export type EntryFilterValues<
   Filters extends Record<string, Value> = Record<string, Value>,

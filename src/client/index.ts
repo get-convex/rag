@@ -30,6 +30,7 @@ import {
   type EntryId,
   type Namespace,
   type NamespaceId,
+  type SearchEntry,
   type SearchResult,
   type Status,
 } from "../shared.js";
@@ -49,6 +50,7 @@ import type { NamedFilter } from "../component/filters.js";
 export {
   type VEntry,
   vEntry,
+  vSearchEntry,
   vSearchResult,
   vOnCompleteArgs,
 } from "../shared.js";
@@ -67,6 +69,7 @@ export type {
   NamespaceId,
   OnComplete,
   OnCompleteNamespace,
+  SearchEntry,
   SearchResult,
   Status,
 };
@@ -374,7 +377,7 @@ export class Memory<
   ): Promise<{
     results: SearchResult[];
     text: string;
-    entries: (Entry<FitlerSchemas, EntryMetadata> & { text: string })[];
+    entries: SearchEntry<FitlerSchemas, EntryMetadata>[];
   }> {
     const {
       namespace,
@@ -420,8 +423,7 @@ export class Memory<
         text += range.content.map((c) => c.text).join("\n");
         previousEnd = range.startOrder + range.content.length;
       }
-      const cast = e as Entry<FitlerSchemas, EntryMetadata>;
-      return { ...cast, text };
+      return { ...e, text } as SearchEntry<FitlerSchemas, EntryMetadata>;
     });
 
     return {
@@ -429,9 +431,7 @@ export class Memory<
       text: entriesWithTexts
         .map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text))
         .join(`\n---\n`),
-      entries: entriesWithTexts as (Entry<FitlerSchemas, EntryMetadata> & {
-        text: string;
-      })[],
+      entries: entriesWithTexts,
     };
   }
 
