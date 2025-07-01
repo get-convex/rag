@@ -16,6 +16,7 @@ import {
   type OnCompleteNamespace,
   vStatus,
   statuses,
+  filterNamesContain,
 } from "../shared.js";
 import { paginationOptsValidator } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
@@ -41,10 +42,8 @@ function namespaceIsCompatible(
 
   // For filter names, the namespace must support all requested filters
   // but can support additional filters (superset is OK)
-  for (const requestedFilterName of args.filterNames) {
-    if (!existing.filterNames.includes(requestedFilterName)) {
-      return false;
-    }
+  if (!filterNamesContain(existing.filterNames, args.filterNames)) {
+    return false;
   }
 
   return true;
@@ -85,9 +84,7 @@ export async function getCompatibleNamespaceHandler(
       q.eq("status.kind", "ready").eq("namespace", args.namespace)
     )
     .order("desc");
-  let first: Doc<"namespaces"> | null = null;
   for await (const existing of iter) {
-    if (!first) first = existing;
     if (namespaceIsCompatible(existing, args)) {
       return existing;
     }

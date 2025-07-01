@@ -222,3 +222,18 @@ export type ChunkerAction = FunctionReference<
   Infer<typeof vChunkerArgs>,
   null
 >;
+
+/**
+ * Check if the args filter names are compatible with the existing filter names.
+ * @param existing The existing filter names.
+ * @param args The filter names to check. Can be a prefix
+ * @returns True if the filter names are the same, in the same order.
+ */
+export function filterNamesContain(existing: string[], args: string[]) {
+  for (const name of args) {
+    if (!existing.includes(name)) {
+      return false;
+    }
+  }
+  return true;
+}

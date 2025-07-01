@@ -54,7 +54,7 @@ export type NamedFilter<K extends string = string, V = Value> = {
  *   -> { filter1: ["namespace", "foo"], filter2: ["namespace", "bar"] }
  */
 export function filterFieldsFromNumbers(
-  namespace: GenericId<"namespaces">,
+  namespaceId: GenericId<"namespaces">,
   filters: NumberedFilter | undefined
 ): NamedFilterField {
   const filterFields: NamedFilterField = {};
@@ -67,7 +67,7 @@ export function filterFieldsFromNumbers(
       );
       break;
     }
-    filterFields[filterFieldNames[index]] = [namespace, filter];
+    filterFields[filterFieldNames[index]] = [namespaceId, filter];
   }
   return filterFields;
 }

@@ -19,6 +19,7 @@ import {
 import { type Value } from "convex/values";
 import {
   CHUNK_BATCH_SIZE,
+  filterNamesContain,
   vChunkerArgs,
   vEntryId,
   vNamespaceId,
@@ -590,6 +591,32 @@ export class Memory<
       args: vChunkerArgs,
       handler: async (ctx, args) => {
         const { namespace, entry } = args;
+        if (namespace.modelId !== this.options.textEmbeddingModel.modelId) {
+          console.error(
+            `You are using a different embedding model ${this.options.textEmbeddingModel.modelId} for asynchronously ` +
+              `generating chunks than the one provided when it was started: ${namespace.modelId}`
+          );
+          return;
+        }
+        if (namespace.dimension !== this.options.embeddingDimension) {
+          console.error(
+            `You are using a different embedding dimension ${this.options.embeddingDimension} for asynchronously ` +
+              `generating chunks than the one provided when it was started: ${namespace.dimension}`
+          );
+          return;
+        }
+        if (
+          !filterNamesContain(
+            namespace.filterNames,
+            this.options.filterNames ?? []
+          )
+        ) {
+          console.error(
+            `You are using a different filters (${this.options.filterNames?.join(", ")}) for asynchronously ` +
+              `generating chunks than the one provided when it was started: ${namespace.filterNames.join(", ")}`
+          );
+          return;
+        }
         const chunksPromise = fn(ctx, {
           namespace,
           entry: entry as Entry<FitlerSchemas, EntryMetadata>,
