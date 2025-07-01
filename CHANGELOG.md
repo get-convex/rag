@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Add SearchEntry type with type-safe access to metadata & filter values
+
 ## 0.1.4
 
 - Allow adding files asynchronously
