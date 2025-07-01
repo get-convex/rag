@@ -83,51 +83,52 @@ const DEFAULT_SEARCH_LIMIT = 10;
 // Used for vector search weighting.
 type Importance = number;
 
-type MastraChunk = {
-  text: string;
-  metadata: Record<string, Value>;
-  embedding?: Array<number>;
-};
-
-type LangChainChunk = {
-  id?: string;
-  pageContent: string;
-  metadata: Record<string, Value>; //{ loc: { lines: { from: number; to: number } } };
-  embedding?: Array<number>;
-};
-
-export type InputChunk =
-  | string
-  | ((MastraChunk | LangChainChunk) & {
-      // Space-delimited keywords to text search on.
-      // TODO: implement text search
-      keywords?: string;
-      // In the future we can add per-chunk metadata if it's useful.
-      // importance?: Importance;
-      // filters?: EntryFilterValues<FitlerSchemas>[];
-    });
-
-type FilterNames<FiltersSchemas extends Record<string, Value>> =
-  (keyof FiltersSchemas & string)[];
-
 export class RAG<
   FitlerSchemas extends Record<string, Value> = Record<string, Value>,
   EntryMetadata extends Record<string, Value> = Record<string, Value>,
 > {
+  /**
+   * A component to use for Retrieval-Augmented Generation.
+   * Create one for each model and embedding dimension you want to use.
+   * When migrating between models / embedding lengths, create multiple
+   * instances and do your `add`s with the appropriate instance, and searches
+   * against the appropriate instance to get results with those parameters.
+   *
+   * The filterNames need to match the names of the filters you provide when
+   * adding and when searching. Use the type parameter to make this type safe.
+   *
+   * The second type parameter makes the entry metadata type safe. E.g. you can
+   * do rag.add(ctx, {
+   *   namespace: "my-namespace",
+   *   metadata: {
+   *     source: "website" as const,
+   *   },
+   * })
+   * and then entry results will have the metadata type `{ source: "website" }`.
+   */
   constructor(
     public component: RAGComponent,
     public options: {
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModelV1<string>;
       filterNames?: FilterNames<FitlerSchemas>;
-      // Common parameters:
-      // logLevel
     }
   ) {}
 
+  /**
+   * Add an entry to the store. It will chunk the text with the `defaultChunker`
+   * if you don't provide chunks, and embed the chunks with the default model
+   * if you don't provide chunk embeddings.
+   *
+   * If you provide a key, it will replace an existing entry with the same key.
+   * If you don't provide a key, it will always create a new entry.
+   * If you provide a contentHash, it will deduplicate the entry if it already exists.
+   * The filterValues you provide can be used later to search for it.
+   */
   async add(
     ctx: RunMutationCtx,
-    args: ({ namespace: string } | { namespaceId: NamespaceId }) &
+    args: NamespaceSelection &
+      EntryArgs<FitlerSchemas, EntryMetadata> &
       (
         | {
             /**
@@ -149,51 +150,7 @@ export class RAG<
             /** @deprecated You cannot specify both chunks and text currently. */
             chunks?: undefined;
           }
-      ) & {
-        /**
-         * This key allows replacing an existing entry by key.
-         * Within a namespace, there will only be one "ready" entry per key.
-         * When adding a new one, it will start as "pending" and after all
-         * chunks are added, it will be promoted to "ready".
-         */
-        key?: string | undefined;
-        /**
-         * The title of the entry. Used for default prompting to contextualize
-         * the entry results. Also may be used for keyword search in the future.
-         */
-        title?: string;
-        /**
-         * Metadata about the entry that is not indexed or filtered or searched.
-         * Provided as a convenience to store associated information, such as
-         * the storageId or url to the source material.
-         */
-        metadata?: EntryMetadata;
-        /**
-         * Filters to apply to the entry. These can be OR'd together in search.
-         * To represent AND logic, your filter can be an object or array with
-         * multiple values. e.g. saving the result with:
-         * `{ name: "categoryAndPriority", value: ["articles", "high"] }`
-         * and searching with the same value will return entries that match that
-         * value exactly.
-         */
-        filterValues?: EntryFilterValues<FitlerSchemas>[];
-        /**
-         * The importance of the entry. This is used to scale the vector search
-         * score of each chunk.
-         */
-        importance?: Importance;
-        /**
-         * The hash of the entry contents. This is used to deduplicate entries.
-         * You can look up existing entries by content hash within a namespace.
-         * It will also return an existing entry if you add an entry with the
-         * same content hash.
-         */
-        contentHash?: string;
-        /**
-         * A function that is called when the entry is added.
-         */
-        onComplete?: OnComplete;
-      }
+      )
   ): Promise<{
     entryId: EntryId;
     status: Status;
@@ -307,32 +264,49 @@ export class RAG<
     };
   }
 
+  /**
+   * Add an entry to the store asynchronously.
+   *
+   * This is useful if you want to chunk the entry in a separate process,
+   * or if you want to chunk the entry in a separate process.
+   *
+   * The chunkerAction is a function that splits the entry into chunks and
+   * embeds them. It should be passed as internal.foo.myChunkerAction
+   * e.g.
+   * ```ts
+   * export const myChunkerAction = rag.defineChunkerAction(async (ctx, args) => {
+   *   // ...
+   *   return { chunks: [chunk1, chunk2, chunk3] };
+   * });
+   *
+   * // in your mutation
+   *   const entryId = await rag.addAsync(ctx, {
+   *     key: "myfile.txt",
+   *     namespace: "my-namespace",
+   *     chunkerAction: internal.foo.myChunkerAction,
+   *   });
+   * ```
+   */
   async addAsync(
     ctx: RunMutationCtx,
-    args: ({ namespace: string } | { namespaceId: NamespaceId }) & {
-      key: string;
-      /**
-       * A function that splits the entry into chunks and embeds them.
-       * This should be passed as internal.foo.myChunkerAction
-       * e.g.
-       * ```ts
-       * export const myChunkerAction = rag.defineChunkerAction();
-       *
-       * // in your mutation
-       *   const entryId = await rag.addAsync(ctx, {
-       *     key: "myfile.txt",
-       *     namespace: "my-namespace",
-       *     chunker: internal.foo.myChunkerAction,
-       *   });
-       */
-      chunkerAction: ChunkerAction;
-      title?: string;
-      metadata?: EntryMetadata;
-      filterValues?: EntryFilterValues<FitlerSchemas>[];
-      importance?: Importance;
-      contentHash?: string;
-      onComplete?: OnComplete;
-    }
+    args: NamespaceSelection &
+      EntryArgs<FitlerSchemas, EntryMetadata> & {
+        /**
+         * A function that splits the entry into chunks and embeds them.
+         * This should be passed as internal.foo.myChunkerAction
+         * e.g.
+         * ```ts
+         * export const myChunkerAction = rag.defineChunkerAction();
+         *
+         * // in your mutation
+         *   const entryId = await rag.addAsync(ctx, {
+         *     key: "myfile.txt",
+         *     namespace: "my-namespace",
+         *     chunker: internal.foo.myChunkerAction,
+         *   });
+         */
+        chunkerAction: ChunkerAction;
+      }
   ): Promise<{ entryId: EntryId; status: "ready" | "pending" }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -371,6 +345,11 @@ export class RAG<
     return { entryId: entryId as EntryId, status };
   }
 
+  /**
+   * Search for entries in a namespace with configurable filters.
+   * You can provide a query string or target embedding, as well as search
+   * parameters to filter and constrain the results.
+   */
   async search(
     ctx: RunActionCtx,
     args: (
@@ -380,6 +359,7 @@ export class RAG<
            */
           query: string;
           /**
+           * @deprecated Pass query OR embedding
            * You may specify an embedding or query, but not both for now.
            */
           embedding?: undefined;
@@ -390,51 +370,13 @@ export class RAG<
            */
           embedding: Array<number>;
           /**
+           * @deprecated Pass query OR embedding
            * You may specify an embedding or query, but not both for now.
            */
           query?: undefined;
         }
-    ) & {
-      /** The namespace to search in. e.g. a userId if entries are per-user. */
-      namespace: string;
-      /**
-       * Filters to apply to the search. These are OR'd together. To represent
-       * AND logic, your filter can be an object or array with multiple values.
-       * e.g. `[{ category: "articles" }, { priority: "high" }]` will return
-       * entries that have "articles" category OR "high" priority.
-       * `[{ category_priority: ["articles", "high"] }]` will return
-       * entries that have "articles" category AND "high" priority.
-       * This requires inserting the entries with these filter values exactly.
-       * e.g. if you insert a entry with
-       * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
-       * `{ team_user: { team: "team1" } }` but it will match
-       */
-      filters?: EntryFilterValues<FitlerSchemas>[];
-      /**
-       * The maximum number of messages to fetch. Default is 10.
-       * This is the number *before* the chunkContext is applied.
-       * e.g. { before: 2, after: 1 } means 4x the limit is returned.
-       */
-      limit: number;
-      /**
-       * What chunks around the search results to include.
-       * Default: { before: 0, after: 0 }
-       * e.g. { before: 2, after: 1 } means 2 chunks before + 1 chunk after.
-       * If `chunk4` was the only result, the results returned would be:
-       * `[{ content: [chunk2, chunk3, chunk4, chunk5], score, ... }]`
-       * The results don't overlap, and bias toward giving "before" context.
-       * So if `chunk7` was also a result, the results returned would be:
-       * `[
-       *   { content: [chunk2, chunk3, chunk4], score, ... }
-       *   { content: [chunk5, chunk6, chunk7, chunk8], score, ... },
-       * ]`
-       */
-      chunkContext?: { before: number; after: number };
-      /**
-       * The minimum score to return a result.
-       */
-      vectorScoreThreshold?: number;
-    }
+    ) &
+      SearchOptions<FitlerSchemas>
   ): Promise<{
     results: SearchResult[];
     text: string;
@@ -496,6 +438,9 @@ export class RAG<
     };
   }
 
+  /**
+   * List all entries in a namespace.
+   */
   async list(
     ctx: RunQueryCtx,
     args: {
@@ -514,6 +459,9 @@ export class RAG<
     return results as PaginationResult<Entry<FitlerSchemas, EntryMetadata>>;
   }
 
+  /**
+   * Get entry metadata by its id.
+   */
   async getEntry(
     ctx: RunQueryCtx,
     args: {
@@ -526,6 +474,11 @@ export class RAG<
     return entry as Entry<FitlerSchemas, EntryMetadata> | null;
   }
 
+  /**
+   * Find an existing entry by its content hash, which you can use to copy
+   * new results into a new entry when migrating, or avoiding duplicating work
+   * when updating content.
+   */
   async findExistingEntryByContentHash(
     ctx: RunQueryCtx,
     args: {
@@ -546,9 +499,16 @@ export class RAG<
     return entry as Entry<FitlerSchemas, EntryMetadata> | null;
   }
 
+  /**
+   * Get a namespace that matches the modelId, embedding dimension, and
+   * filterNames of the RAG instance. If it doesn't exist, it will be created.
+   */
   async getOrCreateNamespace(
     ctx: RunMutationCtx,
     args: {
+      /**
+       * The namespace to get or create. e.g. a userId if entries are per-user.
+       */
       namespace: string;
       /**
        * If it isn't in existence, what the new namespace status should be.
@@ -586,6 +546,10 @@ export class RAG<
     return { namespaceId: namespaceId as NamespaceId, status };
   }
 
+  /**
+   * Get a namespace that matches the modelId, embedding dimension, and
+   * filterNames of the RAG instance. If it doesn't exist, it will return null.
+   */
   async getNamespace(
     ctx: RunQueryCtx,
     args: {
@@ -600,6 +564,9 @@ export class RAG<
     }) as Promise<Namespace | null>;
   }
 
+  /**
+   * List all chunks for an entry, paginated.
+   */
   async listChunks(
     ctx: RunQueryCtx,
     args: {
@@ -613,6 +580,9 @@ export class RAG<
     });
   }
 
+  /**
+   * Delete an entry and all its chunks.
+   */
   async delete(ctx: RunMutationCtx, args: { entryId: EntryId }) {
     await ctx.runMutation(this.component.entries.deleteAsync, {
       entryId: args.entryId,
@@ -620,6 +590,24 @@ export class RAG<
     });
   }
 
+  /**
+   * Define a function that can be provided to the `onComplete` parameter of
+   * `add` or `addAsync` like:
+   * ```ts
+   * const onComplete = rag.defineOnComplete(async (ctx, args) => {
+   *   // ...
+   * });
+   *
+   * // in your mutation
+   *   await rag.add(ctx, {
+   *     namespace: "my-namespace",
+   *     onComplete: internal.foo.onComplete,
+   *   });
+   * ```
+   * It will be called when the entry is no longer "pending".
+   * This is usually when it's "ready" but it can be "replaced" if a newer
+   * entry is ready before this one.
+   */
   defineOnComplete<DataModel extends GenericDataModel>(
     fn: (
       ctx: GenericMutationCtx<DataModel>,
@@ -636,6 +624,24 @@ export class RAG<
     });
   }
 
+  /**
+   * Define a function that can be provided to the `chunkerAction` parameter of
+   * `addAsync` like:
+   * ```ts
+   * const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
+   *   // ...
+   * });
+   *
+   * // in your mutation
+   *   const entryId = await rag.addAsync(ctx, {
+   *     key: "myfile.txt",
+   *     namespace: "my-namespace",
+   *     chunkerAction: internal.foo.myChunkerAction,
+   *   });
+   * ```
+   * It will be called when the entry is added, or when the entry is replaced
+   * along the way.
+   */
   defineChunkerAction<DataModel extends GenericDataModel>(
     fn: (
       ctx: GenericActionCtx<DataModel>,
@@ -867,3 +873,147 @@ export function hybridRank<T extends string>(
     .filter(([_, score]) => score >= (opts?.cutoffScore ?? 0))
     .map(([key]) => key);
 }
+
+type MastraChunk = {
+  text: string;
+  metadata: Record<string, Value>;
+  embedding?: Array<number>;
+};
+
+type LangChainChunk = {
+  id?: string;
+  pageContent: string;
+  metadata: Record<string, Value>; //{ loc: { lines: { from: number; to: number } } };
+  embedding?: Array<number>;
+};
+
+export type InputChunk =
+  | string
+  | ((MastraChunk | LangChainChunk) & {
+      // Space-delimited keywords to text search on.
+      // TODO: implement text search
+      keywords?: string;
+      // In the future we can add per-chunk metadata if it's useful.
+      // importance?: Importance;
+      // filters?: EntryFilterValues<FitlerSchemas>[];
+    });
+
+type FilterNames<FiltersSchemas extends Record<string, Value>> =
+  (keyof FiltersSchemas & string)[];
+
+type NamespaceSelection =
+  | {
+      /**
+       * A namespace is an isolated search space - no search can access entities
+       * in other namespaces. Often this is used to segment user documents from
+       * each other, but can be an arbitrary delineation. All filters apply
+       * within a namespace.
+       */
+      namespace: string;
+    }
+  | {
+      /**
+       * The namespaceId, which is returned when creating a namespace
+       * or looking it up.
+       * There can be multiple namespaceIds for the same namespace, e.g.
+       * one for each modelId, embedding dimension, and filterNames.
+       * Each of them have a separate "status" and only one is ever "ready" for
+       * any given "namespace" (e.g. a userId).
+       */
+      namespaceId: NamespaceId;
+    };
+
+type EntryArgs<
+  FitlerSchemas extends Record<string, Value>,
+  EntryMetadata extends Record<string, Value>,
+> = {
+  /**
+   * This key allows replacing an existing entry by key.
+   * Within a namespace, there will only be one "ready" entry per key.
+   * When adding a new one, it will start as "pending" and after all
+   * chunks are added, it will be promoted to "ready".
+   */
+  key?: string | undefined;
+  /**
+   * The title of the entry. Used for default prompting to contextualize
+   * the entry results. Also may be used for keyword search in the future.
+   */
+  title?: string;
+  /**
+   * Metadata about the entry that is not indexed or filtered or searched.
+   * Provided as a convenience to store associated information, such as
+   * the storageId or url to the source material.
+   */
+  metadata?: EntryMetadata;
+  /**
+   * Filters to apply to the entry. These can be OR'd together in search.
+   * To represent AND logic, your filter can be an object or array with
+   * multiple values. e.g. saving the result with:
+   * `{ name: "categoryAndPriority", value: ["articles", "high"] }`
+   * and searching with the same value will return entries that match that
+   * value exactly.
+   */
+  filterValues?: EntryFilterValues<FitlerSchemas>[];
+  /**
+   * The importance of the entry. This is used to scale the vector search
+   * score of each chunk.
+   */
+  importance?: Importance;
+  /**
+   * The hash of the entry contents. This is used to deduplicate entries.
+   * You can look up existing entries by content hash within a namespace.
+   * It will also return an existing entry if you add an entry with the
+   * same content hash.
+   */
+  contentHash?: string;
+  /**
+   * A function that is called when the entry is added.
+   */
+  onComplete?: OnComplete;
+};
+
+type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
+  /**
+   * The namespace to search in. e.g. a userId if entries are per-user.
+   * Note: it will only match entries in the namespace that match the
+   * modelId, embedding dimension, and filterNames of the RAG instance.
+   */
+  namespace: string;
+  /**
+   * Filters to apply to the search. These are OR'd together. To represent
+   * AND logic, your filter can be an object or array with multiple values.
+   * e.g. `[{ category: "articles" }, { priority: "high" }]` will return
+   * entries that have "articles" category OR "high" priority.
+   * `[{ category_priority: ["articles", "high"] }]` will return
+   * entries that have "articles" category AND "high" priority.
+   * This requires inserting the entries with these filter values exactly.
+   * e.g. if you insert a entry with
+   * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
+   * `{ team_user: { team: "team1" } }` but it will match
+   */
+  filters?: EntryFilterValues<FitlerSchemas>[];
+  /**
+   * The maximum number of messages to fetch. Default is 10.
+   * This is the number *before* the chunkContext is applied.
+   * e.g. { before: 2, after: 1 } means 4x the limit is returned.
+   */
+  limit: number;
+  /**
+   * What chunks around the search results to include.
+   * Default: { before: 0, after: 0 }
+   * e.g. { before: 2, after: 1 } means 2 chunks before + 1 chunk after.
+   * If `chunk4` was the only result, the results returned would be:
+   * `[{ content: [chunk2, chunk3, chunk4, chunk5], score, ... }]`
+   * The results don't overlap, and bias toward giving "before" context.
+   * So if `chunk7` was also a result, the results returned would be:
+   * `[
+   *   { content: [chunk2, chunk3, chunk4], score, ... }
+   *   { content: [chunk5, chunk6, chunk7, chunk8], score, ... },
+   * ]`
+   */
+  chunkContext?: { before: number; after: number };
+  /**
+   * The minimum score to return a result.
+   */
+  vectorScoreThreshold?: number;
+};
