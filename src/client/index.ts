@@ -49,6 +49,7 @@ import type { NamedFilter } from "../component/filters.js";
 
 export {
   type VEntry,
+  type VSearchEntry,
   vEntry,
   vSearchEntry,
   vSearchResult,
