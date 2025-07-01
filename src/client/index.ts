@@ -1,5 +1,5 @@
 import type { EmbeddingModelV1 } from "@ai-sdk/provider";
-import { embed, embedMany } from "ai";
+import { embed, embedMany, generateText, type CoreMessage } from "ai";
 import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
@@ -436,6 +436,102 @@ export class RAG<
         .join(`\n---\n`),
       entries: entriesWithTexts,
     };
+  }
+
+  /**
+   * Generate text based on Retrieval-Augmented Generation.
+   *
+   * This will search for entries in the namespace based on the prompt and use
+   * the results as context to generate text, using the search options args.
+   * You can provide a "system" message to provide instructions to the model.
+   * You can provide "messages" in addition to the prompt to provide
+   * extra context / conversation history.
+   */
+  async generateText(
+    ctx: RunActionCtx,
+    args: {
+      /**
+       * The namespace to search in. e.g. a userId if entries are per-user.
+       */
+      namespace: string;
+      /**
+       * Required. The prompt to use for context search, as well as the final
+       * message to the LLM when generating text.
+       * Can be used along with "messages"
+       */
+      prompt: string;
+      /**
+       * The search options to use for context search.
+       */
+      searchOpts?: SearchOptions<FitlerSchemas>;
+      /**
+       * Additional messages to add to the context.
+       */
+      messages?: CoreMessage[];
+    } & Parameters<typeof generateText>[0]
+  ): Promise<ReturnType<typeof generateText>> {
+    const { namespace, prompt, searchOpts, ...aiSdkOpts } = args;
+    const context = await this.search(ctx, {
+      namespace,
+      query: prompt,
+      ...searchOpts,
+      limit: searchOpts?.limit ?? DEFAULT_SEARCH_LIMIT,
+    });
+    let contextHeader =
+      "Use the following context to respond to the user's question:\n";
+    let contextContents = context.text;
+    let contextFooter = "\n--------------------------------\n";
+    let userQuestionHeader = "";
+    let userQuestionFooter = "";
+    let userPrompt = prompt;
+    switch (aiSdkOpts.model.provider) {
+      case "openai":
+        userQuestionHeader = '**User question:**\n"""';
+        userQuestionFooter = '"""';
+        break;
+      case "meta":
+        userQuestionHeader = "**User question:**\n";
+        break;
+      case "google":
+        userQuestionHeader = "<question>";
+        userQuestionFooter = "</question>";
+      // fallthrough
+      case "anthropic":
+        contextHeader = "<context>";
+        contextContents = context.entries
+          .map((e) =>
+            e.title
+              ? `<document title="${e.title}">${e.text}</document>`
+              : `<document>${e.text}</document>`
+          )
+          .join("\n");
+        contextFooter = "</context>";
+        userPrompt = prompt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        break;
+      default:
+    }
+    const promptWithContext = [
+      contextHeader,
+      contextContents,
+      contextFooter,
+      "\n",
+      userQuestionHeader,
+      userPrompt,
+      userQuestionFooter,
+    ]
+      .join("\n")
+      .trim();
+
+    return generateText({
+      ...aiSdkOpts,
+      messages: [
+        ...(args.messages ?? []),
+        {
+          role: "user",
+          content: promptWithContext,
+        },
+      ],
+    });
   }
 
   /**
