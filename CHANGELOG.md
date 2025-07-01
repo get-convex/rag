@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- Add VSearchEntry type for casing vSearchEntry to a type-safe version
+
 ## 0.1.5
 
 - Add SearchEntry type with type-safe access to metadata & filter values
