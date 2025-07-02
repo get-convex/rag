@@ -535,6 +535,8 @@ export class RAG<
       .trim();
 
     return generateText({
+      system:
+        "You use the context provided only to produce a response. Do not preface the response with acknowledgement of the context.",
       ...aiSdkOpts,
       messages: [
         ...(args.messages ?? []),
