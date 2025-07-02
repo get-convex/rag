@@ -68,10 +68,10 @@ export async function getText(
     const arrayBuffer =
       bytes || (await (await ctx.storage.get(storageId))!.arrayBuffer());
     const text = new TextDecoder().decode(arrayBuffer);
-    if (mimeType.toLowerCase().includes("html")) {
-      const markdownResult = await generateText({
+    if (mimeType.toLowerCase() !== "text/plain") {
+      const result = await generateText({
         model: describeHtml,
-        system: "You transform HTML files into markdown.",
+        system: "You transform content into markdown.",
         messages: [
           {
             role: "user",
@@ -79,13 +79,13 @@ export async function getText(
               { type: "text", text: text },
               {
                 type: "text",
-                text: "Extract the text from the HTML and print it without explaining that you'll do so.",
+                text: "Extract the text and print it in a markdown format without explaining that you'll do so.",
               },
             ],
           },
         ],
       });
-      return markdownResult.text;
+      return result.text;
     }
     return text;
   } else {
