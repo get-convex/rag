@@ -459,7 +459,15 @@ export class RAG<
        */
       messages?: CoreMessage[];
     } & Parameters<typeof generateText>[0]
-  ): Promise<ReturnType<typeof generateText>> {
+  ): Promise<
+    Awaited<ReturnType<typeof generateText>> & {
+      context: {
+        results: SearchResult[];
+        text: string;
+        entries: SearchEntry<FitlerSchemas, EntryMetadata>[];
+      };
+    }
+  > {
     const {
       search: { namespace, ...searchOpts },
       prompt,
@@ -515,7 +523,7 @@ export class RAG<
       .join("\n")
       .trim();
 
-    return generateText({
+    const result = (await generateText({
       system:
         "You use the context provided only to produce a response. Do not preface the response with acknowledgement of the context.",
       ...aiSdkOpts,
@@ -526,7 +534,15 @@ export class RAG<
           content: promptWithContext,
         },
       ],
-    });
+    })) as Awaited<ReturnType<typeof generateText>> & {
+      context: {
+        results: SearchResult[];
+        text: string;
+        entries: SearchEntry<FitlerSchemas, EntryMetadata>[];
+      };
+    };
+    result.context = context;
+    return result;
   }
 
   /**
