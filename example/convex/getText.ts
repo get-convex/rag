@@ -7,6 +7,7 @@ import { StorageActionWriter } from "convex/server";
 const describeImage = openai.chat("o4-mini");
 const describeAudio = openai.transcription("whisper-1");
 const describePdf = openai.chat("gpt-4.1");
+const describeHtml = openai.chat("gpt-4.1");
 
 export async function getText(
   ctx: { storage: StorageActionWriter },
@@ -66,7 +67,27 @@ export async function getText(
   } else if (mimeType.toLowerCase().includes("text")) {
     const arrayBuffer =
       bytes || (await (await ctx.storage.get(storageId))!.arrayBuffer());
-    return new TextDecoder().decode(arrayBuffer);
+    const text = new TextDecoder().decode(arrayBuffer);
+    if (mimeType.toLowerCase().includes("html")) {
+      const markdownResult = await generateText({
+        model: describeHtml,
+        system: "You transform HTML files into markdown.",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: text },
+              {
+                type: "text",
+                text: "Extract the text from the HTML and print it without explaining that you'll do so.",
+              },
+            ],
+          },
+        ],
+      });
+      return markdownResult.text;
+    }
+    return text;
   } else {
     throw new Error(`Unsupported mime type: ${mimeType}`);
   }
