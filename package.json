@@ -51,11 +51,6 @@
       "types": "./dist/client/index.d.ts",
       "default": "./dist/client/index.js"
     },
-    "./react": {
-      "@convex-dev/component-source": "./src/react/index.ts",
-      "types": "./dist/react/index.d.ts",
-      "default": "./dist/react/index.js"
-    },
     "./convex.config": {
       "@convex-dev/component-source": "./src/component/convex.config.ts",
       "types": "./dist/component/convex.config.d.ts",
