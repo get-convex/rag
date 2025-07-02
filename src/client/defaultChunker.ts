@@ -59,11 +59,8 @@ export function defaultChunker(
       currentChunk.length >= minLines &&
       currentChunk.join("\n").length >= Math.min(minCharsSoftLimit * 0.8, 150)
     ) {
-      // Use dynamic threshold for splitting decision
-      const ratio = maxCharsSoftLimit / minCharsSoftLimit;
-      const multiplier = ratio > 5 ? 1.15 : 1.3;
-
-      if (potentialChunk.length >= minCharsSoftLimit * multiplier) {
+      // Simple logic: only split if potential chunk would exceed the soft max limit
+      if (potentialChunk.length > maxCharsSoftLimit) {
         // When splitting at delimiter boundary, preserve natural empty lines (don't remove trailing empty lines)
         chunks.push(currentChunk.join("\n"));
         currentChunk = [line];
