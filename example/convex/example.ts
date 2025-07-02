@@ -180,7 +180,7 @@ export const askQuestion = action({
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
-    const results = await rag.generateText(ctx, {
+    const { text, context } = await rag.generateText(ctx, {
       search: {
         namespace: args.globalNamespace ? "global" : userId,
         filters: args.filter?.kind && [
@@ -190,7 +190,11 @@ export const askQuestion = action({
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),
     });
-    return results.text;
+    return {
+      answer: text,
+      ...context,
+      files: await toFiles(ctx, context.entries),
+    };
   },
 });
 

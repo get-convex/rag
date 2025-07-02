@@ -2,7 +2,7 @@
  * Chunk text for embedding.
  *
  * By default, it will chunk into paragraphs and target
- * 200-2000 characters per chunk (never less than 1 line).
+ * 200-2000 characters per chunk (only less than 1 line if the hard limit is reached).
  */
 export function defaultChunker(
   text: string,

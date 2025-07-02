@@ -7,12 +7,21 @@ import type { SearchResult } from "@convex-dev/rag";
 import type { PublicFile } from "../convex/example";
 
 type SearchType = "global" | "user" | "category" | "file";
+type QueryMode = "search" | "question";
 
 interface UISearchResult {
   results: (SearchResult & {
     entry: PublicFile;
   })[];
   text: string;
+  files: Array<PublicFile>;
+}
+
+interface UIQuestionResult {
+  answer: string;
+  results: (SearchResult & {
+    entry: PublicFile;
+  })[];
   files: Array<PublicFile>;
 }
 
@@ -25,6 +34,7 @@ function Example() {
     filename: "",
   });
 
+  const [queryMode, setQueryMode] = useState<QueryMode>("search");
   const [searchType, setSearchType] = useState<SearchType>("global");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
@@ -32,6 +42,9 @@ function Example() {
   );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchResults, setSearchResults] = useState<UISearchResult | null>(
+    null
+  );
+  const [questionResult, setQuestionResult] = useState<UIQuestionResult | null>(
     null
   );
   const [isSearching, setIsSearching] = useState(false);
@@ -157,56 +170,99 @@ function Example() {
     }
 
     setIsSearching(true);
+    setSearchResults(null);
+    setQuestionResult(null);
+
     try {
-      let results;
-      switch (searchType) {
-        case "global":
-          results = await convex.action(api.example.search, {
-            query: searchQuery,
-            globalNamespace: true,
-          });
-          break;
-        case "user":
-          results = await convex.action(api.example.search, {
-            query: searchQuery,
-            globalNamespace: false,
-          });
-          break;
-        case "category":
-          results = await convex.action(api.example.searchCategory, {
-            query: searchQuery,
-            globalNamespace: categorySearchGlobal,
-            category: selectedCategory,
-          });
-          break;
-        case "file":
-          results = await convex.action(api.example.searchFile, {
-            query: searchQuery,
-            globalNamespace: selectedDocument!.global || false,
-            filename: selectedDocument!.filename || "",
-          });
-          break;
-        default:
-          throw new Error(`Unknown search type: ${searchType}`);
+      if (queryMode === "question") {
+        // Handle question mode
+        let filter: any = undefined;
+
+        if (searchType === "category") {
+          filter = {
+            kind: "category" as const,
+            value: selectedCategory,
+          };
+        } else if (searchType === "file" && selectedDocument) {
+          filter = {
+            kind: "filename" as const,
+            value: selectedDocument.filename,
+          };
+        }
+
+        const globalNamespace =
+          searchType === "global" ||
+          (searchType === "category" && categorySearchGlobal) ||
+          (searchType === "file" && selectedDocument?.global);
+
+        const results = await convex.action(api.example.askQuestion, {
+          prompt: searchQuery,
+          globalNamespace: globalNamespace || false,
+          filter,
+        });
+
+        const sources = results?.files || [];
+        setQuestionResult({
+          answer: results.answer,
+          results: results.results.map((result: any) => ({
+            ...result,
+            entry: sources.find((s: any) => s.entryId === result.entryId)!,
+          })),
+          files: sources,
+        });
+      } else {
+        // Handle search mode (existing logic)
+        let results;
+        switch (searchType) {
+          case "global":
+            results = await convex.action(api.example.search, {
+              query: searchQuery,
+              globalNamespace: true,
+            });
+            break;
+          case "user":
+            results = await convex.action(api.example.search, {
+              query: searchQuery,
+              globalNamespace: false,
+            });
+            break;
+          case "category":
+            results = await convex.action(api.example.searchCategory, {
+              query: searchQuery,
+              globalNamespace: categorySearchGlobal,
+              category: selectedCategory,
+            });
+            break;
+          case "file":
+            results = await convex.action(api.example.searchFile, {
+              query: searchQuery,
+              globalNamespace: selectedDocument!.global || false,
+              filename: selectedDocument!.filename || "",
+            });
+            break;
+          default:
+            throw new Error(`Unknown search type: ${searchType}`);
+        }
+        const sources = results?.files || [];
+        setSearchResults({
+          ...results,
+          results: results.results.map((result: any) => ({
+            ...result,
+            entry: sources.find((s: any) => s.entryId === result.entryId)!,
+          })),
+        });
       }
-      const sources = results?.files || [];
-      setSearchResults({
-        ...results,
-        results: results.results.map((result) => ({
-          ...result,
-          entry: sources.find((s) => s.entryId === result.entryId)!,
-        })),
-      });
     } catch (error) {
-      console.error("Search failed:", error);
+      console.error("Search/Question failed:", error);
       alert(
-        `Search failed. ${error instanceof Error ? error.message : String(error)}`
+        `${queryMode === "question" ? "Question" : "Search"} failed. ${error instanceof Error ? error.message : String(error)}`
       );
     } finally {
       setIsSearching(false);
     }
   }, [
     searchQuery,
+    queryMode,
     searchType,
     selectedDocument,
     selectedCategory,
@@ -258,7 +314,8 @@ function Example() {
 
   useEffect(() => {
     setSearchResults(null);
-  }, [searchType]);
+    setQuestionResult(null);
+  }, [searchType, queryMode]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -599,10 +656,36 @@ function Example() {
           </div>
         </div>
       </div>
-      {/* Right Panel - Search */}
+      {/* Right Panel - Search/Question */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">RAG Search</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            RAG Search & Question
+          </h1>
+
+          {/* Query Mode Selector */}
+          <div className="flex space-x-2 mb-4">
+            <button
+              onClick={() => setQueryMode("search")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                queryMode === "search"
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              🔍 Search
+            </button>
+            <button
+              onClick={() => setQueryMode("question")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                queryMode === "question"
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              ❓ Ask Question
+            </button>
+          </div>
 
           {/* Search Type Selector */}
           <div className="flex space-x-4 mb-4">
@@ -619,7 +702,7 @@ function Example() {
                 {type === "user"
                   ? "User File"
                   : type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                Search
+                {queryMode === "search" ? "Search" : "Question"}
               </button>
             ))}
           </div>
@@ -676,12 +759,13 @@ function Example() {
             </div>
           )}
 
-          {/* Document Info for RAG */}
+          {/* Document Info for File-specific queries */}
           {searchType === "file" && selectedDocument && (
             <div className="mb-4 p-3 bg-blue-50 rounded-md">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-blue-800">
-                  Searching in: {selectedDocument.filename}
+                  {queryMode === "search" ? "Searching" : "Asking question"} in:{" "}
+                  {selectedDocument.filename}
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-blue-700">Chunks</span>
@@ -704,29 +788,41 @@ function Example() {
             </div>
           )}
 
-          {/* Search Input */}
+          {/* Search/Question Input */}
           <div className="flex space-x-2">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Enter your search query..."
+              placeholder={
+                queryMode === "search"
+                  ? "Enter your search query..."
+                  : "Ask a question about your documents..."
+              }
               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <button
               onClick={handleSearch}
               disabled={isSearching || !searchQuery.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className={`px-6 py-2 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition ${
+                queryMode === "search" ? "bg-blue-600" : "bg-purple-600"
+              }`}
             >
-              {isSearching ? "Searching..." : "Search"}
+              {isSearching
+                ? queryMode === "search"
+                  ? "Searching..."
+                  : "Asking..."
+                : queryMode === "search"
+                  ? "Search"
+                  : "Ask"}
             </button>
           </div>
         </div>
 
-        {/* Search Results */}
+        {/* Results */}
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Document Chunks for RAG */}
+          {/* Document Chunks for File queries */}
           {searchType === "file" &&
             selectedDocument &&
             documentChunks &&
@@ -772,6 +868,132 @@ function Example() {
               </div>
             )}
 
+          {/* Question Results */}
+          {questionResult && (searchType !== "file" || !showChunks) && (
+            <div className="space-y-6">
+              {/* Generated Answer */}
+              <div className="bg-white rounded-lg border border-purple-200 p-6">
+                <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
+                  <span className="mr-2">🤖</span>
+                  Generated Answer
+                </h3>
+                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {questionResult.answer}
+                </div>
+              </div>
+
+              {/* Sources */}
+              {questionResult.files && questionResult.files.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 w-full mb-2">
+                    Sources:
+                  </h4>
+                  {questionResult.files.map((doc, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                    >
+                      {doc.url ? (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-700 hover:text-gray-900"
+                        >
+                          {doc.title || doc.url}
+                        </a>
+                      ) : (
+                        <span className="text-gray-700">
+                          {doc.title || doc.filename}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Context/Chunks */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">
+                  Context Used ({questionResult.results.length} chunks)
+                </h3>
+                {questionResult.results.map((result, index) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          File: {result.entry.title || result.entry.filename}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Score: {result.score.toFixed(3)}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {result.content.map((content, contentIndex) => {
+                          const isHighlighted =
+                            contentIndex + result.startOrder === result.order;
+                          const isExpanded = expandedResults.has(
+                            index * 1000 + contentIndex
+                          );
+                          const displayText = isExpanded
+                            ? content.text
+                            : content.text.slice(0, 150) +
+                              (content.text.length > 150 ? "..." : "");
+
+                          return (
+                            <div
+                              key={contentIndex}
+                              className={`p-3 rounded border ${
+                                isHighlighted
+                                  ? "border-purple-300 bg-purple-50"
+                                  : "border-gray-200 bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <textarea
+                                    value={displayText}
+                                    readOnly
+                                    rows={
+                                      isExpanded
+                                        ? Math.min(
+                                            displayText.split("\n").length,
+                                            10
+                                          )
+                                        : 3
+                                    }
+                                    className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
+                                  />
+                                  {content.text.length > 150 && (
+                                    <button
+                                      onClick={() =>
+                                        toggleResultExpansion(
+                                          index * 1000 + contentIndex
+                                        )
+                                      }
+                                      className="text-xs text-purple-600 hover:text-purple-800 mt-1"
+                                    >
+                                      {isExpanded ? "Show less" : "Show more"}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search Results */}
           {searchResults && (searchType !== "file" || !showChunks) && (
             <div className="space-y-6">
               {/* Sources */}
@@ -883,6 +1105,7 @@ function Example() {
           )}
 
           {!searchResults &&
+            !questionResult &&
             !(
               searchType === "file" &&
               selectedDocument &&
@@ -890,7 +1113,9 @@ function Example() {
               showChunks
             ) && (
               <div className="text-center text-gray-500 mt-8">
-                Enter a search query to see results
+                {queryMode === "search"
+                  ? "Enter a search query to see results"
+                  : "Ask a question about your documents to get AI-generated answers with context"}
               </div>
             )}
         </div>
