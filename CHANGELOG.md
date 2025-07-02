@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Renamed to RAG
+- Adds a default chunker, so you can pass `text` to `add[Async]`
+- Adds a `generateText` with default prompt formatting for one-off generation.
+- OnComplete handler now has updated status for the replaced & new entry/namespace
+- Example showcases prompting as well as searching.
+
 ## 0.1.6
 
 - Add VSearchEntry type for casing vSearchEntry to a type-safe version
