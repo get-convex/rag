@@ -355,6 +355,12 @@ export class RAG<
     args: (
       | {
           /**
+           * The namespace to search in. e.g. a userId if entries are per-user.
+           * Note: it will only match entries in the namespace that match the
+           * modelId, embedding dimension, and filterNames of the RAG instance.
+           */
+          namespace: string;
+          /**
            * The query to search for. Optional if embedding is provided.
            */
           query: string;
@@ -365,6 +371,12 @@ export class RAG<
           embedding?: undefined;
         }
       | {
+          /**
+           * The namespace to search in. e.g. a userId if entries are per-user.
+           * Note: it will only match entries in the namespace that match the
+           * modelId, embedding dimension, and filterNames of the RAG instance.
+           */
+          namespace: string;
           /**
            * The embedding to search for.
            */
@@ -1069,12 +1081,6 @@ type EntryArgs<
 };
 
 type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
-  /**
-   * The namespace to search in. e.g. a userId if entries are per-user.
-   * Note: it will only match entries in the namespace that match the
-   * modelId, embedding dimension, and filterNames of the RAG instance.
-   */
-  namespace: string;
   /**
    * Filters to apply to the search. These are OR'd together. To represent
    * AND logic, your filter can be an object or array with multiple values.
