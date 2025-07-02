@@ -160,6 +160,40 @@ export const searchCategory = action({
   },
 });
 
+export const askQuestion = action({
+  args: {
+    prompt: v.string(),
+    globalNamespace: v.boolean(),
+    filter: v.optional(
+      v.union(
+        v.object({
+          kind: v.literal("category"),
+          value: v.string(),
+        }),
+        v.object({
+          kind: v.literal("filename"),
+          value: v.string(),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const results = await rag.generateText(ctx, {
+      search: {
+        namespace: args.globalNamespace ? "global" : userId,
+        filters: args.filter?.kind && [
+          { name: args.filter.kind, value: args.filter.value },
+        ],
+      },
+      prompt: args.prompt,
+      model: openai.chat("gpt-4o-mini"),
+    });
+    return results.text;
+  },
+});
+
 /**
  * Uploading asynchronously
  */
