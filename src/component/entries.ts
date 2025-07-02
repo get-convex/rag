@@ -147,7 +147,6 @@ export const addAsyncOnComplete = internalMutation({
           namespace,
           entry,
           null,
-          false,
           args.result.kind === "canceled" ? "Canceled" : args.result.error
         );
       }
@@ -253,15 +252,13 @@ async function runOnComplete(
   onComplete: string,
   namespace: Doc<"namespaces">,
   entry: Doc<"entries">,
-  previousEntry: Doc<"entries"> | null,
-  success: boolean,
+  replacedEntry: Doc<"entries"> | null,
   error?: string
 ) {
   await ctx.runMutation(onComplete as unknown as OnComplete, {
     namespace: publicNamespace(namespace),
     entry: publicEntry(entry),
-    previousEntry: previousEntry ? publicEntry(previousEntry) : undefined,
-    success,
+    replacedEntry: replacedEntry ? publicEntry(replacedEntry) : undefined,
     error,
   });
 }
@@ -425,22 +422,22 @@ async function promoteToReadyHandler(
   // First mark the previous entry as replaced,
   // so there are never two "ready" entries.
   if (previousEntry) {
-    await ctx.db.patch(previousEntry._id, {
-      status: { kind: "replaced", replacedAt: Date.now() },
-    });
+    previousEntry.status = { kind: "replaced", replacedAt: Date.now() };
+    await ctx.db.replace(previousEntry._id, previousEntry);
   }
+  const previousStatus = entry.status;
+  entry.status = { kind: "ready" };
   // Only then mark the current entry as ready,
   // so there are never two "ready" entries.
-  await ctx.db.patch(args.entryId, { status: { kind: "ready" } });
+  await ctx.db.replace(args.entryId, entry);
   // Then run the onComplete function where it can observe itself as "ready".
-  if (entry.status.kind === "pending" && entry.status.onComplete) {
+  if (previousStatus.kind === "pending" && previousStatus.onComplete) {
     await runOnComplete(
       ctx,
-      entry.status.onComplete,
+      previousStatus.onComplete,
       namespace,
       entry,
-      previousEntry,
-      true
+      previousEntry
     );
   }
   // Then mark all previous pending entries as replaced,
@@ -458,17 +455,16 @@ async function promoteToReadyHandler(
       .collect();
     await Promise.all(
       previousPendingEntries.map(async (entry) => {
-        await ctx.db.patch(entry._id, {
-          status: { kind: "replaced", replacedAt: Date.now() },
-        });
-        if (entry.status.kind === "pending" && entry.status.onComplete) {
+        const previousStatus = entry.status;
+        entry.status = { kind: "replaced", replacedAt: Date.now() };
+        await ctx.db.replace(entry._id, entry);
+        if (previousStatus.kind === "pending" && previousStatus.onComplete) {
           await runOnComplete(
             ctx,
-            entry.status.onComplete,
+            previousStatus.onComplete,
             namespace,
             entry,
-            previousEntry,
-            false
+            null
           );
         }
       })

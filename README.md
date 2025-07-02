@@ -165,7 +165,7 @@ export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
 });
 
 export const handleEntryComplete = rag.defineOnComplete<DataModel>(
-  async (ctx, { previousEntry, entry, success, namespace, error }) => {
+  async (ctx, { replacedEntry, entry, namespace, error }) => {
     if (error) {
       await rag.delete(ctx, { entryId: entry.entryId });
       return;

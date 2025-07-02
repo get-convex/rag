@@ -169,18 +169,17 @@ async function runOnComplete(
   ctx: MutationCtx,
   onComplete: string | undefined,
   namespace: Doc<"namespaces">,
-  previousNamespaceId: NamespaceId | null,
-  success: boolean
+  replacedNamespace: Doc<"namespaces"> | null
 ) {
   const onCompleteFn = onComplete as unknown as OnCompleteNamespace;
   if (!onCompleteFn) {
     throw new Error(`On complete function ${onComplete} not found`);
   }
   await ctx.runMutation(onCompleteFn, {
-    namespace: namespace.namespace,
-    namespaceId: namespace._id as unknown as NamespaceId,
-    previousNamespaceId,
-    success,
+    namespace: publicNamespace(namespace),
+    replacedNamespace: replacedNamespace
+      ? publicNamespace(replacedNamespace)
+      : null,
   });
 }
 
@@ -221,19 +220,21 @@ async function promoteToReadyHandler(
   if (previousNamespace) {
     // First mark the previous namespace as replaced,
     // so there are never two "ready" namespaces.
-    await markNamespaceAsReplaced(ctx, previousNamespace);
+    previousNamespace.status = { kind: "replaced", replacedAt: Date.now() };
+    await ctx.db.replace(previousNamespace._id, previousNamespace);
   }
   // Only then mark the current namespace as ready,
   // so there are never two "ready" namespaces.
-  await ctx.db.patch(args.namespaceId, { status: { kind: "ready" } });
+  const previousStatus = namespace.status;
+  namespace.status = { kind: "ready" };
+  await ctx.db.replace(args.namespaceId, namespace);
   // Then run the onComplete function where it can observe itself as "ready".
-  if (namespace.status.onComplete) {
+  if (previousStatus.kind === "pending" && previousStatus.onComplete) {
     await runOnComplete(
       ctx,
-      namespace.status.onComplete,
+      previousStatus.onComplete,
       namespace,
-      previousNamespace?._id as unknown as NamespaceId,
-      true
+      previousNamespace
     );
   }
   const previousPendingNamespaces = await ctx.db
@@ -249,7 +250,12 @@ async function promoteToReadyHandler(
   // so they can observe the new namespace and onComplete side-effects.
   await Promise.all(
     previousPendingNamespaces.map(async (namespace) => {
-      await markNamespaceAsReplaced(ctx, namespace);
+      const previousStatus = namespace.status;
+      namespace.status = { kind: "replaced", replacedAt: Date.now() };
+      await ctx.db.replace(namespace._id, namespace);
+      if (previousStatus.kind === "pending" && previousStatus.onComplete) {
+        await runOnComplete(ctx, previousStatus.onComplete, namespace, null);
+      }
     })
   );
   return {
@@ -257,30 +263,6 @@ async function promoteToReadyHandler(
       ? publicNamespace(previousNamespace)
       : null,
   };
-}
-
-export async function markNamespaceAsReplaced(
-  ctx: MutationCtx,
-  namespace: Doc<"namespaces">
-) {
-  if (namespace.status.kind === "replaced") {
-    console.debug(
-      `Namespace ${namespace._id} is already replaced, not marking as replaced`
-    );
-    return;
-  }
-  if (namespace.status.kind === "pending") {
-    await runOnComplete(
-      ctx,
-      namespace.status.onComplete,
-      namespace,
-      null,
-      false
-    );
-  }
-  await ctx.db.patch(namespace._id, {
-    status: { kind: "replaced", replacedAt: Date.now() },
-  });
 }
 
 export const list = query({

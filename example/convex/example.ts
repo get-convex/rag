@@ -395,10 +395,10 @@ export const listChunks = query({
 // You can track other file metadata in your own tables.
 export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
   async (ctx, args) => {
-    const { previousEntry, entry, success, namespace, error } = args;
-    if (previousEntry && success) {
-      console.debug("deleting previous entry", previousEntry.entryId);
-      await _deleteFile(ctx, previousEntry.entryId);
+    const { replacedEntry, entry, namespace, error } = args;
+    if (replacedEntry) {
+      console.debug("deleting previous entry", replacedEntry.entryId);
+      await _deleteFile(ctx, replacedEntry.entryId);
     }
     const metadata = {
       entryId: entry.entryId,
@@ -417,7 +417,7 @@ export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
     if (existing) {
       console.debug("replacing file", existing._id, entry);
       await ctx.db.replace(existing._id, metadata);
-    } else if (success) {
+    } else if (entry.status === "ready") {
       console.debug("inserting file", entry);
       await ctx.db.insert("fileMetadata", metadata);
     } else if (error) {

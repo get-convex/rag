@@ -175,10 +175,8 @@ export type OnCompleteNamespace = FunctionReference<
   "mutation",
   "internal",
   {
-    namespace: string;
-    namespaceId: NamespaceId;
-    previousNamespaceId: NamespaceId | null;
-    success: boolean;
+    namespace: Namespace;
+    replacedNamespace: Namespace | null;
   },
   null,
   string
@@ -187,8 +185,7 @@ export type OnCompleteNamespace = FunctionReference<
 export const vOnCompleteArgs = v.object({
   namespace: vNamespace,
   entry: vEntry,
-  previousEntry: v.optional(vEntry),
-  success: v.boolean(),
+  replacedEntry: v.optional(vEntry),
   error: v.optional(v.string()),
 });
 
@@ -201,10 +198,21 @@ export type OnComplete<
   "mutation",
   "internal",
   {
+    /**
+     * The namespace that the entry belongs to.
+     */
     namespace: Namespace;
+    /**
+     * The entry that was added.
+     */
     entry: Entry<Filters, EntryMetadata>;
-    previousEntry: Entry<Filters, EntryMetadata> | undefined;
-    success: boolean;
+    /**
+     * The previous "ready" entry with the same key that was replaced.
+     */
+    replacedEntry: Entry<Filters, EntryMetadata> | undefined;
+    /**
+     * If async generation failed, this is the error.
+     */
     error: string | undefined;
   },
   null
