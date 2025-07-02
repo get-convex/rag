@@ -200,16 +200,16 @@ describe("RAG thick client", () => {
         limit: 10,
       });
 
-      // Should match README format: "# Title:\n{entry.text}"
-      expect(text).toContain("# Test Document:");
+      // Should match README format: "## Title:\n{entry.text}"
+      expect(text).toContain("## Test Document:");
       expect(entries).toHaveLength(1);
       expect(entries[0].text).toBe(
         "Chunk 1 content\nChunk 2 content\nChunk 3 content"
       );
 
-      // Overall text should be: "# Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
+      // Overall text should be: "## Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       expect(text).toBe(
-        "# Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
+        "## Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       );
     });
 
@@ -235,8 +235,8 @@ describe("RAG thick client", () => {
         limit: 10,
       });
 
-      // Should not have "# " prefix since no title
-      expect(text).not.toContain("# ");
+      // Should not have "## " prefix since no title
+      expect(text).not.toContain("## ");
       expect(entries).toHaveLength(1);
       expect(entries[0].text).toBe("Content without title");
       expect(text).toBe("Content without title");
@@ -337,11 +337,11 @@ describe("RAG thick client", () => {
 
       // Should have entries separated by "\n---\n" as per README
       expect(text).toContain("---");
-      expect(text).toMatch(/# .+:\n.+\n---\n# .+:\n.+/);
+      expect(text).toMatch(/## .+:\n.+\n---\n## .+:\n.+/);
 
-      // Should have both titles prefixed with "# "
-      expect(text).toContain("# First Document:");
-      expect(text).toContain("# Second Document:");
+      // Should have both titles prefixed with "## "
+      expect(text).toContain("## First Document:");
+      expect(text).toContain("## Second Document:");
 
       expect(entries).toHaveLength(2);
     });
@@ -384,14 +384,14 @@ describe("RAG thick client", () => {
 
       // Should properly handle mixed formatting
       expect(text).toContain("---"); // Entries should be separated
-      expect(text).toContain("# Titled Document:"); // Titled entry should have prefix
+      expect(text).toContain("## Titled Document:"); // Titled entry should have prefix
 
       // One entry should have title format, one should not
       const parts = text.split("\n---\n");
       expect(parts).toHaveLength(2);
 
-      const hasTitle = parts.some((part) => part.startsWith("# "));
-      const hasNoTitle = parts.some((part) => !part.startsWith("# "));
+      const hasTitle = parts.some((part) => part.startsWith("## "));
+      const hasNoTitle = parts.some((part) => !part.startsWith("## "));
       expect(hasTitle).toBe(true);
       expect(hasNoTitle).toBe(true);
 
@@ -445,28 +445,28 @@ describe("RAG thick client", () => {
       });
 
       // Verify basic structure matches README
-      expect(text).toContain("# Title 1:");
-      expect(text).toContain("# Title 2:");
+      expect(text).toContain("## Title 1:");
+      expect(text).toContain("## Title 2:");
       expect(text).toContain("---");
 
       // Should have proper entry separation
       const parts = text.split("\n---\n");
       expect(parts).toHaveLength(2);
 
-      // Each part should start with "# Title X:"
+      // Each part should start with "## Title X:"
       parts.forEach((part) => {
-        expect(part).toMatch(/^# Title \d+:/);
+        expect(part).toMatch(/^## Title \d+:/);
       });
 
       expect(entries).toHaveLength(2);
 
       // Individual entry texts should follow the pattern
       expect(text).toBe(
-        `# Title 1:
+        `## Title 1:
 Chunk 1 contents
 Chunk 2 contents
 ---
-# Title 2:
+## Title 2:
 Chunk 3 contents
 Chunk 4 contents`
       );
