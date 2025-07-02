@@ -10,11 +10,13 @@ export function defaultChunker(
     minLines = 1,
     minCharsSoftLimit = 200,
     maxCharsSoftLimit = 2000,
+    maxCharsHardLimit = 10000,
     delimiter = "\n\n",
   }: {
     minLines?: number;
     minCharsSoftLimit?: number;
     maxCharsSoftLimit?: number;
+    maxCharsHardLimit?: number;
     delimiter?: string;
   } = {}
 ): string[] {
@@ -39,7 +41,7 @@ export function defaultChunker(
     if (potentialChunk.length > maxCharsSoftLimit && currentChunk.length > 0) {
       const trimmedChunk = removeTrailingEmptyLines(currentChunk);
       chunks.push(trimmedChunk.join("\n"));
-      currentChunk = [line];
+      currentChunk = maybeSplitLine(line, maxCharsHardLimit);
       continue;
     }
 
@@ -87,6 +89,28 @@ export function defaultChunker(
   }
 
   return chunks;
+}
+
+function maybeSplitLine(line: string, maxCharsHardLimit: number): string[] {
+  const inputs = [line]; // in reverse order
+  const lines: string[] = [];
+  while (inputs.length > 0) {
+    const input = inputs.pop()!;
+    if (input.length <= maxCharsHardLimit) {
+      lines.push(input);
+      continue;
+    }
+    // split it in half
+    const splitIndex = Math.floor(input.length / 2);
+    const candidate = input.slice(0, splitIndex);
+    const rest = input.slice(splitIndex);
+    if (candidate.length < maxCharsHardLimit) {
+      lines.push(candidate, rest);
+    } else {
+      inputs.push(rest, candidate);
+    }
+  }
+  return lines;
 }
 
 function shouldStartNewSection(
