@@ -41,7 +41,15 @@ export function defaultChunker(
     if (potentialChunk.length > maxCharsSoftLimit && currentChunk.length > 0) {
       const trimmedChunk = removeTrailingEmptyLines(currentChunk);
       chunks.push(trimmedChunk.join("\n"));
-      currentChunk = maybeSplitLine(line, maxCharsHardLimit);
+
+      // Split the line if it exceeds hard limit
+      const splitLines = maybeSplitLine(line, maxCharsHardLimit);
+      // Add all but the last split piece as separate chunks
+      for (let j = 0; j < splitLines.length - 1; j++) {
+        chunks.push(splitLines[j]);
+      }
+      // Keep the last piece for potential combination with next lines
+      currentChunk = [splitLines[splitLines.length - 1]];
       continue;
     }
 
@@ -69,9 +77,20 @@ export function defaultChunker(
     // If current chunk is too big, split it
     if (currentChunk.join("\n").length > maxCharsSoftLimit) {
       if (currentChunk.length === 1) {
-        // Single line too long but never split beyond one line
-        chunks.push(line);
-        currentChunk = [];
+        // Single line too long - split it if it exceeds hard limit
+        const splitLines = maybeSplitLine(line, maxCharsHardLimit);
+        if (splitLines.length > 1) {
+          // Line was split - add all but the last piece as separate chunks
+          for (let j = 0; j < splitLines.length - 1; j++) {
+            chunks.push(splitLines[j]);
+          }
+          // Keep the last piece for potential combination with next lines
+          currentChunk = [splitLines[splitLines.length - 1]];
+        } else {
+          // Line doesn't exceed hard limit, keep it as is
+          chunks.push(line);
+          currentChunk = [];
+        }
       } else {
         // Remove last line and finalize chunk
         const lastLine = currentChunk.pop()!;
@@ -82,10 +101,17 @@ export function defaultChunker(
     }
   }
 
-  // Add remaining chunk
+  // Add remaining chunk, splitting if it exceeds hard limit
   if (currentChunk.length > 0) {
-    const trimmedChunk = removeTrailingEmptyLines(currentChunk);
-    chunks.push(trimmedChunk.join("\n"));
+    const remainingText = currentChunk.join("\n");
+    if (remainingText.length > maxCharsHardLimit) {
+      // Split the remaining chunk if it exceeds hard limit
+      const splitLines = maybeSplitLine(remainingText, maxCharsHardLimit);
+      chunks.push(...splitLines);
+    } else {
+      const trimmedChunk = removeTrailingEmptyLines(currentChunk);
+      chunks.push(trimmedChunk.join("\n"));
+    }
   }
 
   return chunks;

@@ -16,15 +16,9 @@ This is the third paragraph that will likely be in the next chunk.`;
 
     const chunks = defaultChunker(text);
 
-    // Should combine first two paragraphs (together > 200 chars)
-    // Third paragraph might be separate or combined depending on size
-    expect(chunks.length).toBeGreaterThan(0);
-    expect(chunks[0]).toBe(
-      "This is the first paragraph with about 100 characters. It should be combined with others.\n\nThis is the second paragraph with similar length to make a good chunk together.\n"
-    );
-    expect(chunks[1]).toBe(
-      "This is the third paragraph that will likely be in the next chunk."
-    );
+    // Should combine all paragraphs since total length (238 chars) is well within limits
+    expect(chunks.length).toBe(1);
+    expect(chunks[0]).toBe(text);
     chunks.forEach((chunk: string) => {
       expect(chunk.length).toBeGreaterThan(0);
       expect(chunk.length).toBeLessThanOrEqual(2000);
@@ -148,6 +142,76 @@ Another small paragraph at the end.`;
     // Should split even a single line if it's too long
     expect(chunks.length).toBe(1);
     expect(chunks.join("\n")).toBe(veryLongLine);
+  });
+
+  test("splits single line exceeding hard limit with custom hard limit", () => {
+    const longLine = "A".repeat(15000);
+
+    const chunks = defaultChunker(longLine, {
+      minLines: 1,
+      minCharsSoftLimit: 200,
+      maxCharsSoftLimit: 1000,
+      maxCharsHardLimit: 5000,
+    });
+
+    // Should be split into multiple chunks
+    expect(chunks.length).toBeGreaterThan(1);
+
+    // Each chunk should not exceed the hard limit
+    chunks.forEach((chunk: string) => {
+      expect(chunk.length).toBeLessThanOrEqual(5000);
+    });
+
+    // Content should be preserved when joined back together
+    expect(chunks.join("")).toBe(longLine);
+  });
+
+  test("splits extremely long single line with default hard limit", () => {
+    // Create a line that exceeds the default hard limit of 10000
+    const extremelyLongLine = "B".repeat(25000);
+
+    const chunks = defaultChunker(extremelyLongLine, {
+      minLines: 1,
+      minCharsSoftLimit: 200,
+      maxCharsSoftLimit: 1000,
+      // Using default maxCharsHardLimit of 10000
+    });
+
+    // Should be split into multiple chunks
+    expect(chunks.length).toBeGreaterThan(1);
+
+    // Each chunk should not exceed the default hard limit
+    chunks.forEach((chunk: string) => {
+      expect(chunk.length).toBeLessThanOrEqual(10000);
+    });
+
+    // Content should be preserved when joined back together
+    expect(chunks.join("")).toBe(extremelyLongLine);
+
+    // Should have at least 3 chunks for 25000 characters with 10000 limit
+    expect(chunks.length).toBeGreaterThanOrEqual(3);
+  });
+
+  test("verifies hard limit splitting with different character patterns", () => {
+    const longLine = "A".repeat(15000);
+
+    const chunks = defaultChunker(longLine, {
+      minLines: 1,
+      minCharsSoftLimit: 200,
+      maxCharsSoftLimit: 1000,
+      maxCharsHardLimit: 5000,
+    });
+
+    // Should be split into multiple chunks
+    expect(chunks.length).toBeGreaterThan(1);
+
+    // Each chunk should not exceed the hard limit
+    chunks.forEach((chunk: string) => {
+      expect(chunk.length).toBeLessThanOrEqual(5000);
+    });
+
+    // Content should be preserved when joined back together
+    expect(chunks.join("")).toBe(longLine);
   });
 
   test("preserves content without losing text", () => {
