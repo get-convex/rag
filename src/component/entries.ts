@@ -70,16 +70,6 @@ export const addAsync = mutation({
       existing?.status.kind === "ready" &&
       entryIsSame(existing, args.entry)
     ) {
-      if (args.onComplete) {
-        await runOnComplete(
-          ctx,
-          args.onComplete,
-          namespace,
-          existing,
-          null,
-          true
-        );
-      }
       return {
         entryId: existing._id,
         status: existing.status.kind,
@@ -220,17 +210,6 @@ export const add = mutation({
       existing?.status.kind === "ready" &&
       entryIsSame(existing, args.entry)
     ) {
-      if (args.onComplete) {
-        await runOnComplete(
-          ctx,
-          args.onComplete,
-          namespace,
-          existing,
-          // Note: we pass the existing entry as the previous entry too.
-          existing,
-          true
-        );
-      }
       return {
         entryId: existing._id,
         status: existing.status.kind,
