@@ -1,4 +1,4 @@
-# Convex Agent RAG Component
+# Convex RAG Component
 
 [![npm version](https://badge.fury.io/js/@convex-dev%2Fmemory.svg)](https://badge.fury.io/js/@convex-dev%2Fmemory)
 
