@@ -352,43 +352,18 @@ export class RAG<
    */
   async search(
     ctx: RunActionCtx,
-    args: (
-      | {
-          /**
-           * The namespace to search in. e.g. a userId if entries are per-user.
-           * Note: it will only match entries in the namespace that match the
-           * modelId, embedding dimension, and filterNames of the RAG instance.
-           */
-          namespace: string;
-          /**
-           * The query to search for. Optional if embedding is provided.
-           */
-          query: string;
-          /**
-           * @deprecated Pass query OR embedding
-           * You may specify an embedding or query, but not both for now.
-           */
-          embedding?: undefined;
-        }
-      | {
-          /**
-           * The namespace to search in. e.g. a userId if entries are per-user.
-           * Note: it will only match entries in the namespace that match the
-           * modelId, embedding dimension, and filterNames of the RAG instance.
-           */
-          namespace: string;
-          /**
-           * The embedding to search for.
-           */
-          embedding: Array<number>;
-          /**
-           * @deprecated Pass query OR embedding
-           * You may specify an embedding or query, but not both for now.
-           */
-          query?: undefined;
-        }
-    ) &
-      SearchOptions<FitlerSchemas>
+    args: {
+      /**
+       * The namespace to search in. e.g. a userId if entries are per-user.
+       * Note: it will only match entries in the namespace that match the
+       * modelId, embedding dimension, and filterNames of the RAG instance.
+       */
+      namespace: string;
+      /**
+       * The query to search for. Optional if embedding is provided.
+       */
+      query?: string;
+    } & SearchOptions<FitlerSchemas>
   ): Promise<{
     results: SearchResult[];
     text: string;
@@ -455,7 +430,8 @@ export class RAG<
    *
    * This will search for entries in the namespace based on the prompt and use
    * the results as context to generate text, using the search options args.
-   * You can provide a "system" message to provide instructions to the model.
+   * You can override the default "system" message to provide instructions on
+   * using the context and answering in the appropriate style.
    * You can provide "messages" in addition to the prompt to provide
    * extra context / conversation history.
    */
@@ -463,9 +439,14 @@ export class RAG<
     ctx: RunActionCtx,
     args: {
       /**
-       * The namespace to search in. e.g. a userId if entries are per-user.
+       * The search options to use for context search, including the namespace.
        */
-      namespace: string;
+      search: SearchOptions<FitlerSchemas> & {
+        /**
+         * The namespace to search in. e.g. a userId if entries are per-user.
+         */
+        namespace: string;
+      };
       /**
        * Required. The prompt to use for context search, as well as the final
        * message to the LLM when generating text.
@@ -473,21 +454,21 @@ export class RAG<
        */
       prompt: string;
       /**
-       * The search options to use for context search.
-       */
-      searchOpts?: SearchOptions<FitlerSchemas>;
-      /**
-       * Additional messages to add to the context.
+       * Additional messages to add to the context. Can be provided in addition
+       * to the prompt, in which case it will precede the prompt.
        */
       messages?: CoreMessage[];
     } & Parameters<typeof generateText>[0]
   ): Promise<ReturnType<typeof generateText>> {
-    const { namespace, prompt, searchOpts, ...aiSdkOpts } = args;
+    const {
+      search: { namespace, ...searchOpts },
+      prompt,
+      ...aiSdkOpts
+    } = args;
     const context = await this.search(ctx, {
       namespace,
       query: prompt,
       ...searchOpts,
-      limit: searchOpts?.limit ?? DEFAULT_SEARCH_LIMIT,
     });
     let contextHeader =
       "Use the following context to respond to the user's question:\n";
@@ -1084,6 +1065,11 @@ type EntryArgs<
 
 type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
   /**
+   * The embedding to search for. If provided, it will be used instead
+   * of the query for vector search.
+   */
+  embedding?: Array<number>;
+  /**
    * Filters to apply to the search. These are OR'd together. To represent
    * AND logic, your filter can be an object or array with multiple values.
    * e.g. `[{ category: "articles" }, { priority: "high" }]` will return
@@ -1101,7 +1087,7 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    * This is the number *before* the chunkContext is applied.
    * e.g. { before: 2, after: 1 } means 4x the limit is returned.
    */
-  limit: number;
+  limit?: number;
   /**
    * What chunks around the search results to include.
    * Default: { before: 0, after: 0 }
