@@ -892,14 +892,16 @@ function Example() {
                       </div>
                     </div>
                   ))}
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => documentChunks.loadMore(10)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    Load More
-                  </button>
+                  {documentChunks.status === "CanLoadMore" && (
+                    <div className="flex justify-center mt-4">
+                      <button
+                        onClick={() => documentChunks.loadMore(10)}
+                        className="text-sm px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Load More
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -986,9 +988,12 @@ function Example() {
                                     readOnly
                                     rows={
                                       isExpanded
-                                        ? Math.min(
-                                            displayText.split("\n").length,
-                                            10
+                                        ? Math.max(
+                                            3,
+                                            Math.min(
+                                              displayText.split("\n").length,
+                                              10
+                                            )
                                           )
                                         : 3
                                     }
