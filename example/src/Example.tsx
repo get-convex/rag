@@ -620,7 +620,7 @@ function Example() {
                           <div className="text-sm font-semibold text-gray-900 truncate">
                             {selectedFile.name}
                             {selectedFile && isPdfFile(selectedFile) && (
-                              <span className="ml-2 text-xs text-white bg-gradient-to-r from-red-500 to-pink-500 px-2 py-1 rounded-full font-medium">
+                              <span className="ml-2 text-xs text-white bg-gradient-to-r from-rose-500 to-pink-500 px-2 py-1 rounded-full font-medium">
                                 PDF
                               </span>
                             )}
@@ -1373,8 +1373,8 @@ function Example() {
                       Generated Answer
                     </h3>
                   </div>
-                  <div className="prose max-w-none text-gray-800 leading-relaxed">
-                    <div className="markdown-content">
+                  <div className="max-w-none text-gray-900 leading-relaxed">
+                    <div className="markdown-content text-gray-900">
                       <MarkdownRenderer>
                         {questionResult.answer}
                       </MarkdownRenderer>
@@ -1460,7 +1460,7 @@ function Example() {
                         {chunk.order}
                       </div>
                       <div className="flex-1 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 shadow-sm group-hover:shadow-md transition-all duration-200">
-                        <div className="text-sm text-gray-800 leading-relaxed">
+                        <div className="text-sm text-gray-900 leading-relaxed font-medium">
                           {chunk.text}
                         </div>
                       </div>
@@ -1631,7 +1631,7 @@ function Example() {
                       </h4>
                     </div>
                     <div
-                      className="text-sm text-gray-800 whitespace-pre-line leading-relaxed bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-emerald-200/50"
+                      className="text-sm text-gray-900 whitespace-pre-line leading-relaxed bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-emerald-200/50 font-medium"
                       style={{ whiteSpace: "pre-line" }}
                     >
                       {searchResults.text}
@@ -1718,7 +1718,7 @@ function Example() {
                                               )
                                             : 3
                                         }
-                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm leading-relaxed"
+                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm leading-relaxed text-gray-900 font-medium"
                                       />
                                       {content.text.length > 150 && (
                                         <button
@@ -1816,12 +1816,12 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
   })();
 
   return (
-    <div className="group relative p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl">
+    <div className="group relative p-4 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
                 <svg
                   className="w-4 h-4 text-white"
                   fill="none"
@@ -1881,7 +1881,7 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
                   <div className="flex items-center space-x-2">
                     <div className="flex-1 bg-orange-200 rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-orange-500 to-amber-500 h-2 rounded-full transition-all duration-300"
                         style={{
                           width: `${(progress.live / progress.added) * 100}%`,
                         }}

@@ -16,27 +16,33 @@ const markdownComponents: Components = {
   h3: ({ children }) => (
     <h3 className="text-lg font-semibold mb-2 text-gray-900">{children}</h3>
   ),
-  p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
-  ul: ({ children }) => <ul className="mb-3 pl-6 list-disc">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-3 pl-6 list-decimal">{children}</ol>,
-  li: ({ children }) => <li className="mb-1">{children}</li>,
+  p: ({ children }) => (
+    <p className="mb-3 leading-relaxed text-gray-900 font-medium">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="mb-3 pl-6 list-disc text-gray-900">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="mb-3 pl-6 list-decimal text-gray-900">{children}</ol>
+  ),
+  li: ({ children }) => <li className="mb-1 text-gray-900">{children}</li>,
   strong: ({ children }) => (
     <strong className="font-semibold text-gray-900">{children}</strong>
   ),
   code: ({ children }) => (
-    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">
+    <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-gray-900">
       {children}
     </code>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-3">
+    <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-3 text-gray-800">
       {children}
     </blockquote>
   ),
   a: ({ href, children }) => (
     <a
       href={href}
-      className="text-blue-600 underline hover:text-blue-800"
+      className="text-blue-600 underline hover:text-blue-800 font-medium"
       target="_blank"
       rel="noopener noreferrer"
     >
