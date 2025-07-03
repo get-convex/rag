@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect } from "react";
 import type { EntryFilter, SearchResult } from "@convex-dev/rag";
 import type { Filters, PublicFile } from "../convex/example";
 
-type SearchType = "global" | "user" | "category" | "file";
+type SearchType = "general" | "category" | "file";
 type QueryMode = "search" | "question";
 
 interface UISearchResult {
@@ -35,7 +35,8 @@ function Example() {
   });
 
   const [queryMode, setQueryMode] = useState<QueryMode>("question");
-  const [searchType, setSearchType] = useState<SearchType>("global");
+  const [searchType, setSearchType] = useState<SearchType>("general");
+  const [searchGlobal, setSearchGlobal] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
     null
@@ -192,9 +193,13 @@ function Example() {
         }
 
         const globalNamespace =
-          searchType === "global" ||
-          (searchType === "category" && categorySearchGlobal) ||
-          (searchType === "file" && selectedDocument?.global);
+          searchType === "general"
+            ? searchGlobal
+            : searchType === "category"
+              ? categorySearchGlobal
+              : searchType === "file" && selectedDocument
+                ? selectedDocument.global
+                : searchGlobal;
 
         const questionResults = await convex.action(api.example.askQuestion, {
           prompt: searchQuery,
@@ -226,16 +231,10 @@ function Example() {
         // Handle search mode (existing logic)
         let results;
         switch (searchType) {
-          case "global":
+          case "general":
             results = await convex.action(api.example.search, {
               query: searchQuery,
-              globalNamespace: true,
-            });
-            break;
-          case "user":
-            results = await convex.action(api.example.search, {
-              query: searchQuery,
-              globalNamespace: false,
+              globalNamespace: searchGlobal,
             });
             break;
           case "category":
@@ -276,6 +275,7 @@ function Example() {
     searchQuery,
     queryMode,
     searchType,
+    searchGlobal,
     selectedDocument,
     selectedCategory,
     convex,
@@ -328,7 +328,7 @@ function Example() {
     setSearchResults(null);
     setQuestionResult(null);
     setSearchResultsExpanded(false);
-  }, [searchType, queryMode]);
+  }, [searchType]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -521,7 +521,8 @@ function Example() {
               <h3 className="font-medium text-gray-900">Global Files</h3>
               <button
                 onClick={() => {
-                  setSearchType("global");
+                  setSearchType("general");
+                  setSearchGlobal(true);
                   setSelectedDocument(null);
                 }}
                 className="p-1 text-gray-400 hover:text-blue-600"
@@ -586,7 +587,8 @@ function Example() {
               <h3 className="font-medium text-gray-900">User Files</h3>
               <button
                 onClick={() => {
-                  setSearchType("user");
+                  setSearchType("general");
+                  setSearchGlobal(false);
                   setSelectedDocument(null);
                 }}
                 className="p-1 text-gray-400 hover:text-blue-600"
@@ -679,74 +681,85 @@ function Example() {
           </div>
 
           {/* Search Type Selector */}
-          <div className="flex space-x-4 mb-4">
-            {(["global", "user", "category", "file"] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setSearchType(type)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                  searchType === type
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {type === "user"
-                  ? "User File"
-                  : type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                {queryMode === "search" ? "Search" : "Question"}
-              </button>
-            ))}
+          <div className="flex items-center justify-between space-x-4 mb-4">
+            <div className="flex space-x-4">
+              {(["general", "category", "file"] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSearchType(type)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                    searchType === type
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {type === "general"
+                    ? "General"
+                    : type === "category"
+                      ? "Category"
+                      : "File-Specific"}
+                </button>
+              ))}
+
+              {/* Global/User Toggle - only show for general and category search */}
+              {(searchType === "general" || searchType === "category") && (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600">User Files</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (searchType === "general") {
+                        setSearchGlobal(!searchGlobal);
+                      } else if (searchType === "category") {
+                        setCategorySearchGlobal(!categorySearchGlobal);
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      (
+                        searchType === "general"
+                          ? searchGlobal
+                          : categorySearchGlobal
+                      )
+                        ? "bg-blue-600"
+                        : "bg-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        (
+                          searchType === "general"
+                            ? searchGlobal
+                            : categorySearchGlobal
+                        )
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm text-gray-600">Global Files</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Category Selector for Category Search */}
           {searchType === "category" && (
             <div className="mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a category</option>
-                    {getUniqueCategories().map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col items-end">
-                  <label className="text-sm text-gray-700 mb-1">
-                    Search Scope
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-600">User</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCategorySearchGlobal(!categorySearchGlobal)
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        categorySearchGlobal ? "bg-blue-600" : "bg-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          categorySearchGlobal
-                            ? "translate-x-6"
-                            : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-xs text-gray-600">Global</span>
-                  </div>
-                </div>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select a category</option>
+                {getUniqueCategories().map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -769,7 +782,7 @@ function Example() {
                   >
                     <span
                       className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        showChunks ? "translate-x-1" : "translate-x-5"
+                        showChunks ? "translate-x-5" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -815,6 +828,24 @@ function Example() {
             </button>
           </div>
         </div>
+
+        {/* Question Results */}
+        {questionResult &&
+          queryMode === "question" &&
+          (searchType !== "file" || !showChunks) && (
+            <div className="space-y-6">
+              {/* Generated Answer */}
+              <div className="bg-white rounded-lg border border-purple-200 p-6">
+                <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
+                  <span className="mr-2">🤖</span>
+                  Generated Answer
+                </h3>
+                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {questionResult.answer}
+                </div>
+              </div>
+            </div>
+          )}
 
         {/* Results */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -863,166 +894,45 @@ function Example() {
                 </div>
               </div>
             )}
-
-          {/* Question Results */}
-          {questionResult && (searchType !== "file" || !showChunks) && (
-            <div className="space-y-6">
-              {/* Generated Answer */}
-              <div className="bg-white rounded-lg border border-purple-200 p-6">
-                <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
-                  <span className="mr-2">🤖</span>
-                  Generated Answer
-                </h3>
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {questionResult.answer}
-                </div>
-              </div>
-
-              {/* Sources */}
-              {questionResult.files && questionResult.files.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 w-full mb-2">
-                    Sources:
-                  </h4>
-                  {questionResult.files.map((doc, index) => (
-                    <div
-                      key={index}
-                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
-                    >
-                      {doc.url ? (
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-700 hover:text-gray-900"
-                        >
-                          {doc.title || doc.url}
-                        </a>
-                      ) : (
-                        <span className="text-gray-700">
-                          {doc.title || doc.filename}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Context/Chunks */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">
-                  Context Used ({questionResult.results.length} chunks)
-                </h3>
-                {questionResult.results.map((result, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          File: {result.entry.title || result.entry.filename}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Score: {result.score.toFixed(3)}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {result.content.map((content, contentIndex) => {
-                          const isHighlighted =
-                            contentIndex + result.startOrder === result.order;
-                          const isExpanded = expandedResults.has(
-                            index * 1000 + contentIndex
-                          );
-                          const displayText = isExpanded
-                            ? content.text
-                            : content.text.slice(0, 150) +
-                              (content.text.length > 150 ? "..." : "");
-
-                          return (
-                            <div
-                              key={contentIndex}
-                              className={`p-3 rounded border ${
-                                isHighlighted
-                                  ? "border-purple-300 bg-purple-50"
-                                  : "border-gray-200 bg-gray-50"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <textarea
-                                    value={displayText}
-                                    readOnly
-                                    rows={
-                                      isExpanded
-                                        ? Math.min(
-                                            displayText.split("\n").length,
-                                            10
-                                          )
-                                        : 3
-                                    }
-                                    className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
-                                  />
-                                  {content.text.length > 150 && (
-                                    <button
-                                      onClick={() =>
-                                        toggleResultExpansion(
-                                          index * 1000 + contentIndex
-                                        )
-                                      }
-                                      className="text-xs text-purple-600 hover:text-purple-800 mt-1"
-                                    >
-                                      {isExpanded ? "Show less" : "Show more"}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Search Results */}
           {searchResults && (searchType !== "file" || !showChunks) && (
             <div className="space-y-6">
-              {/* Sources */}
-              {searchResults.files && searchResults.files.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {searchResults.files.map((doc, index) => (
-                    <div
-                      key={index}
-                      className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
-                    >
-                      {doc.url ? (
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-700 hover:text-gray-900"
-                        >
-                          {doc.title || doc.url}
-                        </a>
-                      ) : (
-                        <span className="text-gray-700">
-                          {doc.title || doc.filename}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2 mb-6">
+                <h4 className="text-sm font-medium text-gray-700 w-full mb-2">
+                  Sources:
+                </h4>
+                {/* Sources */}
+                {searchResults.files && searchResults.files.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {searchResults.files.map((doc, index) => (
+                      <div
+                        key={index}
+                        className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                      >
+                        {doc.url ? (
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-700 hover:text-gray-900"
+                          >
+                            {doc.title || doc.url}
+                          </a>
+                        ) : (
+                          <span className="text-gray-700">
+                            {doc.title || doc.filename}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Results */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900">
-                  Results ({searchResults.results.length})
+                  Search Results ({searchResults.results.length})
                 </h3>
                 {searchResults.results.map((result, index) => (
                   <div key={index} className="flex items-start space-x-2">
