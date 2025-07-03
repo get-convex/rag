@@ -80,6 +80,7 @@ function Example() {
     selectedDocument?.entryId
       ? {
           entryId: selectedDocument.entryId,
+          order: "asc",
           paginationOpts: { numItems: 100, cursor: null },
         }
       : "skip"
@@ -108,7 +109,7 @@ function Example() {
 
     setIsAdding(true);
     try {
-      if (selectedFile.size > 1024 * 1024) {
+      if (selectedFile.size > 512 * 1024) {
         // For big files let's do it asynchronously
         await fetch(`${import.meta.env.VITE_CONVEX_SITE_URL}/upload`, {
           method: "POST",
@@ -493,30 +494,8 @@ function Example() {
                     {pendingFiles.length !== 1 ? "s" : ""}...
                   </h4>
                 </div>
-                {pendingFiles.map((doc) => (
-                  <div
-                    key={doc.entryId}
-                    className="group p-2 border-2 border-orange-200 bg-orange-50 rounded transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full"></div>
-                          <div className="text-sm font-medium text-orange-900 truncate">
-                            {doc.filename}
-                          </div>
-                        </div>
-                        {doc.category && (
-                          <div className="text-xs text-orange-700 ml-4">
-                            {doc.category}
-                          </div>
-                        )}
-                        <div className="text-xs text-orange-600 ml-4">
-                          {doc.global ? "Global" : "User"} • Processing...
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {pendingFiles.map((doc, index) => (
+                  <PendingDocumentProgress key={doc.entryId} doc={doc} />
                 ))}
               </div>
             )}
@@ -1123,5 +1102,77 @@ function Example() {
     </div>
   );
 }
+
+function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
+  const chunks = useQuery(api.example.listChunks, {
+    entryId: doc.entryId,
+    order: "desc",
+    paginationOpts: { cursor: null, numItems: 100 },
+  });
+
+  // Calculate progress info
+  const progress = (() => {
+    if (!chunks?.page?.length) return { added: 0, live: 0 };
+
+    // Total chunks added (highest order number + 1, since order is 0-based)
+    const added = chunks.page[0].order + 1;
+
+    // Find first chunk with state "ready" to get live count
+    const firstReadyChunk = chunks.page.find(
+      (chunk) => chunk.state === "ready"
+    );
+    const live = firstReadyChunk ? firstReadyChunk.order + 1 : 0;
+
+    return { added, live };
+  })();
+
+  return (
+    <div className="group p-2 border-2 border-orange-200 bg-orange-50 rounded transition-colors">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full"></div>
+            <div className="text-sm font-medium text-orange-900 truncate">
+              {doc.filename}
+            </div>
+          </div>
+          {doc.category && (
+            <div className="text-xs text-orange-700 ml-4">{doc.category}</div>
+          )}
+          <div className="text-xs text-orange-600 ml-4 space-y-1">
+            <div>{doc.global ? "Global" : "User"} • Processing...</div>
+            {!chunks?.page?.length ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-orange-500"></div>
+                <span>⚙️ Generating text...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <span>📝 Added: {progress.added} chunks</span>
+                <span>✅ Live: {progress.live} chunks</span>
+                {progress.live > 0 && progress.added > progress.live && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="bg-orange-500 h-1.5 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(progress.live / progress.added) * 100}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <span className="text-xs">
+                      {Math.round((progress.live / progress.added) * 100)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default Example;
