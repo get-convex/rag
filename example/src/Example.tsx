@@ -71,6 +71,7 @@ function Example() {
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
   // unused for now
   const [_searchResultsExpanded, setSearchResultsExpanded] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
 
   // Convex functions
   const convex = useConvex();
@@ -791,7 +792,7 @@ function Example() {
       <div className="flex-1 flex flex-col">
         <div className="bg-white border-b border-gray-200 p-4">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            RAG Search & Question
+            Convex RAG Component
           </h1>
 
           {/* Query Mode Selector */}
@@ -1079,84 +1080,129 @@ function Example() {
 
               {/* Results */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">
-                  Search Results ({searchResults.results.length})
-                </h3>
-                {searchResults.results.map((result, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          File: {result.entry.title || result.entry.filename}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Score: {result.score.toFixed(3)}
-                        </div>
-                      </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">
+                    Search Results ({searchResults.results.length})
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-700">
+                      Individual Results
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowFullText(!showFullText)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        showFullText ? "bg-blue-600" : "bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          showFullText ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      Combined Context
+                    </span>
+                  </div>
+                </div>
 
-                      <div className="space-y-2">
-                        {result.content.map((content, contentIndex) => {
-                          const isHighlighted =
-                            contentIndex + result.startOrder === result.order;
-                          const isExpanded = expandedResults.has(
-                            index * 1000 + contentIndex
-                          );
-                          const displayText = isExpanded
-                            ? content.text
-                            : content.text.slice(0, 150) +
-                              (content.text.length > 150 ? "..." : "");
-
-                          return (
-                            <div
-                              key={contentIndex}
-                              className={`p-3 rounded border ${
-                                isHighlighted
-                                  ? "border-blue-300 bg-blue-50"
-                                  : "border-gray-200 bg-gray-50"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <textarea
-                                    value={displayText}
-                                    readOnly
-                                    rows={
-                                      isExpanded
-                                        ? Math.max(
-                                            3,
-                                            Math.min(
-                                              displayText.split("\n").length,
-                                              10
-                                            )
-                                          )
-                                        : 3
-                                    }
-                                    className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
-                                  />
-                                  {content.text.length > 150 && (
-                                    <button
-                                      onClick={() =>
-                                        toggleResultExpansion(
-                                          index * 1000 + contentIndex
-                                        )
-                                      }
-                                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                                    >
-                                      {isExpanded ? "Show less" : "Show more"}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                {showFullText && searchResults.text ? (
+                  <div className="bg-white rounded-lg border border-gray-200 p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">
+                      Complete Search Text
+                    </h4>
+                    <div
+                      className="text-sm text-gray-800 whitespace-pre-line leading-relaxed"
+                      style={{ whiteSpace: "pre-line" }}
+                    >
+                      {searchResults.text}
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    {searchResults.results.map((result, index) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                          {index + 1}
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              File:{" "}
+                              {result.entry.title || result.entry.filename}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Score: {result.score.toFixed(3)}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            {result.content.map((content, contentIndex) => {
+                              const isHighlighted =
+                                contentIndex + result.startOrder ===
+                                result.order;
+                              const isExpanded = expandedResults.has(
+                                index * 1000 + contentIndex
+                              );
+                              const displayText = isExpanded
+                                ? content.text
+                                : content.text.slice(0, 150) +
+                                  (content.text.length > 150 ? "..." : "");
+
+                              return (
+                                <div
+                                  key={contentIndex}
+                                  className={`p-3 rounded border ${
+                                    isHighlighted
+                                      ? "border-blue-300 bg-blue-50"
+                                      : "border-gray-200 bg-gray-50"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <textarea
+                                        value={displayText}
+                                        readOnly
+                                        rows={
+                                          isExpanded
+                                            ? Math.max(
+                                                3,
+                                                Math.min(
+                                                  displayText.split("\n")
+                                                    .length,
+                                                  10
+                                                )
+                                              )
+                                            : 3
+                                        }
+                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
+                                      />
+                                      {content.text.length > 150 && (
+                                        <button
+                                          onClick={() =>
+                                            toggleResultExpansion(
+                                              index * 1000 + contentIndex
+                                            )
+                                          }
+                                          className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                        >
+                                          {isExpanded
+                                            ? "Show less"
+                                            : "Show more"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}
