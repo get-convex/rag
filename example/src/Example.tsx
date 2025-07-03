@@ -3,8 +3,8 @@ import { useQuery, useConvex } from "convex/react";
 import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { SearchResult } from "@convex-dev/rag";
-import type { PublicFile } from "../convex/example";
+import type { EntryFilter, SearchResult } from "@convex-dev/rag";
+import type { Filters, PublicFile } from "../convex/example";
 
 type SearchType = "global" | "user" | "category" | "file";
 type QueryMode = "search" | "question";
@@ -53,6 +53,7 @@ function Example() {
   );
   const [showChunks, setShowChunks] = useState(false);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
+  const [searchResultsExpanded, setSearchResultsExpanded] = useState(false);
 
   // Convex functions
   const convex = useConvex();
@@ -176,17 +177,16 @@ function Example() {
 
     try {
       if (queryMode === "question") {
-        // Handle question mode
-        let filter: any = undefined;
+        let filter: EntryFilter<Filters> | undefined;
 
         if (searchType === "category") {
           filter = {
-            kind: "category" as const,
+            name: "category" as const,
             value: selectedCategory,
           };
         } else if (searchType === "file" && selectedDocument) {
           filter = {
-            kind: "filename" as const,
+            name: "filename" as const,
             value: selectedDocument.filename,
           };
         }
@@ -196,20 +196,31 @@ function Example() {
           (searchType === "category" && categorySearchGlobal) ||
           (searchType === "file" && selectedDocument?.global);
 
-        const results = await convex.action(api.example.askQuestion, {
+        const questionResults = await convex.action(api.example.askQuestion, {
           prompt: searchQuery,
           globalNamespace: globalNamespace || false,
           filter,
         });
 
-        const sources = results?.files || [];
-        setQuestionResult({
-          answer: results.answer,
-          results: results.results.map((result: any) => ({
+        const questionSources = questionResults?.files || [];
+
+        const formattedSearchResults = {
+          ...questionResults,
+          results: questionResults.results.map((result) => ({
             ...result,
-            entry: sources.find((s: any) => s.entryId === result.entryId)!,
+            entry: questionSources.find((s) => s.entryId === result.entryId)!,
           })),
-          files: sources,
+        };
+
+        // Set search results
+        setSearchResults(formattedSearchResults);
+        setQuestionResult({
+          answer: questionResults.answer,
+          results: questionResults.results.map((result) => ({
+            ...result,
+            entry: questionSources.find((s) => s.entryId === result.entryId)!,
+          })),
+          files: questionSources,
         });
       } else {
         // Handle search mode (existing logic)
@@ -316,6 +327,7 @@ function Example() {
   useEffect(() => {
     setSearchResults(null);
     setQuestionResult(null);
+    setSearchResultsExpanded(false);
   }, [searchType, queryMode]);
 
   return (
@@ -773,7 +785,12 @@ function Example() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
               placeholder={
                 queryMode === "search"
                   ? "Enter your search query..."

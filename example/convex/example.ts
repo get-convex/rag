@@ -29,7 +29,7 @@ import {
 } from "./_generated/server";
 import { getText } from "./getText";
 
-type Filters = {
+export type Filters = {
   filename: string;
   category: string | null;
 };
@@ -167,11 +167,11 @@ export const askQuestion = action({
     filter: v.optional(
       v.union(
         v.object({
-          kind: v.literal("category"),
-          value: v.string(),
+          name: v.literal("category"),
+          value: v.union(v.null(), v.string()),
         }),
         v.object({
-          kind: v.literal("filename"),
+          name: v.literal("filename"),
           value: v.string(),
         })
       )
@@ -183,9 +183,7 @@ export const askQuestion = action({
     const { text, context } = await rag.generateText(ctx, {
       search: {
         namespace: args.globalNamespace ? "global" : userId,
-        filters: args.filter?.kind && [
-          { name: args.filter.kind, value: args.filter.value },
-        ],
+        filters: args.filter ? [args.filter] : [],
       },
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),
