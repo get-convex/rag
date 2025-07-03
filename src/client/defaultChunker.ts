@@ -8,8 +8,8 @@ export function defaultChunker(
   text: string,
   {
     minLines = 1,
-    minCharsSoftLimit = 200,
-    maxCharsSoftLimit = 2000,
+    minCharsSoftLimit = 100,
+    maxCharsSoftLimit = 1000,
     maxCharsHardLimit = 10000,
     delimiter = "\n\n",
   }: {
