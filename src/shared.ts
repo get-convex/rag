@@ -99,7 +99,7 @@ export type SearchEntry<
   text: string;
 };
 
-export type EntryFilterValues<
+export type EntryFilter<
   Filters extends Record<string, Value> = Record<string, Value>,
 > = {
   [K in keyof Filters & string]: NamedFilter<K, Filters[K]>;
@@ -126,7 +126,7 @@ export type Entry<
   /** Filters that can be used to search for this entry.
    * Up to 4 filters are supported, of any type.
    */
-  filterValues: EntryFilterValues<Filters>[];
+  filterValues: EntryFilter<Filters>[];
   /** Hash of the entry contents.
    * If supplied, it will avoid adding if the hash is the same.
    */

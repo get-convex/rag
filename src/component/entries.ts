@@ -1,7 +1,7 @@
 import { assert, omit } from "convex-helpers";
 import { createFunctionHandle, paginationOptsValidator } from "convex/server";
 import { v, type Value } from "convex/values";
-import type { ChunkerAction, EntryFilterValues, EntryId } from "../shared.js";
+import type { ChunkerAction, EntryFilter, EntryId } from "../shared.js";
 import {
   statuses,
   vActiveStatus,
@@ -497,7 +497,7 @@ export function publicEntry(entry: {
   _id: Id<"entries">;
   key?: string | undefined;
   importance: number;
-  filterValues: EntryFilterValues[];
+  filterValues: EntryFilter[];
   contentHash?: string | undefined;
   title?: string | undefined;
   metadata?: Record<string, Value> | undefined;

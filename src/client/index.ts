@@ -27,7 +27,7 @@ import {
   type Chunk,
   type CreateChunkArgs,
   type Entry,
-  type EntryFilterValues,
+  type EntryFilter,
   type EntryId,
   type Namespace,
   type NamespaceId,
@@ -66,6 +66,7 @@ export type {
 export {
   type VEntry,
   type VSearchEntry,
+  type EntryFilter,
   vEntry,
   vSearchEntry,
   vSearchResult,
@@ -1062,7 +1063,7 @@ type EntryArgs<
    * and searching with the same value will return entries that match that
    * value exactly.
    */
-  filterValues?: EntryFilterValues<FitlerSchemas>[];
+  filterValues?: EntryFilter<FitlerSchemas>[];
   /**
    * The importance of the entry. This is used to scale the vector search
    * score of each chunk.
@@ -1099,7 +1100,7 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    * `{ team_user: { team: "team1", user: "user1" } }`, it will not match
    * `{ team_user: { team: "team1" } }` but it will match
    */
-  filters?: EntryFilterValues<FitlerSchemas>[];
+  filters?: EntryFilter<FitlerSchemas>[];
   /**
    * The maximum number of messages to fetch. Default is 10.
    * This is the number *before* the chunkContext is applied.
