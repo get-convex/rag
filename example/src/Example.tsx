@@ -700,6 +700,33 @@ function Example() {
                       : "File-Specific"}
                 </button>
               ))}
+              {/* Document Info for File-specific queries */}
+              {searchType === "file" && selectedDocument && (
+                <div className="flex items-center justify-between">
+                  <div className="text-md text-blue-800">
+                    {selectedDocument.filename}
+                  </div>
+                  {searchResults && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-blue-700">Results</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowChunks(!showChunks)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          showChunks ? "bg-blue-600" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                            showChunks ? "translate-x-5" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs text-blue-700">Chunks</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Global/User Toggle - only show for general and category search */}
               {(searchType === "general" || searchType === "category") && (
@@ -760,35 +787,6 @@ function Example() {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {/* Document Info for File-specific queries */}
-          {searchType === "file" && selectedDocument && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-md">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-blue-800">
-                  {queryMode === "search" ? "Searching" : "Asking question"} in:{" "}
-                  {selectedDocument.filename}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-blue-700">Chunks</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowChunks(!showChunks)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      showChunks ? "bg-blue-600" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        showChunks ? "translate-x-5" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs text-blue-700">Results</span>
-                </div>
-              </div>
             </div>
           )}
 
