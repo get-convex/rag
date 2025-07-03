@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.2.0
+## 0.3.1
+
+- Demote document titles to h2 when auto-generating prompt template
+- Rename replacedVersion -> replaced{Entry,Namespace} to match onComplete
+- Allow listing documents by status without specifying a namespace (e.g. vacuuming)
+- Return replacedAt when listing documents
+
+## 0.1.7/0.3.0
 
 - Renamed to RAG
 - Adds a default chunker, so you can pass `text` to `add[Async]`
