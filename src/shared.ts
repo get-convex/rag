@@ -60,6 +60,7 @@ export const vEntry = v.object({
   filterValues: v.array(vNamedFilter),
   contentHash: v.optional(v.string()),
   status: vStatus,
+  replacedAt: v.optional(v.number()),
 });
 
 export type VEntry<
@@ -72,8 +73,8 @@ export type VEntry<
   typeof vEntry.fieldPaths
 >;
 
-// Type assertion to keep us honest
-const _1: Entry = {} as Infer<typeof vEntry>;
+// Type assertion to keep us honest (modulo the replacedAt field)
+const _1: Entry = {} as Infer<typeof vEntry> & { status: "pending" | "ready" };
 const _2: Infer<typeof vEntry> = {} as Entry;
 
 export const vSearchEntry = v.object({
@@ -130,9 +131,16 @@ export type Entry<
    * If supplied, it will avoid adding if the hash is the same.
    */
   contentHash?: string | undefined;
-  /** Whether this entry's contents have all been inserted and indexed. */
-  status: Status;
-};
+} & (
+  | {
+      /** Whether this entry's contents have all been inserted and indexed. */
+      status: "pending" | "ready";
+    }
+  | {
+      status: "replaced";
+      replacedAt: number;
+    }
+);
 
 export const vChunk = v.object({
   order: v.number(),

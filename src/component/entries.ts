@@ -293,19 +293,20 @@ function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
  */
 export const list = query({
   args: {
-    namespaceId: v.id("namespaces"),
+    namespaceId: v.optional(v.id("namespaces")),
     order: v.optional(v.union(v.literal("desc"), v.literal("asc"))),
     status: vStatus,
     paginationOpts: paginationOptsValidator,
   },
   returns: vPaginationResult(vEntry),
   handler: async (ctx, args) => {
+    const { namespaceId } = args;
     const results = await stream(ctx.db, schema)
       .query("entries")
       .withIndex("status_namespaceId", (q) =>
-        q
-          .eq("status.kind", args.status ?? "ready")
-          .eq("namespaceId", args.namespaceId)
+        namespaceId
+          ? q.eq("status.kind", args.status).eq("namespaceId", namespaceId)
+          : q.eq("status.kind", args.status)
       )
       .order(args.order ?? "asc")
       .paginate(args.paginationOpts);
@@ -504,7 +505,7 @@ export function publicEntry(entry: {
 }): Entry {
   const { key, importance, filterValues, contentHash, title, metadata } = entry;
 
-  return {
+  const fields = {
     entryId: entry._id as unknown as EntryId,
     key,
     title,
@@ -512,8 +513,19 @@ export function publicEntry(entry: {
     importance,
     filterValues,
     contentHash,
-    status: entry.status.kind,
   };
+  if (entry.status.kind === "replaced") {
+    return {
+      ...fields,
+      status: "replaced" as const,
+      replacedAt: entry.status.replacedAt,
+    };
+  } else {
+    return {
+      ...fields,
+      status: entry.status.kind,
+    };
+  }
 }
 
 export const deleteAsync = mutation({

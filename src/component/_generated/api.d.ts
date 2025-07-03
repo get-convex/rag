@@ -122,6 +122,7 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null;
@@ -170,6 +171,7 @@ export type Mounts = {
         importance: number;
         key?: string;
         metadata?: Record<string, any>;
+        replacedAt?: number;
         status: "pending" | "ready" | "replaced";
         title?: string;
       } | null
@@ -185,6 +187,7 @@ export type Mounts = {
         importance: number;
         key?: string;
         metadata?: Record<string, any>;
+        replacedAt?: number;
         status: "pending" | "ready" | "replaced";
         title?: string;
       } | null
@@ -193,7 +196,7 @@ export type Mounts = {
       "query",
       "public",
       {
-        namespaceId: string;
+        namespaceId?: string;
         order?: "desc" | "asc";
         paginationOpts: {
           cursor: string | null;
@@ -215,6 +218,7 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         }>;
@@ -234,6 +238,7 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null;
@@ -355,6 +360,7 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         }>;

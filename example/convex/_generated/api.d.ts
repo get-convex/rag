@@ -124,6 +124,7 @@ export declare const components: {
             importance: number;
             key?: string;
             metadata?: Record<string, any>;
+            replacedAt?: number;
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -172,6 +173,7 @@ export declare const components: {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -187,6 +189,7 @@ export declare const components: {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
+          replacedAt?: number;
           status: "pending" | "ready" | "replaced";
           title?: string;
         } | null
@@ -195,7 +198,7 @@ export declare const components: {
         "query",
         "internal",
         {
-          namespaceId: string;
+          namespaceId?: string;
           order?: "desc" | "asc";
           paginationOpts: {
             cursor: string | null;
@@ -217,6 +220,7 @@ export declare const components: {
             importance: number;
             key?: string;
             metadata?: Record<string, any>;
+            replacedAt?: number;
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;
@@ -236,6 +240,7 @@ export declare const components: {
             importance: number;
             key?: string;
             metadata?: Record<string, any>;
+            replacedAt?: number;
             status: "pending" | "ready" | "replaced";
             title?: string;
           } | null;
@@ -357,6 +362,7 @@ export declare const components: {
             importance: number;
             key?: string;
             metadata?: Record<string, any>;
+            replacedAt?: number;
             status: "pending" | "ready" | "replaced";
             title?: string;
           }>;

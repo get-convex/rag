@@ -551,7 +551,7 @@ export class RAG<
   async list(
     ctx: RunQueryCtx,
     args: {
-      namespaceId: NamespaceId;
+      namespaceId?: NamespaceId;
       paginationOpts: PaginationOptions;
       order?: "desc" | "asc";
       status?: Status;
