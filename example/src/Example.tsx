@@ -6,6 +6,11 @@ import { useCallback, useState, useEffect } from "react";
 import type { EntryFilter, SearchResult } from "@convex-dev/rag";
 import type { Filters, PublicFile } from "../convex/example";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import {
+  extractTextFromPdf,
+  isPdfFile,
+  type PdfExtractionResult,
+} from "./pdfUtils";
 
 type SearchType = "general" | "category" | "file";
 type QueryMode = "search" | "question";
@@ -29,6 +34,15 @@ interface UIQuestionResult {
 function Example() {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pdfExtraction, setPdfExtraction] = useState<{
+    isExtracting: boolean;
+    result: PdfExtractionResult | null;
+    error: string | null;
+  }>({
+    isExtracting: false,
+    result: null,
+    error: null,
+  });
   const [uploadForm, setUploadForm] = useState({
     globalNamespace: false,
     category: "",
@@ -89,14 +103,61 @@ function Example() {
     { initialNumItems: 10 }
   );
 
-  const handleFileSelect = useCallback((file: File) => {
-    setSelectedFile(file);
-    setUploadForm((prev) => ({ ...prev, filename: file.name }));
-  }, []);
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      setSelectedFile(file);
+      setUploadForm((prev) => ({ ...prev, filename: file.name }));
+
+      // Reset PDF extraction state
+      setPdfExtraction({
+        isExtracting: false,
+        result: null,
+        error: null,
+      });
+
+      // If it's a PDF, extract text
+      if (isPdfFile(file)) {
+        setPdfExtraction((prev) => ({ ...prev, isExtracting: true }));
+
+        try {
+          const extractionResult = await extractTextFromPdf(file);
+          setPdfExtraction({
+            isExtracting: false,
+            result: extractionResult,
+            error: null,
+          });
+
+          // Auto-populate title from PDF metadata if available
+          if (extractionResult.title && !uploadForm.filename) {
+            setUploadForm((prev) => ({
+              ...prev,
+              filename: extractionResult.title || file.name,
+            }));
+          }
+        } catch (error) {
+          console.error("PDF extraction failed:", error);
+          setPdfExtraction({
+            isExtracting: false,
+            result: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to extract PDF text",
+          });
+        }
+      }
+    },
+    [uploadForm.filename]
+  );
 
   const handleFileClear = useCallback(() => {
     setSelectedFile(null);
     setUploadForm((prev) => ({ ...prev, filename: "" }));
+    setPdfExtraction({
+      isExtracting: false,
+      result: null,
+      error: null,
+    });
     // Clear file input
     const fileInput = document.querySelector(
       'input[type="file"]'
@@ -110,28 +171,51 @@ function Example() {
       return;
     }
 
+    // For PDFs with extraction errors, ask user if they want to proceed
+    if (selectedFile && isPdfFile(selectedFile) && pdfExtraction.error) {
+      const proceed = confirm(
+        `PDF text extraction failed: ${pdfExtraction.error}\n\nDo you want to upload the PDF file directly instead?`
+      );
+      if (!proceed) return;
+    }
+
     setIsAdding(true);
     try {
+      // Use extracted text for PDFs if available, otherwise use the file
+      const pdfResult = pdfExtraction.result;
+      const shouldUseExtractedText =
+        selectedFile &&
+        isPdfFile(selectedFile) &&
+        pdfResult &&
+        !pdfExtraction.error;
+
+      const filename = uploadForm.filename || selectedFile.name;
+      const blob = shouldUseExtractedText
+        ? new Blob([new TextEncoder().encode(pdfResult!.text)], {
+            type: "text/plain",
+          })
+        : selectedFile;
+      // Upload original file
       if (selectedFile.size > 512 * 1024) {
         // For big files let's do it asynchronously
         await fetch(`${import.meta.env.VITE_CONVEX_SITE_URL}/upload`, {
           method: "POST",
           headers: {
-            "x-filename": uploadForm.filename || selectedFile.name,
+            "x-filename": filename,
             "x-category": uploadForm.category,
             "x-global-namespace": uploadForm.globalNamespace.toString(),
           },
-          body: new Blob([selectedFile], { type: selectedFile.type }),
+          body: blob,
         });
       } else {
         await convex.action(api.example.addFile, {
-          bytes: await selectedFile.arrayBuffer(),
-          filename: uploadForm.filename || selectedFile.name,
-          mimeType: selectedFile.type || "text/plain",
+          bytes: await blob.arrayBuffer(),
+          filename,
+          mimeType: blob.type || "text/plain",
           category: uploadForm.category,
           globalNamespace: uploadForm.globalNamespace,
         });
-      }
+        }
 
       // Reset form and file
       setUploadForm((prev) => ({
@@ -139,6 +223,11 @@ function Example() {
         filename: "",
       }));
       setSelectedFile(null);
+      setPdfExtraction({
+        isExtracting: false,
+        result: null,
+        error: null,
+      });
 
       // Clear file input
       const fileInput = document.querySelector(
@@ -158,7 +247,7 @@ function Example() {
     } finally {
       setIsAdding(false);
     }
-  }, [convex, uploadForm, selectedFile]);
+  }, [convex, uploadForm, selectedFile, pdfExtraction]);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -454,14 +543,50 @@ function Example() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 truncate">
                       {selectedFile.name}
+                      {selectedFile && isPdfFile(selectedFile) && (
+                        <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                          PDF
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500">
                       {selectedFile.type || "Unknown type"}
                     </div>
+
+                    {/* PDF Extraction Status */}
+                    {selectedFile && isPdfFile(selectedFile) && (
+                      <div className="mt-2">
+                        {pdfExtraction.isExtracting && (
+                          <div className="flex items-center text-xs text-blue-600">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                            Extracting text from PDF...
+                          </div>
+                        )}
+
+                        {pdfExtraction.result && !pdfExtraction.error && (
+                          <div className="text-xs text-green-600">
+                            ✓ Text extracted ({pdfExtraction.result.pages}{" "}
+                            pages, {pdfExtraction.result.text.length}{" "}
+                            characters)
+                            {pdfExtraction.result.title && (
+                              <div className="text-gray-600">
+                                Title: {pdfExtraction.result.title}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {pdfExtraction.error && (
+                          <div className="text-xs text-red-600">
+                            ⚠ {pdfExtraction.error}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={handleFileClear}
-                    disabled={isAdding}
+                    disabled={isAdding || pdfExtraction.isExtracting}
                     className="ml-3 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Remove file"
                   >
@@ -485,10 +610,19 @@ function Example() {
 
             <button
               onClick={handleFileUpload}
-              disabled={isAdding || !selectedFile}
+              disabled={isAdding || !selectedFile || pdfExtraction.isExtracting}
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isAdding ? "Creating or updating document..." : "Add Document"}
+              {isAdding
+                ? "Creating or updating document..."
+                : pdfExtraction.isExtracting
+                  ? "Processing PDF..."
+                  : selectedFile &&
+                      isPdfFile(selectedFile) &&
+                      pdfExtraction.result &&
+                      !pdfExtraction.error
+                    ? "Add Document (Text from PDF)"
+                    : "Add Document"}
             </button>
 
             {isAdding && (
