@@ -197,7 +197,7 @@ export const add = mutation({
     entryId: v.id("entries"),
     status: vStatus,
     created: v.boolean(),
-    replacedVersion: v.union(vEntry, v.null()),
+    replacedEntry: v.union(vEntry, v.null()),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.entry;
@@ -213,7 +213,7 @@ export const add = mutation({
         entryId: existing._id,
         status: existing.status.kind,
         created: false,
-        replacedVersion: null,
+        replacedEntry: null,
       };
     }
     const version = existing ? existing.version + 1 : 0;
@@ -228,21 +228,21 @@ export const add = mutation({
         startOrder: 0,
         chunks: args.allChunks,
       });
-      const { replacedVersion } = await promoteToReadyHandler(ctx, {
+      const { replacedEntry } = await promoteToReadyHandler(ctx, {
         entryId,
       });
       return {
         entryId,
         status: "ready" as const,
         created: true,
-        replacedVersion,
+        replacedEntry,
       };
     }
     return {
       entryId,
       status: "pending" as const,
       created: true,
-      replacedVersion: null,
+      replacedEntry: null,
     };
   },
 });
@@ -389,14 +389,14 @@ export const findByContentHash = query({
  * Note: this will not replace the chunks automatically, so you should first
  * call `replaceChunksPage` on all its chunks.
  * Edge case: if the entry has already been replaced, it will return the
- * same entry (replacedVersion.entryId === args.entryId).
+ * same entry (replacedEntry.entryId === args.entryId).
  */
 export const promoteToReady = mutation({
   args: v.object({
     entryId: v.id("entries"),
   }),
   returns: v.object({
-    replacedVersion: v.union(vEntry, v.null()),
+    replacedEntry: v.union(vEntry, v.null()),
   }),
   handler: promoteToReadyHandler,
 });
@@ -411,12 +411,12 @@ async function promoteToReadyHandler(
   assert(namespace, `Namespace for ${entry.namespaceId} not found`);
   if (entry.status.kind === "ready") {
     console.debug(`Entry ${args.entryId} is already ready, skipping...`);
-    return { replacedVersion: null };
+    return { replacedEntry: null };
   } else if (entry.status.kind === "replaced") {
     console.debug(
       `Entry ${args.entryId} is already replaced, returning the current version...`
     );
-    return { replacedVersion: publicEntry(entry) };
+    return { replacedEntry: publicEntry(entry) };
   }
   const previousEntry = await getPreviousEntry(ctx, entry);
   // First mark the previous entry as replaced,
@@ -471,7 +471,7 @@ async function promoteToReadyHandler(
     );
   }
   return {
-    replacedVersion: previousEntry ? publicEntry(previousEntry) : null,
+    replacedEntry: previousEntry ? publicEntry(previousEntry) : null,
   };
 }
 

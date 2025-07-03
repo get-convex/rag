@@ -115,7 +115,7 @@ export type Mounts = {
       {
         created: boolean;
         entryId: string;
-        replacedVersion: {
+        replacedEntry: {
           contentHash?: string;
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
@@ -227,7 +227,7 @@ export type Mounts = {
       "public",
       { entryId: string },
       {
-        replacedVersion: {
+        replacedEntry: {
           contentHash?: string;
           entryId: string;
           filterValues: Array<{ name: string; value: any }>;
@@ -321,7 +321,7 @@ export type Mounts = {
       "public",
       { namespaceId: string },
       {
-        replacedVersion: null | {
+        replacedNamespace: null | {
           createdAt: number;
           dimension: number;
           filterNames: Array<string>;

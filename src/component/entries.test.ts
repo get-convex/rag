@@ -46,7 +46,7 @@ describe("entries", () => {
     expect(result.created).toBe(true);
     expect(result.status).toBe("ready");
     expect(result.entryId).toBeDefined();
-    expect(result.replacedVersion).toBeNull();
+    expect(result.replacedEntry).toBeNull();
 
     // Verify the entry was actually created
     const createdDoc = await t.run(async (ctx) => {
@@ -73,7 +73,7 @@ describe("entries", () => {
 
     expect(firstResult.created).toBe(true);
     expect(firstResult.status).toBe("ready");
-    expect(firstResult.replacedVersion).toBeNull();
+    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add with identical content
     const secondResult = await t.mutation(api.entries.add, {
@@ -84,7 +84,7 @@ describe("entries", () => {
     expect(secondResult.created).toBe(false);
     expect(secondResult.status).toBe("ready");
     expect(secondResult.entryId).toBe(firstResult.entryId);
-    expect(secondResult.replacedVersion).toBeNull();
+    expect(secondResult.replacedEntry).toBeNull();
 
     // Verify no new entry was created
     const allDocs = await t.run(async (ctx) => {
@@ -116,7 +116,7 @@ describe("entries", () => {
     });
 
     expect(firstResult.created).toBe(true);
-    expect(firstResult.replacedVersion).toBeNull();
+    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add with different content hash
     const modifiedEntry = {
@@ -131,9 +131,9 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    // When creating a entry as "ready" initially, replacedVersion is null
+    // When creating a entry as "ready" initially, replacedEntry is null
     // Replacement only happens during pending -> ready transitions
-    expect(secondResult.replacedVersion).toMatchObject({
+    expect(secondResult.replacedEntry).toMatchObject({
       entryId: firstResult.entryId,
     });
 
@@ -181,7 +181,7 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedVersion).toMatchObject({
+    expect(secondResult.replacedEntry).toMatchObject({
       entryId: firstResult.entryId,
     });
 
@@ -219,7 +219,7 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedVersion).toMatchObject({
+    expect(secondResult.replacedEntry).toMatchObject({
       entryId: firstResult.entryId,
     });
 
@@ -247,7 +247,7 @@ describe("entries", () => {
 
     expect(result.created).toBe(true);
     expect(result.status).toBe("pending");
-    expect(result.replacedVersion).toBeNull();
+    expect(result.replacedEntry).toBeNull();
 
     // Verify the entry was created with pending status
     const createdDoc = await t.run(async (ctx) => {
@@ -277,8 +277,8 @@ describe("entries", () => {
     expect(result1.created).toBe(true);
     expect(result2.created).toBe(true);
     expect(result1.entryId).not.toBe(result2.entryId);
-    expect(result1.replacedVersion).toBeNull();
-    expect(result2.replacedVersion).toBeNull();
+    expect(result1.replacedEntry).toBeNull();
+    expect(result2.replacedEntry).toBeNull();
 
     // Verify both entries exist
     const allDocs = await t.run(async (ctx) => {
@@ -293,7 +293,7 @@ describe("entries", () => {
     expect(keys).toEqual(["doc1", "doc2"]);
   });
 
-  test("pending to ready transition populates replacedVersion", async () => {
+  test("pending to ready transition populates replacedEntry", async () => {
     const t = convexTest(schema, modules);
     const namespaceId = await setupTestNamespace(t);
 
@@ -307,7 +307,7 @@ describe("entries", () => {
 
     expect(firstResult.created).toBe(true);
     expect(firstResult.status).toBe("ready");
-    expect(firstResult.replacedVersion).toBeNull();
+    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add - create as pending (no allChunks)
     const modifiedEntry = {
@@ -322,15 +322,15 @@ describe("entries", () => {
 
     expect(pendingResult.created).toBe(true);
     expect(pendingResult.status).toBe("pending");
-    expect(pendingResult.replacedVersion).toBeNull();
+    expect(pendingResult.replacedEntry).toBeNull();
 
     // Promote to ready - this should replace the first entry
     const promoteResult = await t.mutation(api.entries.promoteToReady, {
       entryId: pendingResult.entryId,
     });
 
-    expect(promoteResult.replacedVersion).not.toBeNull();
-    expect(promoteResult.replacedVersion!.entryId).toBe(firstResult.entryId);
+    expect(promoteResult.replacedEntry).not.toBeNull();
+    expect(promoteResult.replacedEntry!.entryId).toBe(firstResult.entryId);
 
     // Verify the first entry is now replaced
     const firstDoc = await t.run(async (ctx) => {

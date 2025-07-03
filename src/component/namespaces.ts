@@ -188,7 +188,7 @@ export const promoteToReady = mutation({
     namespaceId: v.id("namespaces"),
   },
   returns: v.object({
-    replacedVersion: v.union(v.null(), vNamespace),
+    replacedNamespace: v.union(v.null(), vNamespace),
   }),
   handler: promoteToReadyHandler,
 });
@@ -203,12 +203,12 @@ async function promoteToReadyHandler(
     console.debug(
       `Namespace ${args.namespaceId} is already ready, not promoting`
     );
-    return { replacedVersion: null };
+    return { replacedNamespace: null };
   } else if (namespace.status.kind === "replaced") {
     console.debug(
       `Namespace ${args.namespaceId} is already replaced, not promoting and returning itself`
     );
-    return { replacedVersion: publicNamespace(namespace) };
+    return { replacedNamespace: publicNamespace(namespace) };
   }
   const previousNamespace = await ctx.db
     .query("namespaces")
@@ -259,7 +259,7 @@ async function promoteToReadyHandler(
     })
   );
   return {
-    replacedVersion: previousNamespace
+    replacedNamespace: previousNamespace
       ? publicNamespace(previousNamespace)
       : null,
   };

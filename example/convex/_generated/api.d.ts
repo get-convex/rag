@@ -117,7 +117,7 @@ export declare const components: {
         {
           created: boolean;
           entryId: string;
-          replacedVersion: {
+          replacedEntry: {
             contentHash?: string;
             entryId: string;
             filterValues: Array<{ name: string; value: any }>;
@@ -229,7 +229,7 @@ export declare const components: {
         "internal",
         { entryId: string },
         {
-          replacedVersion: {
+          replacedEntry: {
             contentHash?: string;
             entryId: string;
             filterValues: Array<{ name: string; value: any }>;
@@ -323,7 +323,7 @@ export declare const components: {
         "internal",
         { namespaceId: string },
         {
-          replacedVersion: null | {
+          replacedNamespace: null | {
             createdAt: number;
             dimension: number;
             filterNames: Array<string>;

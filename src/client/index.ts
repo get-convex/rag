@@ -155,7 +155,7 @@ export class RAG<
     entryId: EntryId;
     status: Status;
     created: boolean;
-    replacedVersion: Entry<FitlerSchemas, EntryMetadata> | null;
+    replacedEntry: Entry<FitlerSchemas, EntryMetadata> | null;
   }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -182,7 +182,7 @@ export class RAG<
     const onComplete =
       args.onComplete && (await createFunctionHandle(args.onComplete));
 
-    const { entryId, status, created, replacedVersion } = await ctx.runMutation(
+    const { entryId, status, created, replacedEntry } = await ctx.runMutation(
       this.component.entries.add,
       {
         entry: {
@@ -203,7 +203,7 @@ export class RAG<
         entryId: entryId as EntryId,
         status,
         created,
-        replacedVersion: replacedVersion as Entry<
+        replacedEntry: replacedEntry as Entry<
           FitlerSchemas,
           EntryMetadata
         > | null,
@@ -243,7 +243,7 @@ export class RAG<
             entryId: entryId as EntryId,
             status: "replaced" as const,
             created: false,
-            replacedVersion: null,
+            replacedEntry: null,
           };
         }
         startOrder = nextStartOrder;
@@ -256,7 +256,7 @@ export class RAG<
     return {
       entryId: entryId as EntryId,
       status: "ready" as const,
-      replacedVersion: promoted.replacedVersion as Entry<
+      replacedEntry: promoted.replacedEntry as Entry<
         FitlerSchemas,
         EntryMetadata
       > | null,
