@@ -51,7 +51,7 @@ function Example() {
   const [expandedResults, setExpandedResults] = useState<Set<number>>(
     new Set()
   );
-  const [showChunks, setShowChunks] = useState(true);
+  const [showChunks, setShowChunks] = useState(false);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
 
   // Convex functions
