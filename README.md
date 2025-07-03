@@ -1,6 +1,6 @@
 # Convex RAG Component
 
-[![npm version](https://badge.fury.io/js/@convex-dev%2Fmemory.svg)](https://badge.fury.io/js/@convex-dev%2Fmemory)
+[![npm version](https://badge.fury.io/js/@convex-dev%2Frag.svg)](https://badge.fury.io/js/@convex-dev%2Frag)
 
 <!-- START: Include on https://convex.dev/components -->
 
