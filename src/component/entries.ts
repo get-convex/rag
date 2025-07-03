@@ -115,7 +115,7 @@ function workpoolName(
   key: string | undefined,
   entryId: Id<"entries">
 ) {
-  return `async-chunker-${namespace}-${key ? key + "-" + entryId : entryId}`;
+  return `rag-async-${namespace}-${key ? key + "-" + entryId : entryId}`;
 }
 
 export const addAsyncOnComplete = internalMutation({
