@@ -5,6 +5,7 @@ import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
 import type { EntryFilter, SearchResult } from "@convex-dev/rag";
 import type { Filters, PublicFile } from "../convex/example";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 type SearchType = "general" | "category" | "file";
 type QueryMode = "search" | "question";
@@ -838,8 +839,10 @@ function Example() {
                   <span className="mr-2">🤖</span>
                   Generated Answer
                 </h3>
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {questionResult.answer}
+                <div className="text-gray-800 leading-relaxed">
+                  <div className="markdown-content">
+                    <MarkdownRenderer>{questionResult.answer}</MarkdownRenderer>
+                  </div>
                 </div>
               </div>
             </div>
