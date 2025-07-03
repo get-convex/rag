@@ -91,6 +91,8 @@ export const add = action({
 });
 ```
 
+See below for how to add content asynchronously, e.g. to handle large files.
+
 ### Generate a response based on RAG context
 
 You can use the `generateText` function to generate a response based on RAG context. This will automatically search for relevant entries and use them as context for the LLM, using default formatting.
@@ -108,13 +110,16 @@ export const askQuestion = action({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     const { text, context } = await rag.generateText(ctx, {
-      search: { namespace: userId },
+      search: { namespace: userId, limit: 10 },
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),
     });
     return { answer: text, context };
   },
 ```
+
+Note: You can specify any of the search options available on `rag.search`.
+See below for more details.
 
 ### Using your own content splitter
 
@@ -128,6 +133,8 @@ await rag.add(ctx, { namespace: "global", chunks });
 
 Note: The `textSplitter` here could be LangChain, Mastra, or something custom.
 The simplest version makes an array of strings like `content.split("\n")`.
+
+Note: you can pass in an async iterator instead of an array to handle large content.
 
 ### Semantic Search
 
@@ -446,23 +453,34 @@ export const add = action({
 ### Lifecycle Management
 
 You can delete the old content by calling `rag.delete` with the entryId of the
-old version, e.g. from the `onComplete` handler for inserting a new item. You
-can also delete an entry by calling `rag.delete` with the entryId.
+old version.
 
-Delete an entry:
+Generally you'd do this:
+
+1. When using `rag.add` with a key returns a `replacedEntry`.
+1. When your `onComplete` handler provides a non-null `replacedEntry` argument.
+1. Periodically by querying:
 
 ```ts
-export const delete = mutation({
-  args: { entryId: vEntry },
-  handler: async (ctx, args) => {
-    await rag.delete(ctx, {
-      entryId: args.entryId,
-    });
-  },
+const toDelete = await rag.list(ctx, {
+  status: "replaced",
+  paginationOpts: { cursor: null, numItems: 100 }
 });
+
+for (const entry of toDelete) {
+  assert(entry.status === "replaced");
+  if (entry.replacedAt >= Date.now() - ONE_WEEK_MS) {
+    break;
+  }
+  await rag.delete(ctx, { entryId: entry.entryId });
+}
 ```
 
+### Example Usage
+
 See more example usage in [example.ts](./example/convex/example.ts).
+
+### Running the example
 
 Run the example with `npm i && npm run example`.
 <!-- END: Include on https://convex.dev/components -->
