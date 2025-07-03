@@ -133,13 +133,17 @@ export function guessMimeTypeFromContents(buf: ArrayBuffer | string): string {
 /**
  * Make a contentHash of a Blob that matches the File Storage metadata, allowing
  * identifying when content is identical.
+ * By default, uses SHA-256 (which is what Convex File Storage tracks).
+ * Git / GitHub use SHA-1.
  * @param blob The contents to hash
- * @returns sha256 hash of the contents
+ * @returns hash of the contents
  */
-
-export async function contentHashFromArrayBuffer(buffer: ArrayBuffer) {
+export async function contentHashFromArrayBuffer(
+  buffer: ArrayBuffer,
+  algorithm: "SHA-256" | "SHA-1" = "SHA-256"
+) {
   return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))
+    new Uint8Array(await crypto.subtle.digest(algorithm, buffer))
   )
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
