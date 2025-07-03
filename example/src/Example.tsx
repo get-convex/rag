@@ -203,7 +203,9 @@ function Example() {
           headers: {
             "x-filename": filename,
             "x-category": uploadForm.category,
-            "x-global-namespace": uploadForm.globalNamespace.toString(),
+            ...(uploadForm.globalNamespace && {
+              "x-global-namespace": "true",
+            }),
           },
           body: blob,
         });
@@ -215,7 +217,7 @@ function Example() {
           category: uploadForm.category,
           globalNamespace: uploadForm.globalNamespace,
         });
-        }
+      }
 
       // Reset form and file
       setUploadForm((prev) => ({
