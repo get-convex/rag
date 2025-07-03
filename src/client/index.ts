@@ -679,11 +679,13 @@ export class RAG<
     args: {
       paginationOpts: PaginationOptions;
       entryId: EntryId;
+      order?: "desc" | "asc";
     }
   ): Promise<PaginationResult<Chunk>> {
     return ctx.runQuery(this.component.chunks.list, {
       entryId: args.entryId,
       paginationOpts: args.paginationOpts,
+      order: args.order ?? "asc",
     });
   }
 

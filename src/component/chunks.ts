@@ -463,6 +463,7 @@ export const list = query({
   args: v.object({
     entryId: v.id("entries"),
     paginationOpts: paginationOptsValidator,
+    order: v.union(v.literal("desc"), v.literal("asc")),
   }),
   returns: vPaginationResult(vChunk),
   handler: async (ctx, args) => {
@@ -470,7 +471,7 @@ export const list = query({
     const chunks = await paginator(ctx.db, schema)
       .query("chunks")
       .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
-      .order("asc")
+      .order(args.order)
       .paginate(paginationOpts);
     return {
       ...chunks,

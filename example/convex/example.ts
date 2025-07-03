@@ -376,6 +376,7 @@ export const listChunks = query({
   args: {
     entryId: vEntryId,
     paginationOpts: paginationOptsValidator,
+    order: v.union(v.literal("desc"), v.literal("asc")),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -383,6 +384,7 @@ export const listChunks = query({
     const paginatedChunks = await rag.listChunks(ctx, {
       entryId: args.entryId,
       paginationOpts: args.paginationOpts,
+      order: args.order,
     });
     return paginatedChunks;
   },
