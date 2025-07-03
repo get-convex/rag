@@ -69,7 +69,8 @@ function Example() {
   );
   const [showChunks, setShowChunks] = useState(false);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
-  const [searchResultsExpanded, setSearchResultsExpanded] = useState(false);
+  // unused for now
+  const [_searchResultsExpanded, setSearchResultsExpanded] = useState(false);
 
   // Convex functions
   const convex = useConvex();

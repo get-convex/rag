@@ -184,6 +184,9 @@ export const askQuestion = action({
       search: {
         namespace: args.globalNamespace ? "global" : userId,
         filters: args.filter ? [args.filter] : [],
+        limit: 10,
+        chunkContext: { before: 2, after: 2 },
+        vectorScoreThreshold: 0.25,
       },
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),
