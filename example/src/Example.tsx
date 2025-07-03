@@ -425,56 +425,101 @@ function Example() {
   }, [searchType]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex">
       {/* Left Panel - Document List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Upload Document
-          </h2>
+      <div className="w-80 bg-white/90 backdrop-blur-sm border-r border-gray-200/50 flex flex-col shadow-xl">
+        {/* Upload Section */}
+        <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+              Upload Document
+            </h2>
+          </div>
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-4">
+            {/* Category Input */}
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Category
               </label>
-              <input
-                id="category"
-                type="text"
-                value={uploadForm.category}
-                onChange={(e) =>
-                  setUploadForm((prev) => ({
-                    ...prev,
-                    category: e.target.value,
-                  }))
-                }
-                placeholder="Enter category"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              <div className="relative">
+                <input
+                  id="category"
+                  type="text"
+                  value={uploadForm.category}
+                  onChange={(e) =>
+                    setUploadForm((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter category"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 placeholder-gray-400"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Filename (optional)
+            {/* Filename Input */}
+            <div className="group">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Filename{" "}
+                <span className="text-gray-400 font-normal">(optional)</span>
               </label>
-              <input
-                type="text"
-                value={uploadForm.filename}
-                onChange={(e) =>
-                  setUploadForm((prev) => ({
-                    ...prev,
-                    filename: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Override filename"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={uploadForm.filename}
+                  onChange={(e) =>
+                    setUploadForm((prev) => ({
+                      ...prev,
+                      filename: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 placeholder-gray-400"
+                  placeholder="Override filename"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-gray-700">
-                Global (shared) file
-              </label>
+            {/* Global Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white/60 rounded-xl border border-gray-200/50">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  Global (shared) file
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() =>
@@ -484,11 +529,13 @@ function Example() {
                   }))
                 }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  uploadForm.globalNamespace ? "bg-blue-600" : "bg-gray-200"
+                  uploadForm.globalNamespace
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg"
+                    : "bg-gray-200"
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
                     uploadForm.globalNamespace
                       ? "translate-x-6"
                       : "translate-x-1"
@@ -497,6 +544,7 @@ function Example() {
               </button>
             </div>
 
+            {/* File Upload Area */}
             <div className="relative">
               {!selectedFile ? (
                 <>
@@ -514,15 +562,155 @@ function Example() {
                   />
                   <label
                     htmlFor="file-upload"
-                    className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                    className={`group flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${
                       isAdding
                         ? "border-gray-300 bg-gray-50 cursor-not-allowed"
-                        : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
+                        : "border-gray-300 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-400 hover:shadow-lg"
                     }`}
                   >
-                    <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                    <div className="flex flex-col items-center justify-center pt-4 pb-4">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200">
+                        <svg
+                          className="w-6 h-6 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-gray-600">
+                        <span className="text-blue-600 font-semibold">
+                          Click to upload
+                        </span>{" "}
+                        or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Any file type supported
+                      </p>
+                    </div>
+                  </label>
+                </>
+              ) : (
+                <div className="relative p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+                          <svg
+                            className="w-5 h-5 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 truncate">
+                            {selectedFile.name}
+                            {selectedFile && isPdfFile(selectedFile) && (
+                              <span className="ml-2 text-xs text-white bg-gradient-to-r from-red-500 to-pink-500 px-2 py-1 rounded-full font-medium">
+                                PDF
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {selectedFile.type || "Unknown type"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PDF Extraction Status */}
+                      {selectedFile && isPdfFile(selectedFile) && (
+                        <div className="mt-3 p-3 bg-white/60 rounded-xl">
+                          {pdfExtraction.isExtracting && (
+                            <div className="flex items-center text-sm text-blue-600">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                              <span className="font-medium">
+                                Extracting text from PDF...
+                              </span>
+                            </div>
+                          )}
+
+                          {pdfExtraction.result && !pdfExtraction.error && (
+                            <div className="space-y-2">
+                              <div className="flex items-center text-sm text-emerald-600">
+                                <svg
+                                  className="w-4 h-4 mr-2"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                                <span className="font-medium">
+                                  Text extracted successfully
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600 bg-white/50 p-2 rounded-lg">
+                                <div>📄 {pdfExtraction.result.pages} pages</div>
+                                <div>
+                                  📝{" "}
+                                  {pdfExtraction.result.text.length.toLocaleString()}{" "}
+                                  characters
+                                </div>
+                                {pdfExtraction.result.title && (
+                                  <div className="mt-1 text-gray-700">
+                                    <span className="font-medium">Title:</span>{" "}
+                                    {pdfExtraction.result.title}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {pdfExtraction.error && (
+                            <div className="flex items-center text-sm text-red-600">
+                              <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                />
+                              </svg>
+                              <span className="font-medium">
+                                {pdfExtraction.error}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleFileClear}
+                      disabled={isAdding || pdfExtraction.isExtracting}
+                      className="ml-3 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                      title="Remove file"
+                    >
                       <svg
-                        className="w-6 h-6 mb-2 text-gray-400"
+                        className="w-5 h-5 group-hover:scale-110 transition-transform duration-200"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -531,69 +719,41 @@ function Example() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth="2"
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          d="M6 18L18 6M6 6l12 12"
                         />
                       </svg>
-                      <p className="text-sm text-gray-500">
-                        <span className="font-medium">Click to upload</span> or
-                        drag and drop
-                      </p>
-                      <p className="text-xs text-gray-400">Any file type</p>
-                    </div>
-                  </label>
-                </>
-              ) : (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border-2 border-gray-300">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {selectedFile.name}
-                      {selectedFile && isPdfFile(selectedFile) && (
-                        <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                          PDF
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {selectedFile.type || "Unknown type"}
-                    </div>
-
-                    {/* PDF Extraction Status */}
-                    {selectedFile && isPdfFile(selectedFile) && (
-                      <div className="mt-2">
-                        {pdfExtraction.isExtracting && (
-                          <div className="flex items-center text-xs text-blue-600">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
-                            Extracting text from PDF...
-                          </div>
-                        )}
-
-                        {pdfExtraction.result && !pdfExtraction.error && (
-                          <div className="text-xs text-green-600">
-                            ✓ Text extracted ({pdfExtraction.result.pages}{" "}
-                            pages, {pdfExtraction.result.text.length}{" "}
-                            characters)
-                            {pdfExtraction.result.title && (
-                              <div className="text-gray-600">
-                                Title: {pdfExtraction.result.title}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {pdfExtraction.error && (
-                          <div className="text-xs text-red-600">
-                            ⚠ {pdfExtraction.error}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleFileClear}
-                    disabled={isAdding || pdfExtraction.isExtracting}
-                    className="ml-3 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Remove file"
-                  >
+                </div>
+              )}
+            </div>
+
+            {/* Upload Button */}
+            <button
+              onClick={handleFileUpload}
+              disabled={isAdding || !selectedFile || pdfExtraction.isExtracting}
+              className={`w-full px-6 py-4 font-semibold rounded-xl transition-all duration-300 shadow-lg ${
+                isAdding || !selectedFile || pdfExtraction.isExtracting
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white hover:shadow-xl hover:scale-105"
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                {isAdding ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Adding Document...</span>
+                  </>
+                ) : pdfExtraction.isExtracting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Processing PDF...</span>
+                  </>
+                ) : selectedFile &&
+                  isPdfFile(selectedFile) &&
+                  pdfExtraction.result &&
+                  !pdfExtraction.error ? (
+                  <>
                     <svg
                       className="w-5 h-5"
                       fill="none"
@@ -604,43 +764,38 @@ function Example() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="2"
-                        d="M6 18L18 6M6 6l12 12"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                       />
                     </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleFileUpload}
-              disabled={isAdding || !selectedFile || pdfExtraction.isExtracting}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {isAdding
-                ? "Creating or updating document..."
-                : pdfExtraction.isExtracting
-                  ? "Processing PDF..."
-                  : selectedFile &&
-                      isPdfFile(selectedFile) &&
-                      pdfExtraction.result &&
-                      !pdfExtraction.error
-                    ? "Add Document (Text from PDF)"
-                    : "Add Document"}
+                    <span>Add Document (Text from PDF)</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    <span>Add Document</span>
+                  </>
+                )}
+              </div>
             </button>
 
-            {isAdding && (
-              <div className="text-sm text-orange-600 flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-                Adding...
-              </div>
-            )}
-
+            {/* Pending Files Status */}
             {pendingFiles && pendingFiles.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center mb-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-                  <h4 className="text-sm font-medium text-orange-800">
+              <div className="space-y-3 mt-6">
+                <div className="flex items-center mb-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gradient-to-r from-orange-500 to-red-500 mr-3"></div>
+                  <h4 className="text-sm font-semibold text-orange-800">
                     Processing {pendingFiles.length} document
                     {pendingFiles.length !== 1 ? "s" : ""}...
                   </h4>
@@ -653,32 +808,62 @@ function Example() {
           </div>
         </div>
 
+        {/* File Lists */}
         <div className="flex-1 overflow-y-auto">
           {/* Global Files */}
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">Global Files</h3>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-gray-900">Global Files</h3>
+              </div>
               <button
                 onClick={() => {
                   setSearchType("general");
                   setSearchGlobal(true);
                   setSelectedDocument(null);
                 }}
-                className="p-1 text-gray-400 hover:text-blue-600"
+                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
                 title="Search all global documents"
               >
-                🔍
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {globalFiles?.results?.map((doc) => (
                 <div
                   key={doc.entryId}
-                  className={`group p-2 border rounded transition-colors ${
+                  className={`group relative p-4 rounded-xl transition-all duration-300 hover:shadow-md ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === true
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg"
+                      : "bg-white/60 backdrop-blur-sm border border-gray-200/50 hover:bg-white/80"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -689,62 +874,136 @@ function Example() {
                         setSearchType("file");
                       }}
                     >
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {doc.filename}
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">
+                            {doc.filename}
+                          </div>
+                          {doc.category && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCategory(doc.category!);
+                                setSearchType("category");
+                              }}
+                              className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-full transition-colors duration-200 mt-1"
+                            >
+                              <svg
+                                className="w-3 h-3 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
+                              </svg>
+                              {doc.category}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {doc.category && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCategory(doc.category!);
-                            setSearchType("category");
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                          {doc.category}
-                        </button>
-                      )}
                     </div>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(doc);
                       }}
-                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="ml-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
                       title="Delete entry"
                     >
-                      ✕
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+
           {/* User Files */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">User Files</h3>
+          <div className="p-6 border-t border-gray-200/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-gray-900">User Files</h3>
+              </div>
               <button
                 onClick={() => {
                   setSearchType("general");
                   setSearchGlobal(false);
                   setSelectedDocument(null);
                 }}
-                className="p-1 text-gray-400 hover:text-blue-600"
+                className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200"
                 title="Search all user documents"
               >
-                🔍
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {userFiles?.results?.map((doc) => (
                 <div
                   key={doc.entryId}
-                  className={`group p-2 border rounded transition-colors ${
+                  className={`group relative p-4 rounded-xl transition-all duration-300 hover:shadow-md ${
                     selectedDocument?.filename === doc.filename &&
                     selectedDocument?.global === false
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                      ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-lg"
+                      : "bg-white/60 backdrop-blur-sm border border-gray-200/50 hover:bg-white/80"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -755,31 +1014,75 @@ function Example() {
                         setSearchType("file");
                       }}
                     >
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {doc.filename}
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">
+                            {doc.filename}
+                          </div>
+                          {doc.category && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCategory(doc.category!);
+                                setSearchType("category");
+                              }}
+                              className="inline-flex items-center text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded-full transition-colors duration-200 mt-1"
+                            >
+                              <svg
+                                className="w-3 h-3 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
+                              </svg>
+                              {doc.category}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {doc.category && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCategory(doc.category!);
-                            setSearchType("category");
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                          {doc.category}
-                        </button>
-                      )}
                     </div>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(doc);
                       }}
-                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="ml-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
                       title="Delete entry"
                     >
-                      ✕
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -788,48 +1091,78 @@ function Example() {
           </div>
         </div>
       </div>
-      {/* Right Panel - Search/Question */}
+
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        <div className="bg-white border-b border-gray-200 p-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Convex RAG Component
-          </h1>
+        {/* Header */}
+        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200/50 p-6 shadow-sm">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Convex RAG Component
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Intelligent search and question answering for your documents
+              </p>
+            </div>
+          </div>
 
           {/* Query Mode Selector */}
-          <div className="flex space-x-2 mb-4">
+          <div className="flex space-x-2 mb-6">
             <button
               onClick={() => setQueryMode("question")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+              className={`group px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                 queryMode === "question"
-                  ? "bg-purple-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                  : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
               }`}
             >
-              ❓ Ask Question
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">❓</span>
+                <span>Ask Question</span>
+              </div>
             </button>
             <button
               onClick={() => setQueryMode("search")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+              className={`group px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                 queryMode === "search"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
+                  : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
               }`}
             >
-              🔍 Search
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">🔍</span>
+                <span>Search</span>
+              </div>
             </button>
           </div>
 
           {/* Search Type Selector */}
-          <div className="flex items-center justify-between space-x-4 mb-4">
-            <div className="flex space-x-4">
+          <div className="flex items-center justify-between space-x-4 mb-6">
+            <div className="flex space-x-2">
               {(["general", "category", "file"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setSearchType(type)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                     searchType === type
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                      : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
                   }`}
                 >
                   {type === "general"
@@ -839,38 +1172,52 @@ function Example() {
                       : "File-Specific"}
                 </button>
               ))}
+            </div>
+
+            {/* Document Info and toggles */}
+            <div className="flex items-center space-x-4">
               {/* Document Info for File-specific queries */}
               {searchType === "file" && selectedDocument && (
-                <div className="flex items-center justify-between">
-                  <div className="text-md text-blue-800">
-                    {selectedDocument.filename}
+                <div className="flex items-center space-x-4">
+                  <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                    <div className="text-sm font-semibold text-blue-800">
+                      {selectedDocument.filename}
+                    </div>
                   </div>
                   {searchResults && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-blue-700">Results</span>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-700 font-medium">
+                        Results
+                      </span>
                       <button
                         type="button"
                         onClick={() => setShowChunks(!showChunks)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          showChunks ? "bg-blue-600" : "bg-gray-300"
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          showChunks
+                            ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                            : "bg-gray-300"
                         }`}
                       >
                         <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                            showChunks ? "translate-x-5" : "translate-x-1"
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
+                            showChunks ? "translate-x-6" : "translate-x-1"
                           }`}
                         />
                       </button>
-                      <span className="text-xs text-blue-700">Chunks</span>
+                      <span className="text-sm text-gray-700 font-medium">
+                        Chunks
+                      </span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Global/User Toggle - only show for general and category search */}
+              {/* Global/User Toggle */}
               {(searchType === "general" || searchType === "category") && (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">User Files</span>
+                <div className="flex items-center space-x-3 bg-white/80 px-4 py-2 rounded-xl border border-gray-200">
+                  <span className="text-sm text-gray-600 font-medium">
+                    User Files
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -886,12 +1233,12 @@ function Example() {
                           ? searchGlobal
                           : categorySearchGlobal
                       )
-                        ? "bg-blue-600"
-                        : "bg-gray-200"
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                        : "bg-gray-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
                         (
                           searchType === "general"
                             ? searchGlobal
@@ -902,7 +1249,9 @@ function Example() {
                       }`}
                     />
                   </button>
-                  <span className="text-sm text-gray-600">Global Files</span>
+                  <span className="text-sm text-gray-600 font-medium">
+                    Global Files
+                  </span>
                 </div>
               )}
             </div>
@@ -910,27 +1259,44 @@ function Example() {
 
           {/* Category Selector for Category Search */}
           {searchType === "category" && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Category
               </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a category</option>
-                {getUniqueCategories().map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm text-gray-900 appearance-none"
+                >
+                  <option value="">Select a category</option>
+                  {getUniqueCategories().map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Search/Question Input */}
-          <div className="flex space-x-2">
+          <div className="relative">
             <input
               type="text"
               value={searchQuery}
@@ -946,129 +1312,245 @@ function Example() {
                   ? "Enter your search query..."
                   : "Ask a question about your documents..."
               }
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-6 py-4 pr-20 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 text-lg"
             />
             <button
               onClick={handleSearch}
               disabled={isSearching || !searchQuery.trim()}
-              className={`px-6 py-2 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition ${
-                queryMode === "search" ? "bg-blue-600" : "bg-purple-600"
+              className={`absolute right-2 top-2 bottom-2 px-6 text-white rounded-lg font-semibold transition-all duration-300 ${
+                isSearching || !searchQuery.trim()
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : queryMode === "search"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg hover:shadow-xl"
+                    : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl"
               }`}
             >
-              {isSearching
-                ? queryMode === "search"
-                  ? "Searching..."
-                  : "Asking..."
-                : queryMode === "search"
-                  ? "Search"
-                  : "Ask"}
+              <div className="flex items-center space-x-2">
+                {isSearching ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>
+                      {queryMode === "search" ? "Searching..." : "Asking..."}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <span>{queryMode === "search" ? "Search" : "Ask"}</span>
+                  </>
+                )}
+              </div>
             </button>
           </div>
         </div>
 
-        {/* Question Results */}
-        {questionResult &&
-          queryMode === "question" &&
-          (searchType !== "file" || !showChunks) && (
-            <div className="space-y-6">
-              {/* Generated Answer */}
-              <div className="bg-white rounded-lg border border-purple-200 p-6">
-                <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
-                  <span className="mr-2">🤖</span>
-                  Generated Answer
-                </h3>
-                <div className="text-gray-800 leading-relaxed">
-                  <div className="markdown-content">
-                    <MarkdownRenderer>{questionResult.answer}</MarkdownRenderer>
+        {/* Results Area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Question Results */}
+          {questionResult &&
+            queryMode === "question" &&
+            (searchType !== "file" || !showChunks) && (
+              <div className="space-y-6">
+                {/* Generated Answer */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-8 shadow-lg">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <span className="text-white text-lg">🤖</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-purple-900">
+                      Generated Answer
+                    </h3>
+                  </div>
+                  <div className="prose max-w-none text-gray-800 leading-relaxed">
+                    <div className="markdown-content">
+                      <MarkdownRenderer>
+                        {questionResult.answer}
+                      </MarkdownRenderer>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto p-4">
           {/* Document Chunks for File queries */}
           {searchType === "file" &&
             selectedDocument &&
             documentChunks.status !== "LoadingFirstPage" &&
             (showChunks || !searchResults) && (
-              <div className="bg-white rounded-lg border border-gray-200 p-4 h-full">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Document Chunks ({documentChunks.results.length || 0})
-                </h3>
-                {selectedDocument.url &&
-                  (selectedDocument.isImage ? (
-                    <img
-                      src={selectedDocument.url}
-                      alt={selectedDocument.filename}
-                      className="h-auto max-h-96 object-contain"
-                    />
-                  ) : (
-                    <a
-                      href={selectedDocument.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 h-full shadow-lg">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      🔗 {selectedDocument.filename}
-                    </a>
-                  ))}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-blue-900">
+                    Document Chunks ({documentChunks.results.length || 0})
+                  </h3>
+                </div>
+                {selectedDocument.url && (
+                  <div className="mb-6">
+                    {selectedDocument.isImage ? (
+                      <div className="bg-white rounded-2xl p-4 shadow-lg">
+                        <img
+                          src={selectedDocument.url}
+                          alt={selectedDocument.filename}
+                          className="h-auto max-h-96 object-contain rounded-xl w-full"
+                        />
+                      </div>
+                    ) : (
+                      <a
+                        href={selectedDocument.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-2 bg-white hover:bg-gray-50 px-4 py-3 rounded-xl border border-gray-200 transition-all duration-200 hover:shadow-md"
+                      >
+                        <svg
+                          className="w-5 h-5 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                        <span className="text-blue-600 font-medium">
+                          {selectedDocument.filename}
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div
-                  className="overflow-y-auto space-y-2"
-                  style={{ height: "calc(100% - 3rem)" }}
+                  className="overflow-y-auto space-y-4"
+                  style={{ height: "calc(100% - 8rem)" }}
                 >
                   {documentChunks.results.map((chunk) => (
                     <div
                       key={chunk.order}
-                      className="flex items-start space-x-2"
+                      className="flex items-start space-x-4 group"
                     >
-                      <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md">
                         {chunk.order}
                       </div>
-                      <div className="text-sm bg-gray-50 p-3 rounded border border-gray-200 flex-1">
-                        <div className="text-gray-800">{chunk.text}</div>
+                      <div className="flex-1 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 shadow-sm group-hover:shadow-md transition-all duration-200">
+                        <div className="text-sm text-gray-800 leading-relaxed">
+                          {chunk.text}
+                        </div>
                       </div>
                     </div>
                   ))}
                   {documentChunks.status === "CanLoadMore" && (
-                    <div className="flex justify-center mt-4">
+                    <div className="flex justify-center mt-6">
                       <button
                         onClick={() => documentChunks.loadMore(10)}
-                        className="text-sm px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        Load More
+                        <div className="flex items-center space-x-2">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                          <span>Load More</span>
+                        </div>
                       </button>
                     </div>
                   )}
                 </div>
               </div>
             )}
+
           {/* Search Results */}
           {searchResults && (searchType !== "file" || !showChunks) && (
             <div className="space-y-6">
-              <div className="flex flex-wrap gap-2 mb-6">
-                <h4 className="text-sm font-medium text-gray-700 w-full mb-2">
-                  Sources:
+              {/* Sources Section */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border border-gray-200 p-6 shadow-lg">
+                <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg flex items-center justify-center mr-3">
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  Sources
                 </h4>
-                {/* Sources */}
                 {searchResults.files && searchResults.files.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="flex flex-wrap gap-3">
                     {searchResults.files.map((doc, index) => (
                       <div
                         key={index}
-                        className="inline-flex items-center space-x-2 bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm"
+                        className="inline-flex items-center space-x-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all duration-200"
                       >
+                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                        </div>
                         {doc.url ? (
                           <a
                             href={doc.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-gray-700 hover:text-gray-900"
+                            className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200"
                           >
                             {doc.title || doc.url}
                           </a>
                         ) : (
-                          <span className="text-gray-700">
+                          <span className="text-sm font-medium text-gray-700">
                             {doc.title || doc.filename}
                           </span>
                         )}
@@ -1078,66 +1560,126 @@ function Example() {
                 )}
               </div>
 
-              {/* Results */}
+              {/* Results Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">
-                    Search Results ({searchResults.results.length})
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-700">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <svg
+                        className="w-5 h-5 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Search Results ({searchResults.results.length})
+                    </h3>
+                  </div>
+                  <div className="flex items-center space-x-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-200">
+                    <span className="text-sm text-gray-700 font-medium">
                       Individual Results
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowFullText(!showFullText)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        showFullText ? "bg-blue-600" : "bg-gray-200"
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                        showFullText
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                          : "bg-gray-300"
                       }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
                           showFullText ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
                     </button>
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-700 font-medium">
                       Combined Context
                     </span>
                   </div>
                 </div>
 
                 {showFullText && searchResults.text ? (
-                  <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">
-                      Complete Search Text
-                    </h4>
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-6 shadow-lg">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                      </div>
+                      <h4 className="text-lg font-bold text-emerald-900">
+                        Complete Search Text
+                      </h4>
+                    </div>
                     <div
-                      className="text-sm text-gray-800 whitespace-pre-line leading-relaxed"
+                      className="text-sm text-gray-800 whitespace-pre-line leading-relaxed bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-emerald-200/50"
                       style={{ whiteSpace: "pre-line" }}
                     >
                       {searchResults.text}
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div className="space-y-4">
                     {searchResults.results.map((result, index) => (
-                      <div key={index} className="flex items-start space-x-2">
-                        <div className="text-xs text-gray-400 font-mono mt-1 flex-shrink-0">
+                      <div
+                        key={index}
+                        className="flex items-start space-x-4 group"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-md">
                           {index + 1}
                         </div>
-                        <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              File:{" "}
-                              {result.entry.title || result.entry.filename}
+                        <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm group-hover:shadow-lg transition-all duration-300">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-white"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                  />
+                                </svg>
+                              </div>
+                              <div className="text-sm font-bold text-gray-900">
+                                {result.entry.title || result.entry.filename}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              Score: {result.score.toFixed(3)}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">
+                                Score:
+                              </span>
+                              <div className="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full">
+                                {result.score.toFixed(3)}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {result.content.map((content, contentIndex) => {
                               const isHighlighted =
                                 contentIndex + result.startOrder ===
@@ -1153,10 +1695,10 @@ function Example() {
                               return (
                                 <div
                                   key={contentIndex}
-                                  className={`p-3 rounded border ${
+                                  className={`p-4 rounded-xl border transition-all duration-200 ${
                                     isHighlighted
-                                      ? "border-blue-300 bg-blue-50"
-                                      : "border-gray-200 bg-gray-50"
+                                      ? "border-yellow-300 bg-gradient-to-r from-yellow-50 to-amber-50 shadow-md"
+                                      : "border-gray-200 bg-gray-50/80"
                                   }`}
                                 >
                                   <div className="flex items-start justify-between">
@@ -1176,7 +1718,7 @@ function Example() {
                                               )
                                             : 3
                                         }
-                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm"
+                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm leading-relaxed"
                                       />
                                       {content.text.length > 150 && (
                                         <button
@@ -1185,7 +1727,7 @@ function Example() {
                                               index * 1000 + contentIndex
                                             )
                                           }
-                                          className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                          className="text-xs text-blue-600 hover:text-blue-800 mt-2 font-medium bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-all duration-200"
                                         >
                                           {isExpanded
                                             ? "Show less"
@@ -1201,12 +1743,13 @@ function Example() {
                         </div>
                       </div>
                     ))}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
           )}
 
+          {/* Empty State */}
           {!searchResults &&
             !questionResult &&
             !(
@@ -1215,10 +1758,32 @@ function Example() {
               documentChunks &&
               showChunks
             ) && (
-              <div className="text-center text-gray-500 mt-8">
-                {queryMode === "search"
-                  ? "Enter a search query to see results"
-                  : "Ask a question about your documents to get AI-generated answers with context"}
+              <div className="text-center py-16">
+                <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <svg
+                    className="w-12 h-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">
+                  {queryMode === "search"
+                    ? "Ready to Search"
+                    : "Ready to Answer"}
+                </h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  {queryMode === "search"
+                    ? "Enter a search query to explore your documents and find relevant content"
+                    : "Ask a question about your documents to get AI-generated answers with context"}
+                </p>
               </div>
             )}
         </div>
@@ -1251,40 +1816,78 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
   })();
 
   return (
-    <div className="group p-2 border-2 border-orange-200 bg-orange-50 rounded transition-colors">
+    <div className="group relative p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2">
-            <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full"></div>
-            <div className="text-sm font-medium text-orange-900 truncate">
-              {doc.filename}
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-orange-900 truncate">
+                {doc.filename}
+              </div>
+              {doc.category && (
+                <div className="text-xs text-orange-700 font-medium bg-orange-100 px-2 py-1 rounded-full inline-block mt-1">
+                  {doc.category}
+                </div>
+              )}
             </div>
           </div>
-          {doc.category && (
-            <div className="text-xs text-orange-700 ml-4">{doc.category}</div>
-          )}
-          <div className="text-xs text-orange-600 ml-4 space-y-1">
-            <div>{doc.global ? "Global" : "User"} • Processing...</div>
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center text-xs text-orange-600">
+              <span className="mr-2">
+                {doc.global ? "🌍 Global" : "👤 User"}
+              </span>
+              <span className="px-2 py-1 bg-orange-100 rounded-full font-medium">
+                Processing...
+              </span>
+            </div>
             {!chunks?.page?.length ? (
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-3 w-3 border-b border-orange-500"></div>
-                <span>⚙️ Generating text...</span>
+                <span className="text-xs text-orange-600">
+                  ⚙️ Generating text...
+                </span>
               </div>
             ) : (
-              <div className="flex items-center space-x-4">
-                <span>📝 Added: {progress.added} chunks</span>
-                <span>✅ Live: {progress.live} chunks</span>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-4 text-xs text-orange-700">
+                  <span className="flex items-center">
+                    <span className="w-2 h-2 bg-orange-400 rounded-full mr-1"></span>
+                    📝 Added: {progress.added} chunks
+                  </span>
+                  <span className="flex items-center">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full mr-1"></span>
+                    ✅ Live: {progress.live} chunks
+                  </span>
+                </div>
                 {progress.live > 0 && progress.added > progress.live && (
-                  <div className="flex items-center space-x-1">
-                    <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1 bg-orange-200 rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-orange-500 h-1.5 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300"
                         style={{
                           width: `${(progress.live / progress.added) * 100}%`,
                         }}
                       ></div>
                     </div>
-                    <span className="text-xs">
+                    <span className="text-xs text-orange-700 font-medium">
                       {Math.round((progress.live / progress.added) * 100)}%
                     </span>
                   </div>
@@ -1297,6 +1900,5 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
     </div>
   );
 }
-
 
 export default Example;
