@@ -73,9 +73,9 @@ type FilterTypes = {
 
 ## Usage Examples
 
-### Add RAG Entries
+### Add context to RAG
 
-Add content with text chunks.
+Add content with text chunks. Each call to `add` will create a new **entry**.
 It will embed the chunks automatically if you don't provide them.
 
 ```ts
@@ -85,101 +85,49 @@ export const add = action({
     // Add the text to a namespace shared by all users.
     await rag.add(ctx, {
       namespace: "all-users",
-      chunks: text.split("\n\n"),
+      text,
     });
   },
 });
 ```
 
-### Add Entries with filters from a URL
+### Generate a response based on RAG context
 
-Here's a simple example fetching content from a URL to add.
+You can use the `generateText` function to generate a response based on RAG context. This will automatically search for relevant entries and use them as context for the LLM, using default formatting.
 
-It also adds filters to the entry, so you can search for it later by
-category, contentType, or both.
+The arguments to `generateText` are compatible with all arguments to `generateText` from the AI SDK.
 
-```ts
-export const add = action({
-  args: { url: v.string(), category: v.string() },
-  handler: async (ctx, { url, category }) => {
-    const response = await fetch(url);
-    const content = await response.text();
-    const contentType = response.headers.get("content-type");
-
-    const { entryId } = await rag.add(ctx, {
-      namespace: "global", // namespace can be any string
-      key: url,
-      chunks: content.split("\n\n"),
-      filterValues: [
-        { name: "category", value: category },
-        { name: "contentType", value: contentType },
-        // To get an AND filter, use a filter with a more complex value.
-        { name: "categoryAndType", value: { category, contentType } },
-      ],
-    });
-
-    return { entryId };
-  },
-});
-```
-
-Note: The `textSplitter` here could be LangChain, Mastra, or otherwise.
+To have more control over the context and prompting, you can use the `search` function to get the context, and then use any model to generate a response.
 See below for more details.
 
-### Add Entries Asynchronously using File Storage
-
-For large files, you can upload them to file storage, then provide a chunker
-action to split them into chunks.
-
-In `convex/http.ts`:
 ```ts
-import { corsRouter } from "convex-helpers/server/cors";
-import { httpRouter } from "convex/server";
-import { internal } from "./_generated/api.js";
-import { DataModel } from "./_generated/dataModel.js";
-import { httpAction } from "./_generated/server.js";
-import { rag } from "./example.js";
-
-const cors = corsRouter(httpRouter());
-
-cors.route({
-  path: "/upload",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const storageId = await ctx.storage.store(await request.blob());
-    await rag.addAsync(ctx, {
-      namespace: "all-files",
-      chunkerAction: internal.http.chunkerAction,
-      onComplete: internal.http.handleEntryComplete,
-      metadata: { storageId },
+export const askQuestion = action({
+  args: {
+    prompt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const { text, context } = await rag.generateText(ctx, {
+      search: { namespace: userId },
+      prompt: args.prompt,
+      model: openai.chat("gpt-4o-mini"),
     });
-    return new Response();
-  }),
-});
-
-export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
-  const storageId = args.entry.metadata!.storageId;
-  const file = await ctx.storage.get(storageId);
-  const text = await new TextDecoder().decode(await file!.arrayBuffer());
-  return { chunks: text.split("\n\n") };
-});
-
-export const handleEntryComplete = rag.defineOnComplete<DataModel>(
-  async (ctx, { replacedEntry, entry, namespace, error }) => {
-    if (error) {
-      await rag.delete(ctx, { entryId: entry.entryId });
-      return;
-    }
-    // You can associate the entry with your own data here. This will commit
-    // in the same transaction as the entry becoming ready.
-  }
-);
-
-export default cors.http;
+    return { answer: text, context };
+  },
 ```
 
-You can upload files directly to a Convex action, httpAction, or upload url.
-See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
+### Using your own content splitter
+
+By default, the component uses the `defaultChunker` to split the content into chunks.
+You can pass in your own content chunks to the `add` or `addAsync` functions.
+
+```ts
+const chunks = await textSplitter.split(content);
+await rag.add(ctx, { namespace: "global", chunks });
+```
+
+Note: The `textSplitter` here could be LangChain, Mastra, or something custom.
+The simplest version makes an array of strings like `content.split("\n")`.
 
 ### Semantic Search
 
@@ -210,6 +158,31 @@ export const search = action({
   },
 });
 ```
+
+### Using keys to gracefully replace content
+
+When you add content to a namespace, you can provide a `key` to uniquely identify the content.
+If you add content with the same key, it will replace the existing content.
+
+```ts
+await rag.add(ctx, { namespace: userId, key: "my-file.txt", text });
+```
+
+When a new document is added, it will start with a status of "pending" while
+it chunks, embeds, and inserts the data into the database.
+Once all data is inserted, it will iterate over the chunks and swap the old
+content embeddings with the new ones, and then update the status to "ready",
+marking the previous version as "replaced".
+
+The old content is kept around by default, so in-flight searches will get
+results for old vector search results.
+See below for more details on deleting.
+
+This means that if searches are happening while the document is being added,
+they will see the old content results
+This is useful if you want to add content to a namespace and then immediately
+search for it, or if you want to add content to a namespace and then immediately
+add more content to the same namespace.
 
 ### Filtered Search
 
@@ -350,7 +323,131 @@ await generateText({
 });
 ```
 
+### Providing custom embeddings per-chunk
+
+In addition to the text, you can provide your own embeddings for each chunk.
+
+This can be beneficial if you want to embed something other than the chunk
+contents, e.g. a summary of each chunk.
+
+```ts
+const chunks = await textSplitter.split(content);
+const chunksWithEmbeddings = await Promise.all(chunks.map(async chunk => {
+  return {
+    ...chunk,
+    embedding: await embedSummary(chunk)
+  }
+}));
+await rag.add(ctx, { namespace: "global", chunks });
+```
+
+### Add Entries Asynchronously using File Storage
+
+For large files, you can upload them to file storage, then provide a chunker
+action to split them into chunks.
+
+In `convex/http.ts`:
+```ts
+import { corsRouter } from "convex-helpers/server/cors";
+import { httpRouter } from "convex/server";
+import { internal } from "./_generated/api.js";
+import { DataModel } from "./_generated/dataModel.js";
+import { httpAction } from "./_generated/server.js";
+import { rag } from "./example.js";
+
+const cors = corsRouter(httpRouter());
+
+cors.route({
+  path: "/upload",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const storageId = await ctx.storage.store(await request.blob());
+    await rag.addAsync(ctx, {
+      namespace: "all-files",
+      chunkerAction: internal.http.chunkerAction,
+      onComplete: internal.foo.docComplete, // See next section
+      metadata: { storageId },
+    });
+    return new Response();
+  }),
+});
+
+export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
+  const storageId = args.entry.metadata!.storageId;
+  const file = await ctx.storage.get(storageId);
+  const text = await new TextDecoder().decode(await file!.arrayBuffer());
+  return { chunks: text.split("\n\n") };
+});
+
+export default cors.http;
+```
+
+You can upload files directly to a Convex action, httpAction, or upload url.
+See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
+
+### OnComplete Handling
+
+You can register an `onComplete` handler when adding content that will be called
+when the entry is ready, or if there was an error or it was replaced before it
+finished.
+
+```ts
+// in an action
+await rag.add(ctx, { namespace, text, onComplete: internal.foo.docComplete });
+
+// in convex/foo.ts
+export const docComplete = rag.defineOnComplete<DataModel>(
+  async (ctx, { replacedEntry, entry, namespace, error }) => {
+    if (error) {
+      await rag.delete(ctx, { entryId: entry.entryId });
+      return;
+    }
+    if (replacedEntry) {
+      await rag.delete(ctx, { entryId: replacedEntry.entryId });
+    }
+    // You can associate the entry with your own data here. This will commit
+    // in the same transaction as the entry becoming ready.
+  }
+);
+```
+
+### Add Entries with filters from a URL
+
+Here's a simple example fetching content from a URL to add.
+
+It also adds filters to the entry, so you can search for it later by
+category, contentType, or both.
+
+```ts
+export const add = action({
+  args: { url: v.string(), category: v.string() },
+  handler: async (ctx, { url, category }) => {
+    const response = await fetch(url);
+    const content = await response.text();
+    const contentType = response.headers.get("content-type");
+
+    const { entryId } = await rag.add(ctx, {
+      namespace: "global", // namespace can be any string
+      key: url,
+      chunks: content.split("\n\n"),
+      filterValues: [
+        { name: "category", value: category },
+        { name: "contentType", value: contentType },
+        // To get an AND filter, use a filter with a more complex value.
+        { name: "categoryAndType", value: { category, contentType } },
+      ],
+    });
+
+    return { entryId };
+  },
+});
+```
+
 ### Lifecycle Management
+
+You can delete the old content by calling `rag.delete` with the entryId of the
+old version, e.g. from the `onComplete` handler for inserting a new item. You
+can also delete an entry by calling `rag.delete` with the entryId.
 
 Delete an entry:
 
