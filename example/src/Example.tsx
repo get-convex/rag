@@ -64,13 +64,8 @@ function Example() {
     null
   );
   const [isSearching, setIsSearching] = useState(false);
-  const [expandedResults, setExpandedResults] = useState<Set<number>>(
-    new Set()
-  );
   const [showChunks, setShowChunks] = useState(false);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
-  // unused for now
-  const [_searchResultsExpanded, setSearchResultsExpanded] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
 
   // Convex functions
@@ -376,16 +371,6 @@ function Example() {
     categorySearchGlobal,
   ]);
 
-  const toggleResultExpansion = (index: number) => {
-    const newExpanded = new Set(expandedResults);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
-    }
-    setExpandedResults(newExpanded);
-  };
-
   const getUniqueCategories = () => {
     const categories = new Set<string>();
     globalFiles?.results?.forEach(
@@ -421,7 +406,6 @@ function Example() {
   useEffect(() => {
     setSearchResults(null);
     setQuestionResult(null);
-    setSearchResultsExpanded(false);
   }, [searchType]);
 
   return (
@@ -1684,13 +1668,6 @@ function Example() {
                               const isHighlighted =
                                 contentIndex + result.startOrder ===
                                 result.order;
-                              const isExpanded = expandedResults.has(
-                                index * 1000 + contentIndex
-                              );
-                              const displayText = isExpanded
-                                ? content.text
-                                : content.text.slice(0, 150) +
-                                  (content.text.length > 150 ? "..." : "");
 
                               return (
                                 <div
@@ -1703,37 +1680,9 @@ function Example() {
                                 >
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                      <textarea
-                                        value={displayText}
-                                        readOnly
-                                        rows={
-                                          isExpanded
-                                            ? Math.max(
-                                                3,
-                                                Math.min(
-                                                  displayText.split("\n")
-                                                    .length,
-                                                  10
-                                                )
-                                              )
-                                            : 3
-                                        }
-                                        className="w-full resize-none border-none bg-transparent focus:outline-none text-sm leading-relaxed text-gray-900 font-medium"
-                                      />
-                                      {content.text.length > 150 && (
-                                        <button
-                                          onClick={() =>
-                                            toggleResultExpansion(
-                                              index * 1000 + contentIndex
-                                            )
-                                          }
-                                          className="text-xs text-blue-600 hover:text-blue-800 mt-2 font-medium bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-full transition-all duration-200"
-                                        >
-                                          {isExpanded
-                                            ? "Show less"
-                                            : "Show more"}
-                                        </button>
-                                      )}
+                                      <div className="w-full text-sm leading-relaxed text-gray-900 font-medium whitespace-pre-wrap">
+                                        {content.text}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
