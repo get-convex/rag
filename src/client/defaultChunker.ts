@@ -39,14 +39,22 @@ export function defaultChunker(
 
     // If adding this line would exceed max chars, finalize current chunk first
     if (potentialChunk.length > maxCharsSoftLimit && currentChunk.length > 0) {
-      const trimmedChunk = removeTrailingEmptyLines(currentChunk);
-      chunks.push(trimmedChunk.join("\n"));
+      const processedChunk = processChunkForOutput(
+        currentChunk,
+        lines,
+        i - currentChunk.length
+      );
+      if (processedChunk.trim()) {
+        chunks.push(processedChunk);
+      }
 
       // Split the line if it exceeds hard limit
       const splitLines = maybeSplitLine(line, maxCharsHardLimit);
       // Add all but the last split piece as separate chunks
       for (let j = 0; j < splitLines.length - 1; j++) {
-        chunks.push(splitLines[j]);
+        if (splitLines[j].trim()) {
+          chunks.push(splitLines[j]);
+        }
       }
       // Keep the last piece for potential combination with next lines
       currentChunk = [splitLines[splitLines.length - 1]];
@@ -61,8 +69,15 @@ export function defaultChunker(
     ) {
       // Simple logic: only split if potential chunk would exceed the soft max limit
       if (potentialChunk.length > maxCharsSoftLimit) {
-        // When splitting at delimiter boundary, preserve natural empty lines (don't remove trailing empty lines)
-        chunks.push(currentChunk.join("\n"));
+        // When splitting at delimiter boundary, preserve natural empty lines and trailing newlines
+        const processedChunk = processChunkForOutput(
+          currentChunk,
+          lines,
+          i - currentChunk.length
+        );
+        if (processedChunk.trim()) {
+          chunks.push(processedChunk);
+        }
         currentChunk = [line];
         continue;
       }
@@ -79,20 +94,30 @@ export function defaultChunker(
         if (splitLines.length > 1) {
           // Line was split - add all but the last piece as separate chunks
           for (let j = 0; j < splitLines.length - 1; j++) {
-            chunks.push(splitLines[j]);
+            if (splitLines[j].trim()) {
+              chunks.push(splitLines[j]);
+            }
           }
           // Keep the last piece for potential combination with next lines
           currentChunk = [splitLines[splitLines.length - 1]];
         } else {
           // Line doesn't exceed hard limit, keep it as is
-          chunks.push(line);
+          if (line.trim()) {
+            chunks.push(line);
+          }
           currentChunk = [];
         }
       } else {
         // Remove last line and finalize chunk
         const lastLine = currentChunk.pop()!;
-        const trimmedChunk = removeTrailingEmptyLines(currentChunk);
-        chunks.push(trimmedChunk.join("\n"));
+        const processedChunk = processChunkForOutput(
+          currentChunk,
+          lines,
+          i - currentChunk.length
+        );
+        if (processedChunk.trim()) {
+          chunks.push(processedChunk);
+        }
         currentChunk = [lastLine];
       }
     }
@@ -104,14 +129,45 @@ export function defaultChunker(
     if (remainingText.length > maxCharsHardLimit) {
       // Split the remaining chunk if it exceeds hard limit
       const splitLines = maybeSplitLine(remainingText, maxCharsHardLimit);
-      chunks.push(...splitLines);
+      chunks.push(...splitLines.filter((chunk) => chunk.trim()));
     } else {
-      const trimmedChunk = removeTrailingEmptyLines(currentChunk);
-      chunks.push(trimmedChunk.join("\n"));
+      const processedChunk = processChunkForOutput(
+        currentChunk,
+        lines,
+        lines.length - currentChunk.length
+      );
+      if (processedChunk.trim()) {
+        chunks.push(processedChunk);
+      }
     }
   }
 
-  return chunks;
+  // Filter out any empty chunks that might have slipped through
+  return chunks.filter((chunk) => chunk.trim().length > 0);
+}
+
+function processChunkForOutput(
+  chunkLines: string[],
+  allLines: string[],
+  startIndex: number
+): string {
+  if (chunkLines.length === 0) return "";
+
+  // Remove trailing empty lines but preserve meaningful structure
+  const trimmedLines = removeTrailingEmptyLines(chunkLines);
+
+  // Check if we should preserve some trailing newlines by looking at the original context
+  const endIndex = startIndex + chunkLines.length - 1;
+  const hasTrailingNewlines =
+    endIndex < allLines.length - 1 && chunkLines.length > trimmedLines.length;
+
+  // If we removed empty lines but there are more lines after this chunk,
+  // preserve one trailing newline to maintain paragraph separation
+  if (hasTrailingNewlines && trimmedLines.length > 0) {
+    return trimmedLines.join("\n") + "\n";
+  }
+
+  return trimmedLines.join("\n");
 }
 
 function maybeSplitLine(line: string, maxCharsHardLimit: number): string[] {
@@ -176,8 +232,8 @@ function removeTrailingEmptyLines(lines: string[]): string[] {
     }
   }
 
-  // If all lines are empty, keep at least one
-  return lines.length > 0 ? [lines[0]] : [];
+  // If all lines are empty, return empty array instead of keeping empty strings
+  return [];
 }
 
 export default defaultChunker;

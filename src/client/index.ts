@@ -930,7 +930,7 @@ async function createChunkArgsBatch(
   for (const batch of makeBatches(missingEmbeddingsWithIndex, 100)) {
     const { embeddings } = await embedMany({
       model: embedModel,
-      values: batch.map((b) => b.text),
+      values: batch.map((b) => b.text.trim() || "<empty>"),
     });
     for (const [index, embedding] of embeddings.entries()) {
       argsMaybeMissingEmbeddings[batch[index].index].embedding = embedding;

@@ -4,7 +4,7 @@ import { describe, test, expect } from "vitest";
 describe("defaultChunker", () => {
   test("handles empty text", () => {
     expect(defaultChunker("")).toEqual([]);
-    expect(defaultChunker("   ")).toEqual(["   "]);
+    expect(defaultChunker("   ")).toEqual([]);
   });
 
   test("chunks paragraphs that fit within limits", () => {
