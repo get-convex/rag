@@ -26,11 +26,19 @@ export async function extractTextFromPdf(
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
 
-      // Combine text items with proper spacing
+      // Combine text items with proper spacing and line breaks
       const pageText = textContent.items
-        .map((item: any) => item.str)
+        .map((item) => {
+          if ("str" in item) {
+            // Check if this text item is followed by a line break
+            return item.str + (item.hasEOL ? "\n" : "");
+          }
+          return "";
+        })
         .filter(Boolean)
-        .join(" ");
+        .join(" ")
+        .replace(/\s+\n/g, "\n"); // Clean up spaces before newlines
+      // .replace(/\n\s+/g, "\n"); // Clean up spaces after newlines
 
       fullText += pageText + "\n\n";
     }
