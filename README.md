@@ -482,5 +482,5 @@ See more example usage in [example.ts](./example/convex/example.ts).
 
 ### Running the example
 
-Run the example with `npm i && npm run example`.
+Run the example with `npm i && npm run setup && npm run example`.
 <!-- END: Include on https://convex.dev/components -->
