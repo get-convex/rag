@@ -64,7 +64,7 @@ function Example() {
     {
       globalNamespace: true,
     },
-    { initialNumItems: 50 }
+    { initialNumItems: 10 }
   );
 
   const userFiles = usePaginatedQuery(
@@ -72,20 +72,20 @@ function Example() {
     {
       globalNamespace: false,
     },
-    { initialNumItems: 50 }
+    { initialNumItems: 10 }
   );
 
   const pendingFiles = useQuery(api.example.listPendingFiles);
 
-  const documentChunks = useQuery(
+  const documentChunks = usePaginatedQuery(
     api.example.listChunks,
     selectedDocument?.entryId
       ? {
           entryId: selectedDocument.entryId,
           order: "asc",
-          paginationOpts: { numItems: 100, cursor: null },
         }
-      : "skip"
+      : "skip",
+    { initialNumItems: 10 }
   );
 
   const handleFileSelect = useCallback((file: File) => {
@@ -852,11 +852,11 @@ function Example() {
           {/* Document Chunks for File queries */}
           {searchType === "file" &&
             selectedDocument &&
-            documentChunks &&
-            showChunks && (
+            documentChunks.status !== "LoadingFirstPage" &&
+            (showChunks || !searchResults) && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 h-full">
                 <h3 className="font-semibold text-gray-900 mb-3">
-                  Document Chunks ({documentChunks.page?.length || 0})
+                  Document Chunks ({documentChunks.results.length || 0})
                 </h3>
                 {selectedDocument.url &&
                   (selectedDocument.isImage ? (
@@ -878,7 +878,7 @@ function Example() {
                   className="overflow-y-auto space-y-2"
                   style={{ height: "calc(100% - 3rem)" }}
                 >
-                  {documentChunks.page?.map((chunk) => (
+                  {documentChunks.results.map((chunk) => (
                     <div
                       key={chunk.order}
                       className="flex items-start space-x-2"
@@ -891,6 +891,14 @@ function Example() {
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => documentChunks.loadMore(10)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Load More
+                  </button>
                 </div>
               </div>
             )}
