@@ -397,6 +397,7 @@ describe("chunks", () => {
     // Test listing with pagination
     const result = await t.query(api.chunks.list, {
       entryId,
+      order: "asc",
       paginationOpts: { numItems: 3, cursor: null },
     });
 
@@ -417,6 +418,7 @@ describe("chunks", () => {
     // Get next page
     const nextResult = await t.query(api.chunks.list, {
       entryId,
+      order: "asc",
       paginationOpts: { numItems: 3, cursor: result.continueCursor },
     });
 
