@@ -34,7 +34,7 @@ function Example() {
     filename: "",
   });
 
-  const [queryMode, setQueryMode] = useState<QueryMode>("search");
+  const [queryMode, setQueryMode] = useState<QueryMode>("question");
   const [searchType, setSearchType] = useState<SearchType>("global");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
@@ -657,16 +657,6 @@ function Example() {
           {/* Query Mode Selector */}
           <div className="flex space-x-2 mb-4">
             <button
-              onClick={() => setQueryMode("search")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                queryMode === "search"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              🔍 Search
-            </button>
-            <button
               onClick={() => setQueryMode("question")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                 queryMode === "question"
@@ -675,6 +665,16 @@ function Example() {
               }`}
             >
               ❓ Ask Question
+            </button>
+            <button
+              onClick={() => setQueryMode("search")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                queryMode === "search"
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              🔍 Search
             </button>
           </div>
 
