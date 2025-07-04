@@ -420,7 +420,7 @@ export class RAG<
     return {
       results: results as SearchResult[],
       text: entriesWithTexts
-        .map((e) => (e.title ? `## ${e.title}:\n${e.text}` : e.text))
+        .map((e) => (e.title ? `## ${e.title}:\n\n${e.text}` : e.text))
         .join(`\n\n---\n\n`),
       entries: entriesWithTexts,
     };

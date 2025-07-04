@@ -209,7 +209,7 @@ describe("RAG thick client", () => {
 
       // Overall text should be: "## Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       expect(text).toBe(
-        "## Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
+        "## Test Document:\n\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       );
     });
 
@@ -337,7 +337,7 @@ describe("RAG thick client", () => {
 
       // Should have entries separated by "\n---\n" as per README
       expect(text).toContain("---");
-      expect(text).toMatch(/## .+:\n.+\n\n---\n\n## .+:\n.+/);
+      expect(text).toMatch(/## .+:\n\n.+\n\n---\n\n## .+:\n\n.+/);
 
       // Should have both titles prefixed with "## "
       expect(text).toContain("## First Document:");
@@ -463,12 +463,14 @@ describe("RAG thick client", () => {
       // Individual entry texts should follow the pattern
       expect(text).toBe(
         `## Title 1:
+
 Chunk 1 contents
 Chunk 2 contents
 
 ---
 
 ## Title 2:
+
 Chunk 3 contents
 Chunk 4 contents`
       );
