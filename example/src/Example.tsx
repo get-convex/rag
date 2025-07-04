@@ -49,7 +49,6 @@ function Example() {
     filename: "",
   });
 
-  const [queryMode, setQueryMode] = useState<QueryMode>("question");
   const [searchType, setSearchType] = useState<SearchType>("general");
   const [searchGlobal, setSearchGlobal] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,6 +66,11 @@ function Example() {
   const [showChunks, setShowChunks] = useState(false);
   const [categorySearchGlobal, setCategorySearchGlobal] = useState(true);
   const [showFullText, setShowFullText] = useState(false);
+
+  // New state for search parameters
+  const [limit, setLimit] = useState(10);
+  const [chunksBefore, setChunksBefore] = useState(1);
+  const [chunksAfter, setChunksAfter] = useState(1);
 
   // Convex functions
   const convex = useConvex();
@@ -248,128 +252,143 @@ function Example() {
     }
   }, [convex, uploadForm, selectedFile, pdfExtraction]);
 
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = useCallback(
+    async (mode: QueryMode) => {
+      if (!searchQuery.trim()) return;
 
-    if (searchType === "file" && !selectedDocument) {
-      alert("Please select a file to search");
-      return;
-    }
-
-    if (searchType === "category" && !selectedCategory.trim()) {
-      alert("Please select a category for category search");
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchResults(null);
-    setQuestionResult(null);
-
-    try {
-      if (queryMode === "question") {
-        let filter: EntryFilter<Filters> | undefined;
-
-        if (searchType === "category") {
-          filter = {
-            name: "category" as const,
-            value: selectedCategory,
-          };
-        } else if (searchType === "file" && selectedDocument) {
-          filter = {
-            name: "filename" as const,
-            value: selectedDocument.filename,
-          };
-        }
-
-        const globalNamespace =
-          searchType === "general"
-            ? searchGlobal
-            : searchType === "category"
-              ? categorySearchGlobal
-              : searchType === "file" && selectedDocument
-                ? selectedDocument.global
-                : searchGlobal;
-
-        const questionResults = await convex.action(api.example.askQuestion, {
-          prompt: searchQuery,
-          globalNamespace: globalNamespace || false,
-          filter,
-        });
-
-        const questionSources = questionResults?.files || [];
-
-        const formattedSearchResults = {
-          ...questionResults,
-          results: questionResults.results.map((result) => ({
-            ...result,
-            entry: questionSources.find((s) => s.entryId === result.entryId)!,
-          })),
-        };
-
-        // Set search results
-        setSearchResults(formattedSearchResults);
-        setQuestionResult({
-          answer: questionResults.answer,
-          results: questionResults.results.map((result) => ({
-            ...result,
-            entry: questionSources.find((s) => s.entryId === result.entryId)!,
-          })),
-          files: questionSources,
-        });
-      } else {
-        // Handle search mode (existing logic)
-        let results;
-        switch (searchType) {
-          case "general":
-            results = await convex.action(api.example.search, {
-              query: searchQuery,
-              globalNamespace: searchGlobal,
-            });
-            break;
-          case "category":
-            results = await convex.action(api.example.searchCategory, {
-              query: searchQuery,
-              globalNamespace: categorySearchGlobal,
-              category: selectedCategory,
-            });
-            break;
-          case "file":
-            results = await convex.action(api.example.searchFile, {
-              query: searchQuery,
-              globalNamespace: selectedDocument!.global || false,
-              filename: selectedDocument!.filename || "",
-            });
-            break;
-          default:
-            throw new Error(`Unknown search type: ${searchType}`);
-        }
-        const sources = results?.files || [];
-        setSearchResults({
-          ...results,
-          results: results.results.map((result: any) => ({
-            ...result,
-            entry: sources.find((s: any) => s.entryId === result.entryId)!,
-          })),
-        });
+      if (searchType === "file" && !selectedDocument) {
+        alert("Please select a file to search");
+        return;
       }
-    } catch (error) {
-      console.error("Search/Question failed:", error);
-      alert(
-        `${queryMode === "question" ? "Question" : "Search"} failed. ${error instanceof Error ? error.message : String(error)}`
-      );
-    } finally {
-      setIsSearching(false);
-    }
-  }, [
-    searchQuery,
-    queryMode,
-    searchType,
-    searchGlobal,
-    selectedDocument,
-    selectedCategory,
-    convex,
-    categorySearchGlobal,
-  ]);
+
+      if (searchType === "category" && !selectedCategory.trim()) {
+        alert("Please select a category for category search");
+        return;
+      }
+
+      setIsSearching(true);
+      setSearchResults(null);
+      setQuestionResult(null);
+
+      try {
+        const chunkContext = { before: chunksBefore, after: chunksAfter };
+
+        if (mode === "question") {
+          let filter: EntryFilter<Filters> | undefined;
+
+          if (searchType === "category") {
+            filter = {
+              name: "category" as const,
+              value: selectedCategory,
+            };
+          } else if (searchType === "file" && selectedDocument) {
+            filter = {
+              name: "filename" as const,
+              value: selectedDocument.filename,
+            };
+          }
+
+          const globalNamespace =
+            searchType === "general"
+              ? searchGlobal
+              : searchType === "category"
+                ? categorySearchGlobal
+                : searchType === "file" && selectedDocument
+                  ? selectedDocument.global
+                  : searchGlobal;
+
+          const questionResults = await convex.action(api.example.askQuestion, {
+            prompt: searchQuery,
+            globalNamespace: globalNamespace || false,
+            filter,
+            limit,
+            chunkContext,
+          });
+
+          const questionSources = questionResults?.files || [];
+
+          const formattedSearchResults = {
+            ...questionResults,
+            results: questionResults.results.map((result) => ({
+              ...result,
+              entry: questionSources.find((s) => s.entryId === result.entryId)!,
+            })),
+          };
+
+          // Set search results
+          setSearchResults(formattedSearchResults);
+          setQuestionResult({
+            answer: questionResults.answer,
+            results: questionResults.results.map((result) => ({
+              ...result,
+              entry: questionSources.find((s) => s.entryId === result.entryId)!,
+            })),
+            files: questionSources,
+          });
+        } else {
+          // Handle search mode (existing logic)
+          let results;
+          switch (searchType) {
+            case "general":
+              results = await convex.action(api.example.search, {
+                query: searchQuery,
+                globalNamespace: searchGlobal,
+                limit,
+                chunkContext,
+              });
+              break;
+            case "category":
+              results = await convex.action(api.example.searchCategory, {
+                query: searchQuery,
+                globalNamespace: categorySearchGlobal,
+                category: selectedCategory,
+                limit,
+                chunkContext,
+              });
+              break;
+            case "file":
+              results = await convex.action(api.example.searchFile, {
+                query: searchQuery,
+                globalNamespace: selectedDocument!.global || false,
+                filename: selectedDocument!.filename || "",
+                limit,
+                chunkContext,
+              });
+              break;
+            default:
+              throw new Error(`Unknown search type: ${searchType}`);
+          }
+          const sources = results?.files || [];
+          setSearchResults({
+            ...results,
+            results: results.results.map((result: any) => ({
+              ...result,
+              entry: sources.find((s: any) => s.entryId === result.entryId)!,
+            })),
+          });
+        }
+      } catch (error) {
+        console.error("Search/Question failed:", error);
+        alert(
+          `${mode === "question" ? "Question" : "Search"} failed. ${error instanceof Error ? error.message : String(error)}`
+        );
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [
+      searchQuery,
+      searchType,
+      searchGlobal,
+      selectedDocument,
+      selectedCategory,
+      convex,
+      categorySearchGlobal,
+      limit,
+      chunksBefore,
+      chunksAfter,
+    ]
+  );
 
   const getUniqueCategories = () => {
     const categories = new Set<string>();
@@ -1106,36 +1125,6 @@ function Example() {
             </div>
           </div>
 
-          {/* Query Mode Selector */}
-          <div className="flex space-x-2 mb-6">
-            <button
-              onClick={() => setQueryMode("question")}
-              className={`group px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                queryMode === "question"
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                  : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="text-lg">❓</span>
-                <span>Ask Question</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setQueryMode("search")}
-              className={`group px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                queryMode === "search"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
-                  : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="text-lg">🔍</span>
-                <span>Search</span>
-              </div>
-            </button>
-          </div>
-
           {/* Search Type Selector */}
           <div className="flex items-center space-x-4 mb-6">
             <div className="flex space-x-2">
@@ -1288,85 +1277,123 @@ function Example() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  handleSearch();
+                  handleSearch("search");
                 }
               }}
-              placeholder={
-                queryMode === "search"
-                  ? "Enter your search query..."
-                  : "Ask a question about your documents..."
-              }
-              className="w-full px-6 py-4 pr-20 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 text-lg"
+              placeholder="Enter your search query or question..."
+              className="w-full px-6 py-4 pr-32 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 text-lg"
             />
-            <button
-              onClick={handleSearch}
-              disabled={isSearching || !searchQuery.trim()}
-              className={`absolute right-2 top-2 bottom-2 px-6 text-white rounded-lg font-semibold transition-all duration-300 ${
-                isSearching || !searchQuery.trim()
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : queryMode === "search"
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg hover:shadow-xl"
-                    : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl"
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                {isSearching ? (
-                  <>
+            <div className="absolute right-2 top-2 bottom-2 flex space-x-2">
+              <button
+                onClick={() => handleSearch("search")}
+                disabled={isSearching || !searchQuery.trim()}
+                className={`px-4 text-white rounded-lg font-semibold transition-all duration-300 ${
+                  isSearching || !searchQuery.trim()
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg hover:shadow-xl"
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  {isSearching ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>
-                      {queryMode === "search" ? "Searching..." : "Asking..."}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                    <span>{queryMode === "search" ? "Search" : "Ask"}</span>
-                  </>
-                )}
-              </div>
-            </button>
+                  ) : (
+                    <span>🔍</span>
+                  )}
+                </div>
+              </button>
+              <button
+                onClick={() => handleSearch("question")}
+                disabled={isSearching || !searchQuery.trim()}
+                className={`px-4 text-white rounded-lg font-semibold transition-all duration-300 ${
+                  isSearching || !searchQuery.trim()
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl"
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  {isSearching ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <span className="text-sm">Ask</span>
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Search Parameters */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Results Limit
+              </label>
+              <input
+                type="number"
+                value={limit}
+                onChange={(e) =>
+                  setLimit(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                min="1"
+                max="50"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Context Before
+              </label>
+              <input
+                type="number"
+                value={chunksBefore}
+                onChange={(e) =>
+                  setChunksBefore(Math.max(0, parseInt(e.target.value) || 0))
+                }
+                min="0"
+                max="5"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Context After
+              </label>
+              <input
+                type="number"
+                value={chunksAfter}
+                onChange={(e) =>
+                  setChunksAfter(Math.max(0, parseInt(e.target.value) || 0))
+                }
+                min="0"
+                max="5"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
+              />
+            </div>
           </div>
         </div>
 
         {/* Results Area */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Question Results */}
-          {questionResult &&
-            queryMode === "question" &&
-            (searchType !== "file" || !showChunks) && (
-              <div className="space-y-6">
-                {/* Generated Answer */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-8 shadow-lg">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <span className="text-white text-lg">🤖</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-purple-900">
-                      Generated Answer
-                    </h3>
+          {questionResult && (searchType !== "file" || !showChunks) && (
+            <div className="space-y-6">
+              {/* Generated Answer */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-8 shadow-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <span className="text-white text-lg">🤖</span>
                   </div>
-                  <div className="max-w-none text-gray-900 leading-relaxed">
-                    <div className="markdown-content text-gray-900">
-                      <MarkdownRenderer>
-                        {questionResult.answer}
-                      </MarkdownRenderer>
-                    </div>
+                  <h3 className="text-xl font-bold text-purple-900">
+                    Generated Answer
+                  </h3>
+                </div>
+                <div className="max-w-none text-gray-900 leading-relaxed">
+                  <div className="markdown-content text-gray-900">
+                    <MarkdownRenderer>{questionResult.answer}</MarkdownRenderer>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
           {/* Document Chunks for File queries */}
           {searchType === "file" &&
@@ -1724,14 +1751,11 @@ function Example() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-gray-600 mb-2">
-                  {queryMode === "search"
-                    ? "Ready to Search"
-                    : "Ready to Answer"}
+                  Ready to Search and Ask
                 </h3>
                 <p className="text-gray-500 max-w-md mx-auto">
-                  {queryMode === "search"
-                    ? "Enter a search query to explore your documents and find relevant content"
-                    : "Ask a question about your documents to get AI-generated answers with context"}
+                  Use the 🔍 button to search your documents or the Ask button
+                  to get AI-generated answers with context
                 </p>
               </div>
             )}

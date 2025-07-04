@@ -95,6 +95,13 @@ export const search = action({
   args: {
     query: v.string(),
     globalNamespace: v.boolean(),
+    limit: v.optional(v.number()),
+    chunkContext: v.optional(
+      v.object({
+        before: v.number(),
+        after: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -102,7 +109,8 @@ export const search = action({
     const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
-      limit: 10,
+      limit: args.limit ?? 10,
+      chunkContext: args.chunkContext,
     });
     return {
       ...results,
@@ -116,6 +124,13 @@ export const searchFile = action({
     query: v.string(),
     globalNamespace: v.boolean(),
     filename: v.string(),
+    limit: v.optional(v.number()),
+    chunkContext: v.optional(
+      v.object({
+        before: v.number(),
+        after: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -125,9 +140,9 @@ export const searchFile = action({
     const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
-      chunkContext: { before: 1, after: 1 },
+      chunkContext: args.chunkContext ?? { before: 1, after: 1 },
       filters: [{ name: "filename", value: args.filename }],
-      limit: 10,
+      limit: args.limit ?? 10,
     });
     return {
       ...results,
@@ -141,6 +156,13 @@ export const searchCategory = action({
     query: v.string(),
     globalNamespace: v.boolean(),
     category: v.string(),
+    limit: v.optional(v.number()),
+    chunkContext: v.optional(
+      v.object({
+        before: v.number(),
+        after: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -150,8 +172,9 @@ export const searchCategory = action({
     const results = await rag.search(ctx, {
       namespace: args.globalNamespace ? "global" : userId,
       query: args.query,
-      limit: 10,
+      limit: args.limit ?? 10,
       filters: [{ name: "category", value: args.category }],
+      chunkContext: args.chunkContext,
     });
     return {
       ...results,
@@ -176,6 +199,13 @@ export const askQuestion = action({
         })
       )
     ),
+    limit: v.optional(v.number()),
+    chunkContext: v.optional(
+      v.object({
+        before: v.number(),
+        after: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -184,8 +214,8 @@ export const askQuestion = action({
       search: {
         namespace: args.globalNamespace ? "global" : userId,
         filters: args.filter ? [args.filter] : [],
-        limit: 10,
-        chunkContext: { before: 1, after: 1 },
+        limit: args.limit ?? 10,
+        chunkContext: args.chunkContext ?? { before: 1, after: 1 },
       },
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),
