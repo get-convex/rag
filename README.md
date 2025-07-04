@@ -274,14 +274,18 @@ console.log(text);
 ```
 
 ```txt
-# Title 1:
+## Title 1:
 Chunk 1 contents
 Chunk 2 contents
+
 ...
+
 Chunk 8 contents
 Chunk 9 contents
+
 ---
-# Title 2:
+
+## Title 2:
 Chunk 4 contents
 Chunk 5 contents
 ```

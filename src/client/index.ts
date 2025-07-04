@@ -406,7 +406,7 @@ export class RAG<
       for (const range of ranges) {
         if (previousEnd !== 0) {
           if (range.startOrder !== previousEnd) {
-            text += "\n...\n";
+            text += "\n\n...\n\n";
           } else {
             text += "\n";
           }
@@ -421,7 +421,7 @@ export class RAG<
       results: results as SearchResult[],
       text: entriesWithTexts
         .map((e) => (e.title ? `## ${e.title}:\n${e.text}` : e.text))
-        .join(`\n---\n`),
+        .join(`\n\n---\n\n`),
       entries: entriesWithTexts,
     };
   }

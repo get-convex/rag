@@ -337,7 +337,7 @@ describe("RAG thick client", () => {
 
       // Should have entries separated by "\n---\n" as per README
       expect(text).toContain("---");
-      expect(text).toMatch(/## .+:\n.+\n---\n## .+:\n.+/);
+      expect(text).toMatch(/## .+:\n.+\n\n---\n\n## .+:\n.+/);
 
       // Should have both titles prefixed with "## "
       expect(text).toContain("## First Document:");
@@ -450,7 +450,7 @@ describe("RAG thick client", () => {
       expect(text).toContain("---");
 
       // Should have proper entry separation
-      const parts = text.split("\n---\n");
+      const parts = text.split("\n\n---\n\n");
       expect(parts).toHaveLength(2);
 
       // Each part should start with "## Title X:"
@@ -465,7 +465,9 @@ describe("RAG thick client", () => {
         `## Title 1:
 Chunk 1 contents
 Chunk 2 contents
+
 ---
+
 ## Title 2:
 Chunk 3 contents
 Chunk 4 contents`
