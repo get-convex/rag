@@ -784,7 +784,7 @@ function Example() {
                     {pendingFiles.length !== 1 ? "s" : ""}...
                   </h4>
                 </div>
-                {pendingFiles.map((doc, index) => (
+                {pendingFiles.map((doc) => (
                   <PendingDocumentProgress key={doc.entryId} doc={doc} />
                 ))}
               </div>

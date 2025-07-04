@@ -2,38 +2,4 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer base {
-  :root {
-      font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-      line-height: 1.5;
-      font-weight: 400;
-    font-synthesis: none;
-      text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-                body {
-                  margin: 0;
-    min-width: 320px;
-      min-height: 100vh;
-    }
-}
-
-@layer components {
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors;
-  }
-
-        .btn-primary {
-          @apply bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
-        }
-
-        .btn-secondary {
-          @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
-  }
-.input {
-  @apply px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-  }
-}
+@plugin "@tailwindcss/typography";
