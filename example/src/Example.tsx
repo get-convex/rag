@@ -521,7 +521,7 @@ function Example() {
                   </svg>
                 </div>
                 <span className="text-sm font-medium text-gray-700">
-                  Global (shared) file
+                  Shared file
                 </span>
               </div>
               <button
@@ -833,7 +833,7 @@ function Example() {
                     />
                   </svg>
                 </div>
-                <h3 className="font-bold text-gray-900">Global Files</h3>
+                <h3 className="font-bold text-gray-900">Shared Files</h3>
               </div>
               <button
                 onClick={() => {
@@ -1224,7 +1224,7 @@ function Example() {
                     />
                   </button>
                   <span className="text-sm text-gray-600 font-medium">
-                    Global Files
+                    Shared Files
                   </span>
                 </div>
               )}
@@ -1784,11 +1784,11 @@ function Example() {
                       </svg>
                     </div>
                     <h3 className="text-xl font-bold text-gray-600 mb-2">
-                      Ready to Search and Ask
+                      Ready to Search or Ask
                     </h3>
                     <p className="text-gray-500 max-w-md mx-auto">
                       Use the 🔍 button to search your documents or the Ask
-                      button to get AI-generated answers with context
+                      button to get AI-generated answers using search context.
                     </p>
                   </>
                 )}
@@ -1860,7 +1860,7 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
           <div className="mt-3 space-y-2">
             <div className="flex items-center text-xs text-orange-600">
               <span className="mr-2">
-                {doc.global ? "🌍 Global" : "👤 User"}
+                {doc.global ? "🌍 Shared" : "👤 User"}
               </span>
               <span className="px-2 py-1 bg-orange-100 rounded-full font-medium">
                 Processing...
