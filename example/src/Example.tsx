@@ -71,6 +71,7 @@ function Example() {
   const [limit, setLimit] = useState(10);
   const [chunksBefore, setChunksBefore] = useState(1);
   const [chunksAfter, setChunksAfter] = useState(1);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   // Convex functions
   const convex = useConvex();
@@ -1293,13 +1294,7 @@ function Example() {
                     : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg hover:shadow-xl"
                 }`}
               >
-                <div className="flex items-center space-x-1">
-                  {isSearching ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <span>🔍</span>
-                  )}
-                </div>
+                <span>🔍</span>
               </button>
               <button
                 onClick={() => handleSearch("question")}
@@ -1310,64 +1305,90 @@ function Example() {
                     : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl"
                 }`}
               >
-                <div className="flex items-center space-x-1">
-                  {isSearching ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <span className="text-sm">Ask</span>
-                  )}
-                </div>
+                <span className="text-sm">Ask</span>
               </button>
             </div>
           </div>
 
-          {/* Search Parameters */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Results Limit
-              </label>
-              <input
-                type="number"
-                value={limit}
-                onChange={(e) =>
-                  setLimit(Math.max(1, parseInt(e.target.value) || 1))
-                }
-                min="1"
-                max="50"
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Context Before
-              </label>
-              <input
-                type="number"
-                value={chunksBefore}
-                onChange={(e) =>
-                  setChunksBefore(Math.max(0, parseInt(e.target.value) || 0))
-                }
-                min="0"
-                max="5"
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Context After
-              </label>
-              <input
-                type="number"
-                value={chunksAfter}
-                onChange={(e) =>
-                  setChunksAfter(Math.max(0, parseInt(e.target.value) || 0))
-                }
-                min="0"
-                max="5"
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm"
-              />
-            </div>
+          {/* Advanced Options Dropdown */}
+          <div className="mt-4">
+            <button
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+            >
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  showAdvancedOptions ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+              <span className="text-sm font-medium">Advanced Options</span>
+            </button>
+
+            {showAdvancedOptions && (
+              <div className="mt-3 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Results Limit
+                    </label>
+                    <input
+                      type="number"
+                      value={limit}
+                      onChange={(e) =>
+                        setLimit(Math.max(1, parseInt(e.target.value) || 1))
+                      }
+                      min="1"
+                      max="50"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Context Before
+                    </label>
+                    <input
+                      type="number"
+                      value={chunksBefore}
+                      onChange={(e) =>
+                        setChunksBefore(
+                          Math.max(0, parseInt(e.target.value) || 0)
+                        )
+                      }
+                      min="0"
+                      max="5"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Context After
+                    </label>
+                    <input
+                      type="number"
+                      value={chunksAfter}
+                      onChange={(e) =>
+                        setChunksAfter(
+                          Math.max(0, parseInt(e.target.value) || 0)
+                        )
+                      }
+                      min="0"
+                      max="5"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1735,28 +1756,42 @@ function Example() {
               showChunks
             ) && (
               <div className="text-center py-16">
-                <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <svg
-                    className="w-12 h-12 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-600 mb-2">
-                  Ready to Search and Ask
-                </h3>
-                <p className="text-gray-500 max-w-md mx-auto">
-                  Use the 🔍 button to search your documents or the Ask button
-                  to get AI-generated answers with context
-                </p>
+                {isSearching ? (
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <h3 className="text-xl font-bold text-gray-600">
+                      Searching...
+                    </h3>
+                    <p className="text-gray-500">
+                      Please wait while we search your documents
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <svg
+                        className="w-12 h-12 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-600 mb-2">
+                      Ready to Search and Ask
+                    </h3>
+                    <p className="text-gray-500 max-w-md mx-auto">
+                      Use the 🔍 button to search your documents or the Ask
+                      button to get AI-generated answers with context
+                    </p>
+                  </>
+                )}
               </div>
             )}
         </div>
