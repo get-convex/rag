@@ -1137,7 +1137,7 @@ function Example() {
           </div>
 
           {/* Search Type Selector */}
-          <div className="flex items-center justify-between space-x-4 mb-6">
+          <div className="flex items-center space-x-4 mb-6">
             <div className="flex space-x-2">
               {(["general", "category", "file"] as const).map((type) => (
                 <button
