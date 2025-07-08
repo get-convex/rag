@@ -249,7 +249,7 @@ export async function addFileAsync(
 
   const namespace = globalNamespace ? "global" : userId;
   const bytes = await blob.arrayBuffer();
-  const existing = await rag.findExistingEntryByContentHash(ctx, {
+  const existing = await rag.findEntryByContentHash(ctx, {
     contentHash: await contentHashFromArrayBuffer(bytes),
     key: filename,
     namespace,

@@ -587,7 +587,7 @@ export class RAG<
    * new results into a new entry when migrating, or avoiding duplicating work
    * when updating content.
    */
-  async findExistingEntryByContentHash(
+  async findEntryByContentHash(
     ctx: RunQueryCtx,
     args: {
       namespace: string;

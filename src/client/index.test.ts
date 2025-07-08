@@ -32,10 +32,10 @@ const rag = new RAG(components.rag, {
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
 });
 
-export const findExistingEntryByContentHash = query({
+export const findEntryByContentHash = query({
   args: { namespace: v.string(), key: v.string(), contentHash: v.string() },
   handler: async (ctx, args) => {
-    return rag.findExistingEntryByContentHash(ctx, {
+    return rag.findEntryByContentHash(ctx, {
       namespace: args.namespace,
       key: args.key,
       contentHash: args.contentHash,
@@ -111,7 +111,7 @@ export const search = action({
 
 const testApi: ApiFromModules<{
   fns: {
-    findExistingEntryByContentHash: typeof findExistingEntryByContentHash;
+    findEntryByContentHash: typeof findEntryByContentHash;
     add: typeof add;
     search: typeof search;
   };
