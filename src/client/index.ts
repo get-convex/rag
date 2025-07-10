@@ -363,7 +363,7 @@ export class RAG<
       /**
        * The query to search for. Optional if embedding is provided.
        */
-      query?: string;
+      query: string | Array<number>;
     } & SearchOptions<FitlerSchemas>
   ): Promise<{
     results: SearchResult[];
@@ -377,7 +377,7 @@ export class RAG<
       chunkContext = { before: 0, after: 0 },
       vectorScoreThreshold,
     } = args;
-    let embedding = args.embedding;
+    let embedding = Array.isArray(args.query) ? args.query : undefined;
     if (!embedding) {
       const embedResult = await embed({
         model: this.options.textEmbeddingModel,
@@ -447,6 +447,11 @@ export class RAG<
          * The namespace to search in. e.g. a userId if entries are per-user.
          */
         namespace: string;
+        /**
+         * The text or embedding to search for. If provided, it will be used
+         * instead of the prompt for vector search.
+         */
+        query?: string | Array<number>;
       };
       /**
        * Required. The prompt to use for context search, as well as the final
@@ -1083,11 +1088,6 @@ type EntryArgs<
 };
 
 type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
-  /**
-   * The embedding to search for. If provided, it will be used instead
-   * of the query for vector search.
-   */
-  embedding?: Array<number>;
   /**
    * Filters to apply to the search. These are OR'd together. To represent
    * AND logic, your filter can be an object or array with multiple values.

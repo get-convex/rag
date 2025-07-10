@@ -95,7 +95,7 @@ export const search = action({
   },
   handler: async (ctx, args) => {
     const { results, entries, text } = await rag.search(ctx, {
-      embedding: args.embedding,
+      query: args.embedding,
       namespace: args.namespace,
       limit: args.limit ?? 10,
       chunkContext: args.chunkContext ?? { before: 0, after: 0 },
