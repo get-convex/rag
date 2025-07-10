@@ -558,14 +558,17 @@ export class RAG<
     ctx: RunQueryCtx,
     args: {
       namespaceId?: NamespaceId;
-      paginationOpts: PaginationOptions;
       order?: "desc" | "asc";
       status?: Status;
-    }
+    } & ({ paginationOpts: PaginationOptions } | { limit: number })
   ): Promise<PaginationResult<Entry<FitlerSchemas, EntryMetadata>>> {
+    const paginationOpts =
+      "paginationOpts" in args
+        ? args.paginationOpts
+        : { cursor: null, numItems: args.limit };
     const results = await ctx.runQuery(this.component.entries.list, {
       namespaceId: args.namespaceId,
-      paginationOpts: args.paginationOpts,
+      paginationOpts,
       order: args.order ?? "asc",
       status: args.status ?? "ready",
     });
