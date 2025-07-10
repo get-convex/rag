@@ -22,6 +22,7 @@ import { DataModel, Id } from "./_generated/dataModel";
 import {
   action,
   ActionCtx,
+  internalMutation,
   mutation,
   MutationCtx,
   query,
@@ -479,6 +480,35 @@ async function _deleteFile(ctx: MutationCtx, entryId: EntryId) {
     await rag.delete(ctx, { entryId });
   }
 }
+
+const SECOND = 1000;
+const MINUTE = SECOND * 60;
+const HOUR = MINUTE * 60;
+const DAY = HOUR * 24;
+const WEEK = DAY * 7;
+
+export const deleteOldContent = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const toDelete = await rag.list(ctx, {
+      status: "replaced",
+      paginationOpts: { cursor: args.cursor ?? null, numItems: 100 },
+    });
+
+    for (const entry of toDelete.page) {
+      assert(entry.status === "replaced");
+      if (entry.replacedAt >= Date.now() - WEEK) {
+        return; // we're done when we catch up to a week ago
+      }
+      await rag.delete(ctx, { entryId: entry.entryId });
+    }
+    if (!toDelete.isDone) {
+      await ctx.scheduler.runAfter(0, internal.example.deleteOldContent, {
+        cursor: toDelete.continueCursor,
+      });
+    }
+  },
+});
 
 function guessMimeType(filename: string, bytes: ArrayBuffer) {
   return (
