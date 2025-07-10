@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2
+
+- query can be a string or array, instead of separate embedding argument.
+- nicer examples & UI to play with
+- default chunk sizes are smaller
+- EntryFilterValue is now called EntryFilter
+- Fixes chunker handling of empty lines
+- supports sha-1 content hashing in utility
+- default context formatting separates content better for LLMs
+- list can take a limit instead of paginationOpts
+- findExistingEntryByContentHash is renamed to drop the Existing
+
 ## 0.3.1
 
 - Demote document titles to h2 when auto-generating prompt template
