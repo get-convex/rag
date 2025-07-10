@@ -7,6 +7,8 @@
 A component for semantic search, usually used to look up context for LLMs.
 Use with an Agent for Retrieval-Augmented Generation (RAG).
 
+[![Use AI to search HUGE amounts of text with the RAG Component](https://thumbs.video-to-markdown.com/1ff18153.jpg)](https://youtu.be/dGmtAmdAaFs)
+
 ## ✨ Key Features
 
 - **Add Content**: Add or replace content with text chunks and embeddings.
