@@ -14,6 +14,7 @@ import {
 } from "../shared.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import {
+  internalMutation,
   internalQuery,
   mutation,
   query,
@@ -512,7 +513,16 @@ async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
   };
 }
 
-export async function deleteChunksPage(
+export const deleteChunksPage = internalMutation({
+  args: v.object({
+    entryId: v.id("entries"),
+    startOrder: v.number(),
+  }),
+  returns: v.object({ isDone: v.boolean(), nextStartOrder: v.number() }),
+  handler: deleteChunksPageHandler,
+});
+
+export async function deleteChunksPageHandler(
   ctx: MutationCtx,
   { entryId, startOrder }: { entryId: Id<"entries">; startOrder: number }
 ) {

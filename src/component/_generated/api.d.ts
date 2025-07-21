@@ -154,6 +154,24 @@ export type Mounts = {
       { entryId: string; startOrder: number },
       null
     >;
+    deleteByKeyAsync: FunctionReference<
+      "mutation",
+      "public",
+      { beforeVersion?: number; key: string; namespaceId: string },
+      null
+    >;
+    deleteByKeySync: FunctionReference<
+      "action",
+      "public",
+      { key: string; namespaceId: string },
+      null
+    >;
+    deleteSync: FunctionReference<
+      "action",
+      "public",
+      { entryId: string },
+      null
+    >;
     findByContentHash: FunctionReference<
       "query",
       "public",

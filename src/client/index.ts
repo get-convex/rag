@@ -700,13 +700,52 @@ export class RAG<
   }
 
   /**
-   * Delete an entry and all its chunks.
+   * Delete an entry and all its chunks in the background using a workpool.
    */
-  async delete(ctx: RunMutationCtx, args: { entryId: EntryId }) {
+  async deleteAsync(ctx: RunMutationCtx, args: { entryId: EntryId }) {
     await ctx.runMutation(this.component.entries.deleteAsync, {
       entryId: args.entryId,
       startOrder: 0,
     });
+  }
+
+  /**
+   * Delete an entry and all its chunks (synchronously).
+   * If you are getting warnings about `ctx` not being compatible,
+   * you're likely running this in a mutation.
+   * Use `deleteAsync` or run `delete` in an action.
+   */
+  async delete(ctx: RunActionCtx, args: { entryId: EntryId }) {
+    await ctx.runAction(this.component.entries.deleteSync, {
+      entryId: args.entryId,
+    });
+  }
+
+  /**
+   * Delete all entries with a given key (asynchrounously).
+   */
+  async deleteByKeyAsync(
+    ctx: RunMutationCtx,
+    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
+  ) {
+    await ctx.runMutation(this.component.entries.deleteByKeyAsync, {
+      namespaceId: args.namespaceId,
+      key: args.key,
+      beforeVersion: args.beforeVersion,
+    });
+  }
+
+  /**
+   * Delete all entries with a given key (synchronously).
+   * If you are getting warnings about `ctx` not being compatible,
+   * you're likely running this in a mutation.
+   * Use `deleteByKeyAsync` or run `delete` in an action.
+   */
+  async deleteByKey(
+    ctx: RunActionCtx,
+    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
+  ) {
+    await ctx.runAction(this.component.entries.deleteByKeySync, args);
   }
 
   /**

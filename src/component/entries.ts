@@ -14,13 +14,15 @@ import {
 import { api, internal } from "./_generated/api.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import {
+  action,
   internalMutation,
+  internalQuery,
   mutation,
   query,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server.js";
-import { deleteChunksPage, insertChunks } from "./chunks.js";
+import { deleteChunksPageHandler, insertChunks } from "./chunks.js";
 import schema, { type StatusWithOnComplete } from "./schema.js";
 import { mergedStream } from "convex-helpers/server/stream";
 import { stream } from "convex-helpers/server/stream";
@@ -36,6 +38,7 @@ import {
   Workpool,
 } from "@convex-dev/workpool";
 import { components } from "./_generated/api.js";
+import { doc } from "convex-helpers/validators";
 
 const workpool = new Workpool(components.workpool, {
   retryActionsByDefault: true,
@@ -546,7 +549,7 @@ async function deleteAsyncHandler(
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
-  const status = await deleteChunksPage(ctx, { entryId, startOrder });
+  const status = await deleteChunksPageHandler(ctx, { entryId, startOrder });
   if (status.isDone) {
     await ctx.db.delete(entryId);
   } else {
@@ -556,3 +559,110 @@ async function deleteAsyncHandler(
     });
   }
 }
+
+export const deleteSync = action({
+  args: { entryId: v.id("entries") },
+  returns: v.null(),
+  handler: async (ctx, { entryId }) => {
+    let startOrder = 0;
+    while (true) {
+      const status = await ctx.runMutation(internal.chunks.deleteChunksPage, {
+        entryId,
+        startOrder,
+      });
+      if (status.isDone) {
+        await ctx.runMutation(internal.entries._del, { entryId });
+        break;
+      }
+      startOrder = status.nextStartOrder;
+    }
+  },
+});
+
+export const _del = internalMutation({
+  args: { entryId: v.id("entries") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.entryId);
+  },
+});
+
+export const deleteByKeyAsync = mutation({
+  args: v.object({
+    namespaceId: v.id("namespaces"),
+    key: v.string(),
+    beforeVersion: v.optional(v.number()),
+  }),
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const entries = await getEntriesByKey(ctx, args);
+    for await (const entry of entries) {
+      await workpool.enqueueMutation(ctx, api.entries.deleteAsync, {
+        entryId: entry._id,
+        startOrder: 0,
+      });
+    }
+    if (entries.length === 100) {
+      await workpool.enqueueMutation(ctx, api.entries.deleteByKeyAsync, {
+        namespaceId: args.namespaceId,
+        key: args.key,
+        beforeVersion: entries[entries.length - 1].version,
+      });
+    }
+  },
+});
+
+async function getEntriesByKey(
+  ctx: QueryCtx,
+  args: { namespaceId: Id<"namespaces">; key: string; beforeVersion?: number }
+): Promise<Doc<"entries">[]> {
+  return mergedStream(
+    statuses.map((status) =>
+      stream(ctx.db, schema)
+        .query("entries")
+        .withIndex("namespaceId_status_key_version", (q) =>
+          q
+            .eq("namespaceId", args.namespaceId)
+            .eq("status.kind", status)
+            .eq("key", args.key)
+            .lt("version", args.beforeVersion ?? Infinity)
+        )
+        .order("desc")
+    ),
+    ["version"]
+  ).take(100);
+}
+
+export const getEntriesForNamespaceByKey = internalQuery({
+  args: {
+    namespaceId: v.id("namespaces"),
+    key: v.string(),
+    beforeVersion: v.optional(v.number()),
+  },
+  returns: v.array(doc(schema, "entries")),
+  handler: getEntriesByKey,
+});
+
+export const deleteByKeySync = action({
+  args: {
+    namespaceId: v.id("namespaces"),
+    key: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    while (true) {
+      const entries: Doc<"entries">[] = await ctx.runQuery(
+        internal.entries.getEntriesForNamespaceByKey,
+        { namespaceId: args.namespaceId, key: args.key }
+      );
+      for await (const entry of entries) {
+        await ctx.runAction(api.entries.deleteSync, {
+          entryId: entry._id,
+        });
+      }
+      if (entries.length <= 100) {
+        break;
+      }
+    }
+  },
+});

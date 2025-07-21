@@ -5,7 +5,7 @@ import { convexTest, type TestConvex } from "convex-test";
 import schema from "./schema.js";
 import { api, internal } from "./_generated/api.js";
 import { modules } from "./setup.test.js";
-import { insertChunks, deleteChunksPage } from "./chunks.js";
+import { insertChunks, deleteChunksPageHandler } from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
 import { assert } from "convex-helpers";
 
@@ -351,7 +351,7 @@ describe("chunks", () => {
 
     // Delete chunks starting from order 3
     const deleteResult = await t.run(async (ctx) => {
-      return deleteChunksPage(ctx, {
+      return deleteChunksPageHandler(ctx, {
         entryId,
         startOrder: 3,
       });
