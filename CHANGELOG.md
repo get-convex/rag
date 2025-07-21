@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 alpha
+
+- FIX: Delete embeddings when deleting entry
+
 ## 0.3.2
 
 - query can be a string or array, instead of separate embedding argument.

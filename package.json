@@ -7,7 +7,7 @@
     "email": "support@convex.dev",
     "url": "https://github.com/get-convex/rag/issues"
   },
-  "version": "0.3.2",
+  "version": "0.3.3-alpha.0",
   "license": "Apache-2.0",
   "keywords": [
     "convex",
