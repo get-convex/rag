@@ -332,11 +332,12 @@ describe("chunks", () => {
     // Insert a large number of chunks
     const chunks = createTestChunks(10);
     await t.run(async (ctx) => {
-      return insertChunks(ctx, {
+      const result = await insertChunks(ctx, {
         entryId,
         startOrder: 0,
         chunks,
       });
+      expect(result.status).toBe("ready");
     });
 
     // Verify chunks exist
@@ -375,8 +376,15 @@ describe("chunks", () => {
     const allContent = await t.run(async (ctx) => {
       return ctx.db.query("content").collect();
     });
+
     // Should have only 3 content records remaining (for the 3 remaining chunks)
     expect(allContent).toHaveLength(3);
+
+    // Verify embeddings were deleted
+    const allEmbeddings = await t.run(async (ctx) => {
+      return ctx.db.query("vectors_128").collect();
+    });
+    expect(allEmbeddings).toHaveLength(3);
   });
 
   test("listing chunks returns correct pagination", async () => {

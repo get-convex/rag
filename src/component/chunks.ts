@@ -21,7 +21,7 @@ import {
   type QueryCtx,
 } from "./_generated/server.js";
 import { insertEmbedding } from "./embeddings/index.js";
-import { vVectorId } from "./embeddings/tables.js";
+import { vVectorId, type VectorTableName } from "./embeddings/tables.js";
 import { schema, v } from "./schema.js";
 import { getPreviousEntry, publicEntry } from "./entries.js";
 import {
@@ -525,20 +525,49 @@ export async function deleteChunksPage(
   for await (const chunk of chunkStream) {
     dataUsedSoFar += await estimateChunkSize(chunk);
     await ctx.db.delete(chunk._id);
+    if (chunk.state.kind === "ready") {
+      const embedding = await ctx.db.get(chunk.state.embeddingId);
+      if (embedding) {
+        dataUsedSoFar += estimateEmbeddingSize(embedding);
+        await ctx.db.delete(chunk.state.embeddingId);
+      }
+    }
     dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
     await ctx.db.delete(chunk.contentId);
     if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
-      // TODO: schedule follow-up - workpool?
       return { isDone: false, nextStartOrder: chunk.order };
     }
   }
   return { isDone: true, nextStartOrder: -1 };
 }
 
+function estimateEmbeddingSize(embedding: Doc<VectorTableName>) {
+  let dataUsedSoFar =
+    embedding.vector.length * 8 +
+    embedding.namespaceId.length +
+    embedding._id.length +
+    8;
+  for (const filter of [
+    embedding.filter0,
+    embedding.filter1,
+    embedding.filter2,
+    embedding.filter3,
+  ]) {
+    if (filter) {
+      dataUsedSoFar += JSON.stringify(convexToJson(filter[1])).length;
+    }
+  }
+  return dataUsedSoFar;
+}
+
 async function estimateChunkSize(chunk: Doc<"chunks">) {
   let dataUsedSoFar = 100; // constant metadata - roughly
   if (chunk.state.kind === "pending") {
     dataUsedSoFar += chunk.state.embedding.length * 8;
+    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
+  } else if (chunk.state.kind === "replaced") {
+    dataUsedSoFar += chunk.state.vector.length * 8;
+    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
   }
   return dataUsedSoFar;
 }
