@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
 
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { convexTest, type TestConvex } from "convex-test";
 import schema from "./schema.js";
-import { api } from "./_generated/api.js";
-import { modules } from "./setup.test.js";
+import { api, internal } from "./_generated/api.js";
+import { initConvexTest } from "./setup.test.js";
 import type { Id } from "./_generated/dataModel.js";
 
 type ConvexTest = TestConvex<typeof schema>;
@@ -21,6 +21,13 @@ describe("entries", () => {
     return namespace.namespaceId;
   }
 
+  beforeEach(async () => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function testEntryArgs(namespaceId: Id<"namespaces">, key = "test-entry") {
     return {
       namespaceId,
@@ -33,7 +40,7 @@ describe("entries", () => {
   }
 
   test("add creates a new entry when none exists", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -60,7 +67,7 @@ describe("entries", () => {
   });
 
   test("add returns existing entry when adding identical content", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -104,7 +111,7 @@ describe("entries", () => {
   });
 
   test("add creates new version when content hash changes", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -157,7 +164,7 @@ describe("entries", () => {
   });
 
   test("add creates new version when importance changes", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -195,7 +202,7 @@ describe("entries", () => {
   });
 
   test("add creates new version when filter values change", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t, ["category"]); // Add filter name
 
     const entry = testEntryArgs(namespaceId);
@@ -235,7 +242,7 @@ describe("entries", () => {
   });
 
   test("add without allChunks creates pending entry", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -258,7 +265,7 @@ describe("entries", () => {
   });
 
   test("multiple entries with different keys can coexist", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry1 = testEntryArgs(namespaceId, "doc1");
@@ -294,7 +301,7 @@ describe("entries", () => {
   });
 
   test("pending to ready transition populates replacedEntry", async () => {
-    const t = convexTest(schema, modules);
+    const t = initConvexTest();
     const namespaceId = await setupTestNamespace(t);
 
     const entry = testEntryArgs(namespaceId);
@@ -337,5 +344,405 @@ describe("entries", () => {
       return ctx.db.get(firstResult.entryId);
     });
     expect(firstDoc!.status.kind).toBe("replaced");
+  });
+
+  test("deleteAsync deletes entry and all chunks", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entry = testEntryArgs(namespaceId);
+
+    // Create entry with chunks
+    const testChunks = [
+      {
+        content: { text: "chunk 1 content", metadata: { type: "text" } },
+        embedding: Array.from({ length: 128 }, () => Math.random()),
+        searchableText: "chunk 1 content",
+      },
+      {
+        content: { text: "chunk 2 content", metadata: { type: "text" } },
+        embedding: Array.from({ length: 128 }, () => Math.random()),
+        searchableText: "chunk 2 content",
+      },
+    ];
+
+    const result = await t.mutation(api.entries.add, {
+      entry,
+      allChunks: testChunks,
+    });
+
+    expect(result.created).toBe(true);
+    expect(result.status).toBe("ready");
+
+    // Verify entry and chunks exist before deletion
+    const entryBefore = await t.run(async (ctx) => {
+      return ctx.db.get(result.entryId);
+    });
+    expect(entryBefore).toBeDefined();
+
+    const chunksBefore = await t.run(async (ctx) => {
+      return ctx.db
+        .query("chunks")
+        .filter((q) => q.eq(q.field("entryId"), result.entryId))
+        .collect();
+    });
+    expect(chunksBefore).toHaveLength(2);
+
+    // Delete the entry
+    await t.mutation(api.entries.deleteAsync, {
+      entryId: result.entryId,
+      startOrder: 0,
+    });
+
+    // Wait for async deletion to complete by repeatedly checking
+    await t.finishInProgressScheduledFunctions();
+
+    // Verify entry is deleted
+    const entryAfter = await t.run(async (ctx) => {
+      return ctx.db.get(result.entryId);
+    });
+    expect(entryAfter).toBeNull();
+
+    // Verify chunks are deleted
+    const chunksAfter = await t.run(async (ctx) => {
+      return ctx.db
+        .query("chunks")
+        .filter((q) => q.eq(q.field("entryId"), result.entryId))
+        .collect();
+    });
+    expect(chunksAfter).toHaveLength(0);
+  });
+
+  test("deleteSync deletes entry and all chunks synchronously", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entry = testEntryArgs(namespaceId);
+
+    // Create entry with chunks
+    const testChunks = [
+      {
+        content: { text: "sync chunk 1", metadata: { type: "text" } },
+        embedding: Array.from({ length: 128 }, () => Math.random()),
+        searchableText: "sync chunk 1",
+      },
+      {
+        content: { text: "sync chunk 2", metadata: { type: "text" } },
+        embedding: Array.from({ length: 128 }, () => Math.random()),
+        searchableText: "sync chunk 2",
+      },
+    ];
+
+    const result = await t.mutation(api.entries.add, {
+      entry,
+      allChunks: testChunks,
+    });
+
+    expect(result.created).toBe(true);
+    expect(result.status).toBe("ready");
+
+    // Verify entry and chunks exist before deletion
+    const entryBefore = await t.run(async (ctx) => {
+      return ctx.db.get(result.entryId);
+    });
+    expect(entryBefore).toBeDefined();
+
+    const chunksBefore = await t.run(async (ctx) => {
+      return ctx.db
+        .query("chunks")
+        .filter((q) => q.eq(q.field("entryId"), result.entryId))
+        .collect();
+    });
+    expect(chunksBefore).toHaveLength(2);
+
+    // Delete the entry synchronously
+    await t.action(api.entries.deleteSync, {
+      entryId: result.entryId,
+    });
+
+    // Verify entry is deleted
+    const entryAfter = await t.run(async (ctx) => {
+      return ctx.db.get(result.entryId);
+    });
+    expect(entryAfter).toBeNull();
+
+    // Verify chunks are deleted
+    const chunksAfter = await t.run(async (ctx) => {
+      return ctx.db
+        .query("chunks")
+        .filter((q) => q.eq(q.field("entryId"), result.entryId))
+        .collect();
+    });
+    expect(chunksAfter).toHaveLength(0);
+  });
+
+  test("deleteByKeyAsync deletes all entries with the given key", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entry1 = testEntryArgs(namespaceId, "shared-key");
+    const entry2 = {
+      ...testEntryArgs(namespaceId, "shared-key"),
+      contentHash: "hash456",
+    };
+    const entry3 = testEntryArgs(namespaceId, "different-key");
+
+    // Create multiple entries with same key and one with different key
+    const result1 = await t.mutation(api.entries.add, {
+      entry: entry1,
+      allChunks: [
+        {
+          content: { text: "content 1" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    const result2 = await t.mutation(api.entries.add, {
+      entry: entry2,
+      allChunks: [
+        {
+          content: { text: "content 2" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    const result3 = await t.mutation(api.entries.add, {
+      entry: entry3,
+      allChunks: [
+        {
+          content: { text: "content 3" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    // Verify all entries exist
+    const entriesBefore = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
+        .collect();
+    });
+    expect(entriesBefore).toHaveLength(3);
+    const sharedBefore = await t.query(
+      internal.entries.getEntriesForNamespaceByKey,
+      {
+        namespaceId,
+        key: "shared-key",
+      }
+    );
+    expect(sharedBefore).toHaveLength(2);
+
+    // Delete entries by key
+    await t.mutation(api.entries.deleteByKeyAsync, {
+      namespaceId,
+      key: "shared-key",
+    });
+
+    // Wait for async deletion to complete
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // Verify only entries with "shared-key" are deleted
+    const entriesAfter = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
+        .collect();
+    });
+    expect(entriesAfter).toHaveLength(1);
+    expect(entriesAfter[0].key).toBe("different-key");
+    expect(entriesAfter[0]._id).toBe(result3.entryId);
+
+    const sharedAfter = await t.query(
+      internal.entries.getEntriesForNamespaceByKey,
+      { namespaceId, key: "shared-key" }
+    );
+    expect(sharedAfter).toHaveLength(0);
+
+    // Verify chunks from deleted entries are also deleted
+    const chunksAfter = await t.run(async (ctx) => {
+      return ctx.db.query("chunks").collect();
+    });
+    expect(chunksAfter).toHaveLength(1); // Only chunk from entry3 should remain
+  });
+
+  test("deleteByKeySync deletes all entries with the given key synchronously", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entry1 = testEntryArgs(namespaceId, "sync-key");
+    const entry2 = {
+      ...testEntryArgs(namespaceId, "sync-key"),
+      contentHash: "hash789",
+    };
+    const entry3 = testEntryArgs(namespaceId, "keep-key");
+
+    // Create multiple entries with same key and one with different key
+    const result1 = await t.mutation(api.entries.add, {
+      entry: entry1,
+      allChunks: [
+        {
+          content: { text: "sync content 1" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    const result2 = await t.mutation(api.entries.add, {
+      entry: entry2,
+      allChunks: [
+        {
+          content: { text: "sync content 2" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    const result3 = await t.mutation(api.entries.add, {
+      entry: entry3,
+      allChunks: [
+        {
+          content: { text: "sync content 3" },
+          embedding: Array.from({ length: 128 }, () => Math.random()),
+        },
+      ],
+    });
+
+    // Verify all entries exist
+    const entriesBefore = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
+        .collect();
+    });
+    expect(entriesBefore).toHaveLength(3);
+
+    // Delete entries by key synchronously
+    await t.action(api.entries.deleteByKeySync, {
+      namespaceId,
+      key: "sync-key",
+    });
+
+    // Verify only entries with "sync-key" are deleted
+    const entriesAfter = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
+        .collect();
+    });
+    expect(entriesAfter).toHaveLength(1);
+    expect(entriesAfter[0].key).toBe("keep-key");
+    expect(entriesAfter[0]._id).toBe(result3.entryId);
+
+    // Verify chunks from deleted entries are also deleted
+    const chunksAfter = await t.run(async (ctx) => {
+      return ctx.db.query("chunks").collect();
+    });
+    expect(chunksAfter).toHaveLength(1); // Only chunk from entry3 should remain
+  });
+
+  test("deleteByKeyAsync handles entries without key gracefully", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entryWithKey = testEntryArgs(namespaceId, "has-key");
+    const entryWithoutKey = { ...testEntryArgs(namespaceId), key: undefined };
+
+    // Create entries
+    const result1 = await t.mutation(api.entries.add, {
+      entry: entryWithKey,
+      allChunks: [],
+    });
+
+    const result2 = await t.mutation(api.entries.add, {
+      entry: entryWithoutKey,
+      allChunks: [],
+    });
+
+    // Delete by key - should only affect entries with that key
+    await t.mutation(api.entries.deleteByKeyAsync, {
+      namespaceId,
+      key: "has-key",
+    });
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // Verify only the entry with the specified key is deleted
+    const entriesAfter = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) => q.eq(q.field("namespaceId"), namespaceId))
+        .collect();
+    });
+    expect(entriesAfter).toHaveLength(1);
+    expect(entriesAfter[0]._id).toBe(result2.entryId);
+    expect(entriesAfter[0].key).toBeUndefined();
+  });
+
+  test("deleteByKeyAsync with beforeVersion parameter", async () => {
+    const t = initConvexTest();
+    const namespaceId = await setupTestNamespace(t);
+
+    const entry = testEntryArgs(namespaceId, "versioned-key");
+
+    // Create multiple versions of the same entry
+    const result1 = await t.mutation(api.entries.add, {
+      entry,
+      allChunks: [],
+    });
+
+    const result2 = await t.mutation(api.entries.add, {
+      entry: { ...entry, contentHash: "hash456" },
+      allChunks: [],
+    });
+
+    const result3 = await t.mutation(api.entries.add, {
+      entry: { ...entry, contentHash: "hash789" },
+      allChunks: [],
+    });
+
+    // Get the versions to understand ordering
+    const allEntries = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("namespaceId"), namespaceId),
+            q.eq(q.field("key"), "versioned-key")
+          )
+        )
+        .collect();
+    });
+
+    const sortedEntries = allEntries.sort((a, b) => a.version - b.version);
+    expect(sortedEntries).toHaveLength(3);
+
+    // Delete entries before version 2 (should delete version 0 and 1)
+    await t.mutation(api.entries.deleteByKeyAsync, {
+      namespaceId,
+      key: "versioned-key",
+      beforeVersion: 2,
+    });
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // Should only have the latest version (version 2) remaining
+    const remainingEntries = await t.run(async (ctx) => {
+      return ctx.db
+        .query("entries")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("namespaceId"), namespaceId),
+            q.eq(q.field("key"), "versioned-key")
+          )
+        )
+        .collect();
+    });
+
+    expect(remainingEntries).toHaveLength(1);
+    expect(remainingEntries[0].version).toBe(2);
+    expect(remainingEntries[0]._id).toBe(result3.entryId);
   });
 });
