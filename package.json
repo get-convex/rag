@@ -7,7 +7,7 @@
     "email": "support@convex.dev",
     "url": "https://github.com/get-convex/rag/issues"
   },
-  "version": "0.3.3-alpha.0",
+  "version": "0.3.3-alpha.1",
   "license": "Apache-2.0",
   "keywords": [
     "convex",
@@ -38,7 +38,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism --config ./src/vitest.config.ts",
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "lint": "eslint src",
-    "version": "pbcopy <<<$npm_package_version; vim CHANGELOG.md && git add CHANGELOG.md"
+    "version": "pbcopy <<<$npm_package_version; vim CHANGELOG.md && npx prettier -w CHANGELOG.md && git add CHANGELOG.md"
   },
   "files": [
     "dist",

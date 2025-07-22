@@ -2,6 +2,11 @@
 
 ## 0.3.3 alpha
 
+- Allow deleting an entry by key asynchronously or sync
+- Allow deleting an entry by key sychronously
+- Deprecated: `.delete` from mutations is deprecated.
+  `.delete` is now synchronous for an entry.
+  Use `.deleteAsync` from mutations instead.
 - FIX: Delete embeddings when deleting entry
 
 ## 0.3.2
