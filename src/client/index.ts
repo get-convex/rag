@@ -715,10 +715,23 @@ export class RAG<
    * you're likely running this in a mutation.
    * Use `deleteAsync` or run `delete` in an action.
    */
-  async delete(ctx: RunActionCtx, args: { entryId: EntryId }) {
-    await ctx.runAction(this.component.entries.deleteSync, {
-      entryId: args.entryId,
-    });
+  async delete(ctx: RunActionCtx, args: { entryId: EntryId }): Promise<void>;
+  /** @deprecated Use `deleteAsync` in mutations. */
+  async delete(ctx: RunMutationCtx, args: { entryId: EntryId }): Promise<void>;
+  async delete(ctx: RunActionCtx | RunMutationCtx, args: { entryId: EntryId }) {
+    if ("runAction" in ctx) {
+      await ctx.runAction(this.component.entries.deleteSync, {
+        entryId: args.entryId,
+      });
+    } else {
+      console.warn(
+        "You are running `rag.delete` in a mutation. This is deprecated. Use `rag.deleteAsync` from mutations, or `rag.delete` in actions."
+      );
+      await ctx.runMutation(this.component.entries.deleteAsync, {
+        entryId: args.entryId,
+        startOrder: 0,
+      });
+    }
   }
 
   /**
