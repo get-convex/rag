@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { convexTest, type TestConvex } from "convex-test";
+import { type TestConvex } from "convex-test";
 import schema from "./schema.js";
 import { api, internal } from "./_generated/api.js";
 import { initConvexTest } from "./setup.test.js";
@@ -500,6 +500,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result1.status).toBe("ready");
 
     const result2 = await t.mutation(api.entries.add, {
       entry: entry2,
@@ -510,6 +511,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result2.status).toBe("pending");
 
     const result3 = await t.mutation(api.entries.add, {
       entry: entry3,
@@ -520,6 +522,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result3.status).toBe("ready");
 
     // Verify all entries exist
     const entriesBefore = await t.run(async (ctx) => {
@@ -592,6 +595,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result1.status).toBe("ready");
 
     const result2 = await t.mutation(api.entries.add, {
       entry: entry2,
@@ -602,6 +606,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result2.status).toBe("pending");
 
     const result3 = await t.mutation(api.entries.add, {
       entry: entry3,
@@ -612,6 +617,7 @@ describe("entries", () => {
         },
       ],
     });
+    expect(result3.status).toBe("ready");
 
     // Verify all entries exist
     const entriesBefore = await t.run(async (ctx) => {
@@ -658,6 +664,7 @@ describe("entries", () => {
       entry: entryWithKey,
       allChunks: [],
     });
+    expect(result1.status).toBe("ready");
 
     const result2 = await t.mutation(api.entries.add, {
       entry: entryWithoutKey,
@@ -695,11 +702,13 @@ describe("entries", () => {
       entry,
       allChunks: [],
     });
+    expect(result1.status).toBe("ready");
 
     const result2 = await t.mutation(api.entries.add, {
       entry: { ...entry, contentHash: "hash456" },
       allChunks: [],
     });
+    expect(result2.status).toBe("pending");
 
     const result3 = await t.mutation(api.entries.add, {
       entry: { ...entry, contentHash: "hash789" },
