@@ -200,7 +200,6 @@ export const add = mutation({
     entryId: v.id("entries"),
     status: vStatus,
     created: v.boolean(),
-    replacedEntry: v.union(vEntry, v.null()),
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.entry;
@@ -216,7 +215,6 @@ export const add = mutation({
         entryId: existing._id,
         status: existing.status.kind,
         created: false,
-        replacedEntry: null,
       };
     }
     const version = existing ? existing.version + 1 : 0;
@@ -226,26 +224,24 @@ export const add = mutation({
       status: { kind: "pending", onComplete: args.onComplete },
     });
     if (args.allChunks) {
-      await insertChunks(ctx, {
+      const { status } = await insertChunks(ctx, {
         entryId,
         startOrder: 0,
         chunks: args.allChunks,
       });
-      const { replacedEntry } = await promoteToReadyHandler(ctx, {
-        entryId,
-      });
+      if (status === "ready") {
+        await promoteToReadyHandler(ctx, { entryId });
+      }
       return {
         entryId,
-        status: "ready" as const,
+        status,
         created: true,
-        replacedEntry,
       };
     }
     return {
       entryId,
       status: "pending" as const,
       created: true,
-      replacedEntry: null,
     };
   },
 });

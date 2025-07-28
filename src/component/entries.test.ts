@@ -53,7 +53,6 @@ describe("entries", () => {
     expect(result.created).toBe(true);
     expect(result.status).toBe("ready");
     expect(result.entryId).toBeDefined();
-    expect(result.replacedEntry).toBeNull();
 
     // Verify the entry was actually created
     const createdDoc = await t.run(async (ctx) => {
@@ -80,7 +79,6 @@ describe("entries", () => {
 
     expect(firstResult.created).toBe(true);
     expect(firstResult.status).toBe("ready");
-    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add with identical content
     const secondResult = await t.mutation(api.entries.add, {
@@ -91,7 +89,6 @@ describe("entries", () => {
     expect(secondResult.created).toBe(false);
     expect(secondResult.status).toBe("ready");
     expect(secondResult.entryId).toBe(firstResult.entryId);
-    expect(secondResult.replacedEntry).toBeNull();
 
     // Verify no new entry was created
     const allDocs = await t.run(async (ctx) => {
@@ -123,7 +120,6 @@ describe("entries", () => {
     });
 
     expect(firstResult.created).toBe(true);
-    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add with different content hash
     const modifiedEntry = {
@@ -138,11 +134,7 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    // When creating a entry as "ready" initially, replacedEntry is null
-    // Replacement only happens during pending -> ready transitions
-    expect(secondResult.replacedEntry).toMatchObject({
-      entryId: firstResult.entryId,
-    });
+    expect(secondResult.status).toBe("pending");
 
     // Verify both entries exist with different versions
     const allDocs = await t.run(async (ctx) => {
@@ -174,6 +166,12 @@ describe("entries", () => {
       entry,
       allChunks: [],
     });
+    expect(firstResult.status).toBe("ready");
+    const first = await t.run(async (ctx) => {
+      return ctx.db.get(firstResult.entryId);
+    })!;
+    expect(first?.version).toBe(0);
+    expect(first?.status.kind).toBe("ready");
 
     // Second add with different importance
     const modifiedEntry = {
@@ -188,9 +186,12 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedEntry).toMatchObject({
-      entryId: firstResult.entryId,
-    });
+    const second = await t.run(async (ctx) => {
+      return ctx.db.get(secondResult.entryId);
+    })!;
+    expect(second?.version).toBe(1);
+    expect(second?.status.kind).toBe("pending");
+    expect(secondResult.status).toBe("pending");
 
     // Verify new version was created
     const newDoc = await t.run(async (ctx) => {
@@ -212,6 +213,7 @@ describe("entries", () => {
       entry,
       allChunks: [],
     });
+    expect(firstResult.status).toBe("ready");
 
     // Second add with different filter values
     const modifiedEntry = {
@@ -226,9 +228,7 @@ describe("entries", () => {
 
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
-    expect(secondResult.replacedEntry).toMatchObject({
-      entryId: firstResult.entryId,
-    });
+    expect(secondResult.status).toBe("pending");
 
     // Verify new version was created with correct filter values
     const newDoc = await t.run(async (ctx) => {
@@ -254,7 +254,6 @@ describe("entries", () => {
 
     expect(result.created).toBe(true);
     expect(result.status).toBe("pending");
-    expect(result.replacedEntry).toBeNull();
 
     // Verify the entry was created with pending status
     const createdDoc = await t.run(async (ctx) => {
@@ -284,8 +283,8 @@ describe("entries", () => {
     expect(result1.created).toBe(true);
     expect(result2.created).toBe(true);
     expect(result1.entryId).not.toBe(result2.entryId);
-    expect(result1.replacedEntry).toBeNull();
-    expect(result2.replacedEntry).toBeNull();
+    expect(result1.status).toBe("ready");
+    expect(result2.status).toBe("ready");
 
     // Verify both entries exist
     const allDocs = await t.run(async (ctx) => {
@@ -314,7 +313,6 @@ describe("entries", () => {
 
     expect(firstResult.created).toBe(true);
     expect(firstResult.status).toBe("ready");
-    expect(firstResult.replacedEntry).toBeNull();
 
     // Second add - create as pending (no allChunks)
     const modifiedEntry = {
@@ -329,7 +327,12 @@ describe("entries", () => {
 
     expect(pendingResult.created).toBe(true);
     expect(pendingResult.status).toBe("pending");
-    expect(pendingResult.replacedEntry).toBeNull();
+
+    const chunksResult = await t.mutation(api.chunks.replaceChunksPage, {
+      entryId: pendingResult.entryId,
+      startOrder: 0,
+    });
+    expect(chunksResult.status).toBe("ready");
 
     // Promote to ready - this should replace the first entry
     const promoteResult = await t.mutation(api.entries.promoteToReady, {

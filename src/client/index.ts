@@ -184,7 +184,7 @@ export class RAG<
     const onComplete =
       args.onComplete && (await createFunctionHandle(args.onComplete));
 
-    const { entryId, status, created, replacedEntry } = await ctx.runMutation(
+    const { entryId, status, created } = await ctx.runMutation(
       this.component.entries.add,
       {
         entry: {
@@ -205,29 +205,31 @@ export class RAG<
         entryId: entryId as EntryId,
         status,
         created,
-        replacedEntry: replacedEntry as Entry<
-          FitlerSchemas,
-          EntryMetadata
-        > | null,
+        replacedEntry: null,
       };
     }
 
-    // break chunks up into batches, respecting soft limit
-    let startOrder = 0;
     let isPending = false;
-    for await (const batch of batchIterator(chunks, CHUNK_BATCH_SIZE)) {
-      const chunks = await createChunkArgsBatch(
-        this.options.textEmbeddingModel,
-        batch
-      );
-      const { status } = await ctx.runMutation(this.component.chunks.insert, {
-        entryId,
-        startOrder,
-        chunks,
-      });
-      startOrder += chunks.length;
-      if (status === "pending") {
-        isPending = true;
+    if (allChunks) {
+      // If we added all the chunks and we're here, they're pending.
+      isPending = true;
+    } else {
+      // break chunks up into batches, respecting soft limit
+      let startOrder = 0;
+      for await (const batch of batchIterator(chunks, CHUNK_BATCH_SIZE)) {
+        const chunks = await createChunkArgsBatch(
+          this.options.textEmbeddingModel,
+          batch
+        );
+        const { status } = await ctx.runMutation(this.component.chunks.insert, {
+          entryId,
+          startOrder,
+          chunks,
+        });
+        startOrder += chunks.length;
+        if (status === "pending") {
+          isPending = true;
+        }
       }
     }
     if (isPending) {

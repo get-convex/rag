@@ -165,6 +165,38 @@ describe("RAG thick client", () => {
     // expect(result).toBe(1);
   });
 
+    test("should be able to re-add an entry with the same key", async () => {
+      const t = initConvexTest(schema);
+      const { entryId, status } = await t.mutation(testApi.add, {
+        key: "test",
+        chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
+        namespace: "test",
+      });
+      expect(entryId).toBeDefined();
+      expect(status).toBe("ready");
+      const { entryId: entryId2, status: status2 } = await t.mutation(
+        testApi.add,
+        {
+          key: "test",
+          chunks: [
+            { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
+          ],
+          namespace: "test",
+        }
+      );
+      expect(entryId2).toBeDefined();
+      expect(status2).toBe("ready");
+      const { page } = await t.query(components.rag.chunks.list, {
+        entryId: entryId2,
+        paginationOpts: { numItems: 10, cursor: null },
+        order: "asc",
+      });
+      expect(page.length).toBe(1);
+      expect(page[0].order).toBe(0);
+      expect(page[0].text).toBe("A");
+      expect(page[0].state).toBe("ready");
+    });
+
   describe("text formatting validation", () => {
     test("should format single entry with sequential chunks correctly", async () => {
       const t = initConvexTest(schema);

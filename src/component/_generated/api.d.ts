@@ -116,17 +116,6 @@ export type Mounts = {
       {
         created: boolean;
         entryId: string;
-        replacedEntry: {
-          contentHash?: string;
-          entryId: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key?: string;
-          metadata?: Record<string, any>;
-          replacedAt?: number;
-          status: "pending" | "ready" | "replaced";
-          title?: string;
-        } | null;
         status: "pending" | "ready" | "replaced";
       }
     >;
