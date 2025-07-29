@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4 alpha
+
+- ai is a regular dependency
+
 ## 0.3.3
 
 - Allow deleting an entry by key asynchronously or sync
