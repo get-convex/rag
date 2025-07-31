@@ -254,6 +254,29 @@ export type Mounts = {
     >;
   };
   namespaces: {
+    deleteNamespace: FunctionReference<
+      "mutation",
+      "public",
+      { namespaceId: string },
+      {
+        deletedNamespace: null | {
+          createdAt: number;
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+          namespaceId: string;
+          status: "pending" | "ready" | "replaced";
+          version: number;
+        };
+      }
+    >;
+    deleteNamespaceSync: FunctionReference<
+      "action",
+      "public",
+      { namespaceId: string },
+      null
+    >;
     get: FunctionReference<
       "query",
       "public",

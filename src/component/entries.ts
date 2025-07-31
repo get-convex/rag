@@ -1,5 +1,9 @@
 import { assert, omit } from "convex-helpers";
-import { createFunctionHandle, paginationOptsValidator } from "convex/server";
+import {
+  createFunctionHandle,
+  paginationOptsValidator,
+  PaginationResult,
+} from "convex/server";
 import { v, type Value } from "convex/values";
 import type { ChunkerAction, EntryFilter, EntryId } from "../shared.js";
 import {
@@ -298,7 +302,7 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: vPaginationResult(vEntry),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<PaginationResult<Entry>> => {
     const { namespaceId } = args;
     const results = await stream(ctx.db, schema)
       .query("entries")

@@ -258,6 +258,29 @@ export declare const components: {
       >;
     };
     namespaces: {
+      deleteNamespace: FunctionReference<
+        "mutation",
+        "internal",
+        { namespaceId: string },
+        {
+          deletedNamespace: null | {
+            createdAt: number;
+            dimension: number;
+            filterNames: Array<string>;
+            modelId: string;
+            namespace: string;
+            namespaceId: string;
+            status: "pending" | "ready" | "replaced";
+            version: number;
+          };
+        }
+      >;
+      deleteNamespaceSync: FunctionReference<
+        "action",
+        "internal",
+        { namespaceId: string },
+        null
+      >;
       get: FunctionReference<
         "query",
         "internal",

@@ -1,5 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel.js";
 import {
+  action,
   internalQuery,
   mutation,
   query,
@@ -17,12 +18,14 @@ import {
   vStatus,
   statuses,
   filterNamesContain,
+  Entry,
 } from "../shared.js";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
 import type { ObjectType } from "convex/values";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { assert } from "convex-helpers";
+import { api } from "./_generated/api.js";
 
 function namespaceIsCompatible(
   existing: Doc<"namespaces">,
@@ -320,4 +323,66 @@ export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   };
 }
 
-// TODO: deletion
+export const deleteNamespace = mutation({
+  args: { namespaceId: v.id("namespaces") },
+  returns: v.object({
+    deletedNamespace: v.union(v.null(), vNamespace),
+  }),
+  handler: deleteHandler,
+});
+
+async function deleteHandler(
+  ctx: MutationCtx,
+  args: { namespaceId: Id<"namespaces"> }
+) {
+  const namespace = await ctx.db.get(args.namespaceId);
+  assert(namespace, `Namespace ${args.namespaceId} not found`);
+  const anyEntry = await ctx.db
+    .query("entries")
+    .withIndex("namespaceId_status_key_version", (q) =>
+      q.eq("namespaceId", args.namespaceId)
+    )
+    .first();
+  if (anyEntry) {
+    throw new Error(
+      `Namespace ${args.namespaceId} cannot delete, has entries` +
+        "First delete all entries." +
+        `Entry: ${anyEntry.key} id ${anyEntry._id} (${anyEntry.status.kind})`
+    );
+  }
+  await ctx.db.delete(args.namespaceId);
+  return { deletedNamespace: publicNamespace(namespace) };
+}
+
+export const deleteNamespaceSync = action({
+  args: { namespaceId: v.id("namespaces") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const status of statuses) {
+      let cursor: string | null = null;
+      while (true) {
+        const entries: PaginationResult<Entry> = await ctx.runQuery(
+          api.entries.list,
+          {
+            namespaceId: args.namespaceId,
+            status: status,
+            paginationOpts: {
+              numItems: 100,
+              cursor,
+            },
+          }
+        );
+        if (entries.isDone) {
+          break;
+        }
+        cursor = entries.continueCursor;
+        await ctx.runAction(api.entries.deleteSync, {
+          entryId: entries.page[0].entryId as unknown as Id<"entries">,
+        });
+      }
+    }
+    await ctx.runMutation(api.namespaces.deleteNamespace, {
+      namespaceId: args.namespaceId,
+    });
+  },
+});
