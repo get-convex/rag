@@ -3,6 +3,9 @@
 ## 0.3.4 alpha
 
 - ai is a regular dependency
+- namespaces can be deleted if there are no entries left in them
+- namespaces can be synchronously deleted from an action if there
+  are entries in them
 
 ## 0.3.3
 
