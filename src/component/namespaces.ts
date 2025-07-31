@@ -286,6 +286,30 @@ export const list = query({
   },
 });
 
+export const listNamespaceVersions = query({
+  args: { namespace: v.string(), paginationOpts: paginationOptsValidator },
+  returns: vPaginationResult(vNamespace),
+  handler: async (ctx, args) => {
+    const namespaces = await mergedStream(
+      statuses.map((status) =>
+        stream(ctx.db, schema)
+          .query("namespaces")
+          .withIndex("status_namespace_version", (q) =>
+            q.eq("status.kind", status).eq("namespace", args.namespace)
+          )
+          .order("desc")
+      ),
+      ["version"]
+    ).paginate(args.paginationOpts);
+
+    return {
+      ...namespaces,
+      page: namespaces.page.map(publicNamespace),
+    };
+  },
+});
+
+
 export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   const { _id, _creationTime, status, ...rest } = namespace;
   return {

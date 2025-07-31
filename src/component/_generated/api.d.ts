@@ -318,6 +318,37 @@ export type Mounts = {
         splitCursor?: string | null;
       }
     >;
+    listNamespaceVersions: FunctionReference<
+      "query",
+      "public",
+      {
+        namespace: string;
+        paginationOpts: {
+          cursor: string | null;
+          endCursor?: string | null;
+          id?: number;
+          maximumBytesRead?: number;
+          maximumRowsRead?: number;
+          numItems: number;
+        };
+      },
+      {
+        continueCursor: string;
+        isDone: boolean;
+        page: Array<{
+          createdAt: number;
+          dimension: number;
+          filterNames: Array<string>;
+          modelId: string;
+          namespace: string;
+          namespaceId: string;
+          status: "pending" | "ready" | "replaced";
+          version: number;
+        }>;
+        pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+        splitCursor?: string | null;
+      }
+    >;
     lookup: FunctionReference<
       "query",
       "public",
