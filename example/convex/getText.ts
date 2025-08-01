@@ -54,7 +54,7 @@ export async function getText(
         {
           role: "user",
           content: [
-            { type: "file", data: new URL(url), mimeType, filename },
+            { type: "file", data: new URL(url), mediaType: mimeType, filename },
             {
               type: "text",
               text: "Extract the text from the PDF and print it without explaining that you'll do so.",

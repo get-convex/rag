@@ -1,5 +1,11 @@
-import type { EmbeddingModelV1 } from "@ai-sdk/provider";
-import { embed, embedMany, generateText, type CoreMessage } from "ai";
+import type { EmbeddingModelV2 } from "@ai-sdk/provider";
+import {
+  embed,
+  embedMany,
+  generateText,
+  LanguageModel,
+  type ModelMessage,
+} from "ai";
 import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
@@ -112,7 +118,7 @@ export class RAG<
     public component: RAGComponent,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModelV1<string>;
+      textEmbeddingModel: EmbeddingModelV2<string>;
       filterNames?: FilterNames<FitlerSchemas>;
     }
   ) {}
@@ -466,7 +472,7 @@ export class RAG<
        * Additional messages to add to the context. Can be provided in addition
        * to the prompt, in which case it will precede the prompt.
        */
-      messages?: CoreMessage[];
+      messages?: ModelMessage[];
     } & Parameters<typeof generateText>[0]
   ): Promise<
     Awaited<ReturnType<typeof generateText>> & {
@@ -494,7 +500,7 @@ export class RAG<
     let userQuestionHeader = "";
     let userQuestionFooter = "";
     let userPrompt = prompt;
-    switch (aiSdkOpts.model.provider) {
+    switch (getModelCategory(aiSdkOpts.model)) {
       case "openai":
         userQuestionHeader = '**User question:**\n"""';
         userQuestionFooter = '"""';
@@ -954,7 +960,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 }
 
 async function createChunkArgsBatch(
-  embedModel: EmbeddingModelV1<string>,
+  embedModel: EmbeddingModelV2<string>,
   chunks: InputChunk[]
 ): Promise<CreateChunkArgs[]> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
@@ -1144,3 +1150,29 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    */
   vectorScoreThreshold?: number;
 };
+
+function getModelCategory(model: LanguageModel) {
+  if (typeof model !== "string") {
+    return model.provider;
+  }
+  if (
+    model.startsWith("openai") ||
+    model.startsWith("gpt") ||
+    model.startsWith("o1")
+  ) {
+    return "openai";
+  }
+  if (model.startsWith("anthropic") || model.startsWith("claude")) {
+    return "anthropic";
+  }
+  if (model.startsWith("gemini") || model.startsWith("gemma")) {
+    return "google";
+  }
+  if (model.startsWith("ollama")) {
+    return "meta";
+  }
+  if (model.startsWith("grok")) {
+    return "xai";
+  }
+  return model;
+}
