@@ -1,5 +1,10 @@
-import type { EmbeddingModelV1 } from "@ai-sdk/provider";
-import { embed, embedMany, generateText, type CoreMessage } from "ai";
+import {
+  embed,
+  EmbeddingModel,
+  embedMany,
+  generateText,
+  type CoreMessage,
+} from "ai";
 import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
@@ -85,6 +90,22 @@ const DEFAULT_SEARCH_LIMIT = 10;
 // Used for vector search weighting.
 type Importance = number;
 
+/**
+ * This works with either AI SDK v4 or v5.
+ * It's a subset of the AI SDK v4 EmbeddingModelV1 & EmbeddingModelV2 types.
+ */
+type TextEmbeddingModel = {
+  provider: string;
+  modelId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  specificationVersion: any;
+  maxEmbeddingsPerCall: PromiseLike<number | undefined> | number | undefined;
+  supportsParallelCalls: PromiseLike<boolean> | boolean;
+  doEmbed: (options: {
+    values: string[];
+  }) => PromiseLike<{ embeddings: number[][] }>;
+};
+
 export class RAG<
   FitlerSchemas extends Record<string, Value> = Record<string, Value>,
   EntryMetadata extends Record<string, Value> = Record<string, Value>,
@@ -112,7 +133,7 @@ export class RAG<
     public component: RAGComponent,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModelV1<string>;
+      textEmbeddingModel: TextEmbeddingModel;
       filterNames?: FilterNames<FitlerSchemas>;
     }
   ) {}
@@ -383,7 +404,7 @@ export class RAG<
     let embedding = Array.isArray(args.query) ? args.query : undefined;
     if (!embedding) {
       const embedResult = await embed({
-        model: this.options.textEmbeddingModel,
+        model: await v4EmbedModel(this.options.textEmbeddingModel),
         value: args.query,
       });
       embedding = embedResult.embedding;
@@ -494,7 +515,7 @@ export class RAG<
     let userQuestionHeader = "";
     let userQuestionFooter = "";
     let userPrompt = prompt;
-    switch (aiSdkOpts.model.provider) {
+    switch (getModelCategory(aiSdkOpts.model)) {
       case "openai":
         userQuestionHeader = '**User question:**\n"""';
         userQuestionFooter = '"""';
@@ -954,7 +975,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 }
 
 async function createChunkArgsBatch(
-  embedModel: EmbeddingModelV1<string>,
+  embedModel: TextEmbeddingModel,
   chunks: InputChunk[]
 ): Promise<CreateChunkArgs[]> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
@@ -992,7 +1013,7 @@ async function createChunkArgsBatch(
     .filter((b) => b !== null);
   for (const batch of makeBatches(missingEmbeddingsWithIndex, 100)) {
     const { embeddings } = await embedMany({
-      model: embedModel,
+      model: await v4EmbedModel(embedModel),
       values: batch.map((b) => b.text.trim() || "<empty>"),
     });
     for (const [index, embedding] of embeddings.entries()) {
@@ -1005,6 +1026,26 @@ async function createChunkArgsBatch(
     }
     return true;
   }) as CreateChunkArgs[];
+}
+
+async function v4EmbedModel(
+  model: TextEmbeddingModel
+): Promise<EmbeddingModel<string>> {
+  const proxy = new Proxy(model, {
+    get: async (target, prop) => {
+      if (prop === "supportsParallelCalls") {
+        return await target.supportsParallelCalls;
+      }
+      if (prop === "maxEmbeddingsPerCall") {
+        return await target.maxEmbeddingsPerCall;
+      }
+      if (prop === "specificationVersion") {
+        return "v1";
+      }
+      return target[prop as keyof TextEmbeddingModel];
+    },
+  });
+  return proxy as EmbeddingModel<string>;
 }
 
 type MastraChunk = {
@@ -1144,3 +1185,29 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    */
   vectorScoreThreshold?: number;
 };
+
+function getModelCategory(model: string | { provider: string }) {
+  if (typeof model !== "string") {
+    return model.provider;
+  }
+  if (
+    model.startsWith("openai") ||
+    model.startsWith("gpt") ||
+    model.startsWith("o1")
+  ) {
+    return "openai";
+  }
+  if (model.startsWith("anthropic") || model.startsWith("claude")) {
+    return "anthropic";
+  }
+  if (model.startsWith("gemini") || model.startsWith("gemma")) {
+    return "google";
+  }
+  if (model.startsWith("ollama")) {
+    return "meta";
+  }
+  if (model.startsWith("grok")) {
+    return "xai";
+  }
+  return model;
+}
