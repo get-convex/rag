@@ -1,11 +1,4 @@
-import type { EmbeddingModelV2 } from "@ai-sdk/provider";
-import {
-  embed,
-  embedMany,
-  generateText,
-  LanguageModel,
-  type ModelMessage,
-} from "ai";
+import { embed, embedMany, generateText, type ModelMessage } from "ai";
 import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
@@ -91,6 +84,22 @@ const DEFAULT_SEARCH_LIMIT = 10;
 // Used for vector search weighting.
 type Importance = number;
 
+/**
+ * This works with either AI SDK v4 or v5.
+ * It's a subset of the AI SDK v4 EmbeddingModelV1 & EmbeddingModelV2 types.
+ */
+type TextEmbeddingModel = {
+  provider: string;
+  modelId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  specificationVersion: any;
+  maxEmbeddingsPerCall: PromiseLike<number | undefined> | number | undefined;
+  supportsParallelCalls: PromiseLike<boolean> | boolean;
+  doEmbed: (options: {
+    values: string[];
+  }) => PromiseLike<{ embeddings: number[][] }>;
+};
+
 export class RAG<
   FitlerSchemas extends Record<string, Value> = Record<string, Value>,
   EntryMetadata extends Record<string, Value> = Record<string, Value>,
@@ -118,7 +127,7 @@ export class RAG<
     public component: RAGComponent,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModelV2<string>;
+      textEmbeddingModel: TextEmbeddingModel;
       filterNames?: FilterNames<FitlerSchemas>;
     }
   ) {}
@@ -960,7 +969,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 }
 
 async function createChunkArgsBatch(
-  embedModel: EmbeddingModelV2<string>,
+  embedModel: TextEmbeddingModel,
   chunks: InputChunk[]
 ): Promise<CreateChunkArgs[]> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
@@ -1151,7 +1160,7 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
   vectorScoreThreshold?: number;
 };
 
-function getModelCategory(model: LanguageModel) {
+function getModelCategory(model: string | { provider: string }) {
   if (typeof model !== "string") {
     return model.provider;
   }
