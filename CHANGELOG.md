@@ -3,6 +3,7 @@
 ## 0.5.0 AI SDK v5 support
 
 - Adds support for AI SDK v5
+- Should still work with v4 models too!
 
 ## 0.3.4 alpha
 
