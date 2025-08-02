@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.4 alpha
+## 0.3.4
 
 - ai is a regular dependency
 - namespaces can be deleted if there are no entries left in them
