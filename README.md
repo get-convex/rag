@@ -446,7 +446,7 @@ See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
 ### OnComplete Handling
 
 You can register an `onComplete` handler when adding content that will be called
-when the entry is ready, or if there was an error or it was replaced before it
+when the entry was created and is ready, or if there was an error or it was replaced before it
 finished.
 
 ```ts
@@ -467,6 +467,24 @@ export const docComplete = rag.defineOnComplete<DataModel>(
     // in the same transaction as the entry becoming ready.
   }
 );
+```
+
+Note: The `onComplete` callback is only triggered when new content is processed. If you add content that already exists (`contentHash` did not change for the same `key`), `onComplete` will not be called.
+To handle this case, you can check the return value of `rag.add()`:
+
+```ts
+const { status, created } = await rag.add(ctx, {
+  namespace,
+  text,
+  key: "my-key",
+  contentHash: "...",
+  onComplete: internal.foo.docComplete,
+});
+
+if (status === "ready" && !created) {
+  // Entry already existed - onComplete will not be called
+  // Handle this case if needed
+}
 ```
 
 ### Add Entries with filters from a URL
