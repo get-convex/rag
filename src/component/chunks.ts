@@ -193,15 +193,17 @@ export const replaceChunksPage = mutation({
     const previousEntry = await getPreviousEntry(ctx, entry);
     const pendingEntries =
       entry.key && previousEntry
-        ? await ctx.db
-            .query("entries")
-            .withIndex("namespaceId_status_key_version", (q) =>
-              q
-                .eq("namespaceId", entry.namespaceId)
-                .eq("status.kind", "pending")
-                .eq("key", entry.key)
-            )
-            .collect()
+        ? (
+            await ctx.db
+              .query("entries")
+              .withIndex("namespaceId_status_key_version", (q) =>
+                q
+                  .eq("namespaceId", entry.namespaceId)
+                  .eq("status.kind", "pending")
+                  .eq("key", entry.key)
+              )
+              .collect()
+          ).filter((e) => e._id !== entry._id)
         : [];
     const chunkStream = mergedStream(
       [entry, ...pendingEntries, previousEntry]

@@ -640,6 +640,24 @@ describe("chunks", () => {
       expect(ranges[0]?.order).toBe(1);
       expect(ranges[1]?.entryId).toBe(docV2Id);
       expect(ranges[1]?.order).toBe(1);
+
+      await t.run(async (ctx) => {
+        const chunks = await ctx.db
+          .query("chunks")
+          .withIndex("entryId_order", (q) => q.eq("entryId", docV2Id))
+          .collect();
+        expect(chunks).toHaveLength(3);
+        assert(chunks[0].state.kind === "ready");
+        assert(chunks[1].state.kind === "ready");
+        assert(chunks[2].state.kind === "ready");
+        const embeddings = await ctx.db.query("vectors_128").collect();
+        // should only have 3 embeddings total
+        expect(embeddings).toHaveLength(3);
+        expect(embeddings[0]._id).toEqual(chunks[0].state.embeddingId);
+        expect(embeddings[1]._id).toEqual(chunks[1].state.embeddingId);
+        expect(embeddings[2]._id).toEqual(chunks[2].state.embeddingId);
+        return embeddings;
+      });
     });
 
     test("finds chunks before and after a chunk", async () => {
