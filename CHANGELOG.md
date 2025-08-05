@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5
+
+- Fix orphaned embeddings when replacing content
+
 ## 0.3.4
 
 - ai is a regular dependency
