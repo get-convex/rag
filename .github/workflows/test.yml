@@ -5,7 +5,7 @@ concurrency:
 
 on:
   push:
-    branches: [main]
+    branches: [main, ian/ai-v5]
   pull_request:
     branches: ["**"]
 
@@ -23,11 +23,15 @@ jobs:
         with:
           node-version: "18.20.8"
 
-      - run: |
+      - name: Install dependencies
+        run: |
           npm i
           npm run build
           cd example && npm i
-      - run: |
+      - name: pkg-pr-new
+        run: pkg-pr-new publish .
+      - name: Test
+        run: |
           npm run test
           npm run typecheck
           npm run lint
