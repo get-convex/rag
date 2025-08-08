@@ -42,7 +42,6 @@ import { searchVector, vectorWithImportance } from "./importance.js";
 //   },
 // });
 
-
 export async function insertEmbedding(
   ctx: MutationCtx,
   embedding: number[],

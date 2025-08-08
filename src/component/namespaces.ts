@@ -312,7 +312,6 @@ export const listNamespaceVersions = query({
   },
 });
 
-
 export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   const { _id, _creationTime, status, ...rest } = namespace;
   return {

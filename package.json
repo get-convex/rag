@@ -30,6 +30,7 @@
     "build": "tsc --project ./tsconfig.build.json && npm run copy:dts && echo '{\\n  \"type\": \"module\"\\n}' > dist/package.json",
     "copy:dts": "rsync -a --include='*/' --include='*.d.ts' --exclude='*' src/ dist/ || cpy 'src/**/*.d.ts' 'dist/' --parents",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write src example/convex",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
     "alpha": "npm run clean && npm run build && run-p test lint typecheck && npm version prerelease --preid alpha && npm publish --tag alpha && git push --tags",
     "release": "npm run clean && npm run build && run-p test lint typecheck && npm version patch && npm publish && git push --tags",

@@ -102,7 +102,6 @@ export const search = action({
     query: v.string(),
   },
   handler: async (ctx, args) => {
-
     const { results, text, entries } = await rag.search(ctx, {
       namespace: "global",
       query: args.query,
@@ -191,7 +190,10 @@ await rag.add(ctx, {
   filterValues: [
     { name: "category", value: "news" },
     { name: "contentType", value: "article" },
-    { name: "categoryAndType", value: { category: "news", contentType: "article" } },
+    {
+      name: "categoryAndType",
+      value: { category: "news", contentType: "article" },
+    },
   ],
 });
 ```
@@ -232,6 +234,7 @@ duplicate chunks, but instead give priority to adding the "before" context
 to each chunk.
 For example if you requested 2 before and 1 after, and your results were for
 the same entryId indexes 1, 4, and 7, the results would be:
+
 ```ts
 [
   // Only one before chunk available, and leaves chunk2 for the next result.
@@ -311,31 +314,36 @@ const { results, text, entries } = await rag.search(ctx, {
 });
 
 // Get results in the order of the entries (highest score first)
-const contexts = entries.map((e) => {
-  const ranges = results
-    .filter((r) => r.entryId === e.entryId)
-    .sort((a, b) => a.startOrder - b.startOrder);
-  let text = (e.title ?? "") + ":\n\n";
-  let previousEnd = 0;
-  for (const range of ranges) {
-    if (range.startOrder !== previousEnd) {
-      text += "\n...\n";
+const contexts = entries
+  .map((e) => {
+    const ranges = results
+      .filter((r) => r.entryId === e.entryId)
+      .sort((a, b) => a.startOrder - b.startOrder);
+    let text = (e.title ?? "") + ":\n\n";
+    let previousEnd = 0;
+    for (const range of ranges) {
+      if (range.startOrder !== previousEnd) {
+        text += "\n...\n";
+      }
+      text += range.content.map((c) => c.text).join("\n");
+      previousEnd = range.startOrder + range.content.length;
     }
-    text += range.content.map((c) => c.text).join("\n");
-    previousEnd = range.startOrder + range.content.length;
-  }
-  return {
-    ...e,
-    entryId: e.entryId as EntryId,
-    filterValues: e.filterValues as EntryFilterValues<FitlerSchemas>[],
-    text,
-  };
-}).map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text));
+    return {
+      ...e,
+      entryId: e.entryId as EntryId,
+      filterValues: e.filterValues as EntryFilterValues<FitlerSchemas>[],
+      text,
+    };
+  })
+  .map((e) => (e.title ? `# ${e.title}:\n${e.text}` : e.text));
 
 await generateText({
   model: openai.chat("gpt-4o-mini"),
-  prompt: "Use the following context:\n\n" + contexts.join("\n---\n") +
-    "\n\n---\n\n Based on the context, answer the question:\n\n" + args.query,
+  prompt:
+    "Use the following context:\n\n" +
+    contexts.join("\n---\n") +
+    "\n\n---\n\n Based on the context, answer the question:\n\n" +
+    args.query,
 });
 ```
 
@@ -380,7 +388,6 @@ The simplest version makes an array of strings like `content.split("\n")`.
 Note: you can pass in an async iterator instead of an array to handle large content.
 Or use the `addAsync` function (see below).
 
-
 ## Providing custom embeddings per-chunk
 
 In addition to the text, you can provide your own embeddings for each chunk.
@@ -390,12 +397,14 @@ contents, e.g. a summary of each chunk.
 
 ```ts
 const chunks = await textSplitter.split(content);
-const chunksWithEmbeddings = await Promise.all(chunks.map(async chunk => {
-  return {
-    ...chunk,
-    embedding: await embedSummary(chunk)
-  }
-}));
+const chunksWithEmbeddings = await Promise.all(
+  chunks.map(async (chunk) => {
+    return {
+      ...chunk,
+      embedding: await embedSummary(chunk),
+    };
+  })
+);
 await rag.add(ctx, { namespace: "global", chunks });
 ```
 
@@ -405,6 +414,7 @@ For large files, you can upload them to file storage, then provide a chunker
 action to split them into chunks.
 
 In `convex/http.ts`:
+
 ```ts
 import { corsRouter } from "convex-helpers/server/cors";
 import { httpRouter } from "convex/server";
@@ -446,7 +456,7 @@ See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
 ### OnComplete Handling
 
 You can register an `onComplete` handler when adding content that will be called
-when the entry is ready, or if there was an error or it was replaced before it
+when the entry was created and is ready, or if there was an error or it was replaced before it
 finished.
 
 ```ts
@@ -467,6 +477,24 @@ export const docComplete = rag.defineOnComplete<DataModel>(
     // in the same transaction as the entry becoming ready.
   }
 );
+```
+
+Note: The `onComplete` callback is only triggered when new content is processed. If you add content that already exists (`contentHash` did not change for the same `key`), `onComplete` will not be called.
+To handle this case, you can check the return value of `rag.add()`:
+
+```ts
+const { status, created } = await rag.add(ctx, {
+  namespace,
+  text,
+  key: "my-key",
+  contentHash: "...",
+  onComplete: internal.foo.docComplete,
+});
+
+if (status === "ready" && !created) {
+  // Entry already existed - onComplete will not be called
+  // Handle this case if needed
+}
 ```
 
 ### Add Entries with filters from a URL
@@ -548,7 +576,12 @@ export const deleteOldContent = internalMutation({
 
 // See example/convex/crons.ts for a complete example.
 const crons = cronJobs();
-crons.interval("deleteOldContent", { hours: 1 }, internal.crons.deleteOldContent, {});
+crons.interval(
+  "deleteOldContent",
+  { hours: 1 },
+  internal.crons.deleteOldContent,
+  {}
+);
 export default crons;
 ```
 
@@ -588,6 +621,7 @@ provided:
 This is the default chunker used by the `add` and `addAsync` functions.
 
 It is customizable, but by default:
+
 - It tries to break up the text into paragraphs between 100-1k characters.
 - It will combine paragraphs to meet the minimum character count (100).
 - It will break up paragraphs into separate lines to keep it under 1k.
@@ -618,25 +652,20 @@ import { hybridRank } from "@convex-dev/rag";
 
 const textSearchResults = [id1, id2, id3];
 const vectorSearchResults = [id2, id3, id1];
-const results = hybridRank([
-  textSearchResults,
-  vectorSearchResults,
-]);
+const results = hybridRank([textSearchResults, vectorSearchResults]);
 // results = [id2, id1, id3]
 ```
 
 It can take more than two arrays, and you can provide weights for each array.
 
 ```ts
-
 const recentSearchResults = [id5, id4, id3];
-const results = hybridRank([
-  textSearchResults,
-  vectorSearchResults,
-  recentSearchResults,
-], {
-  weights: [2, 1, 3], // prefer recent results more than text or vector
-});
+const results = hybridRank(
+  [textSearchResults, vectorSearchResults, recentSearchResults],
+  {
+    weights: [2, 1, 3], // prefer recent results more than text or vector
+  }
+);
 // results = [ id3, id5, id1, id2, id4 ]
 ```
 
@@ -644,11 +673,10 @@ To have it more biased towards the top few results, you can set the `k` value
 to a lower number (10 by default).
 
 ```ts
-const results = hybridRank([
-  textSearchResults,
-  vectorSearchResults,
-  recentSearchResults,
-], { k: 1 });
+const results = hybridRank(
+  [textSearchResults, vectorSearchResults, recentSearchResults],
+  { k: 1 }
+);
 // results = [ id5, id1, id3, id2, id4 ]
 ```
 
@@ -666,7 +694,6 @@ import { contentHashFromArrayBuffer } from "@convex-dev/rag";
 export const addFile = action({
   args: { bytes: v.bytes() },
   handler: async (ctx, { bytes }) => {
-
     const hash = await contentHashFromArrayBuffer(bytes);
 
     const existing = await rag.findEntryByContentHash(ctx, {
@@ -712,4 +739,5 @@ See more example usage in [example.ts](./example/convex/example.ts).
 ### Running the example
 
 Run the example with `npm i && npm run setup && npm run example`.
+
 <!-- END: Include on https://convex.dev/components -->

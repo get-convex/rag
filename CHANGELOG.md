@@ -1,10 +1,18 @@
 # Changelog
 
+## 0.5.1
+
+- Fix orphaned embeddings when replacing content
+
 ## 0.5.0 AI SDK v5 support
 
 - Adds support for AI SDK v5
 
-## 0.3.4 alpha
+## 0.3.5
+
+- Fix orphaned embeddings when replacing content
+
+## 0.3.4
 
 - ai is a regular dependency
 - namespaces can be deleted if there are no entries left in them
