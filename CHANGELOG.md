@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- Support text embedding models as a string
+
 ## 0.5.1
 
 - Fix orphaned embeddings when replacing content
