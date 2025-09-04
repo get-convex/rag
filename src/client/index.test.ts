@@ -94,7 +94,7 @@ export const search = action({
     ),
   },
   handler: async (ctx, args) => {
-    const { results, entries, text } = await rag.search(ctx, {
+    const { results, entries, text, usage } = await rag.search(ctx, {
       query: args.embedding,
       namespace: args.namespace,
       limit: args.limit ?? 10,
@@ -105,6 +105,7 @@ export const search = action({
       results,
       text,
       entries,
+      usage,
     };
   },
 });
@@ -127,7 +128,7 @@ function dummyEmbeddings(text: string) {
 describe("RAG thick client", () => {
   test("should add a entry and be able to list it", async () => {
     const t = initConvexTest(schema);
-    const { entryId, status } = await t.mutation(testApi.add, {
+    const { entryId, status, usage } = await t.mutation(testApi.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
@@ -138,6 +139,7 @@ describe("RAG thick client", () => {
     });
     expect(entryId).toBeDefined();
     expect(status).toBe("ready");
+    expect(usage).toEqual({ tokens: 0 });
     await t.run(async (ctx) => {
       const { isDone, page } = await rag.listChunks(ctx, {
         entryId,
@@ -167,14 +169,15 @@ describe("RAG thick client", () => {
 
   test("should be able to re-add an entry with the same key", async () => {
     const t = initConvexTest(schema);
-    const { entryId, status } = await t.mutation(testApi.add, {
+    const { entryId, status, usage } = await t.mutation(testApi.add, {
       key: "test",
       chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
       namespace: "test",
     });
     expect(entryId).toBeDefined();
     expect(status).toBe("ready");
-    const { entryId: entryId2, status: status2 } = await t.mutation(
+    expect(usage).toEqual({ tokens: 0 });
+    const { entryId: entryId2, status: status2, usage: usage2 } = await t.mutation(
       testApi.add,
       {
         key: "test",
@@ -184,6 +187,7 @@ describe("RAG thick client", () => {
     );
     expect(entryId2).toBeDefined();
     expect(status2).toBe("ready");
+    expect(usage2).toEqual({ tokens: 0 });
     const { page } = await t.query(components.rag.chunks.list, {
       entryId: entryId2,
       paginationOpts: { numItems: 10, cursor: null },
@@ -224,7 +228,7 @@ describe("RAG thick client", () => {
       });
 
       // Search and verify text format
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries, usage } = await t.action(testApi.search, {
         embedding: dummyEmbeddings("content"),
         namespace: "format-test",
         limit: 10,
@@ -241,6 +245,7 @@ describe("RAG thick client", () => {
       expect(text).toBe(
         "## Test Document:\n\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       );
+      expect(usage).toEqual({ tokens: 0 });
     });
 
     test("should format single entry without title correctly", async () => {
@@ -259,7 +264,7 @@ describe("RAG thick client", () => {
         namespace: "format-test-notitle",
       });
 
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries, usage } = await t.action(testApi.search, {
         embedding: dummyEmbeddings("content"),
         namespace: "format-test-notitle",
         limit: 10,
@@ -270,6 +275,7 @@ describe("RAG thick client", () => {
       expect(entries).toHaveLength(1);
       expect(entries[0].text).toBe("Content without title");
       expect(text).toBe("Content without title");
+      expect(usage).toEqual({ tokens: 0 });
     });
 
     test("should format non-sequential chunks with ellipsis separator", async () => {

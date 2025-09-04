@@ -4,6 +4,7 @@ import {
   generateText,
   type ModelMessage,
   type EmbeddingModel,
+  type EmbeddingModelUsage,
 } from "ai";
 import { assert } from "convex-helpers";
 import {
@@ -163,6 +164,7 @@ export class RAG<
     status: Status;
     created: boolean;
     replacedEntry: Entry<FitlerSchemas, EntryMetadata> | null;
+    usage: EmbeddingModelUsage;
   }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -179,11 +181,14 @@ export class RAG<
 
     const chunks = args.chunks ?? defaultChunker(args.text);
     let allChunks: CreateChunkArgs[] | undefined;
+    const totalUsage: EmbeddingModelUsage = { tokens: 0 };
     if (Array.isArray(chunks) && chunks.length < CHUNK_BATCH_SIZE) {
-      allChunks = await createChunkArgsBatch(
+      const result = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
         chunks
       );
+      allChunks = result.chunks;
+      totalUsage.tokens += result.usage.tokens;
     }
 
     const onComplete =
@@ -211,6 +216,7 @@ export class RAG<
         status,
         created,
         replacedEntry: null,
+        usage: totalUsage,
       };
     }
 
@@ -222,16 +228,17 @@ export class RAG<
       // break chunks up into batches, respecting soft limit
       let startOrder = 0;
       for await (const batch of batchIterator(chunks, CHUNK_BATCH_SIZE)) {
-        const chunks = await createChunkArgsBatch(
+        const result = await createChunkArgsBatch(
           this.options.textEmbeddingModel,
           batch
         );
+        totalUsage.tokens += result.usage.tokens;
         const { status } = await ctx.runMutation(this.component.chunks.insert, {
           entryId,
           startOrder,
-          chunks,
+          chunks: result.chunks,
         });
-        startOrder += chunks.length;
+        startOrder += result.chunks.length;
         if (status === "pending") {
           isPending = true;
         }
@@ -253,6 +260,7 @@ export class RAG<
             status: "replaced" as const,
             created: false,
             replacedEntry: null,
+            usage: totalUsage,
           };
         }
         startOrder = nextStartOrder;
@@ -270,6 +278,7 @@ export class RAG<
         EntryMetadata
       > | null,
       created: true,
+      usage: totalUsage,
     };
   }
 
@@ -377,6 +386,7 @@ export class RAG<
     results: SearchResult[];
     text: string;
     entries: SearchEntry<FitlerSchemas, EntryMetadata>[];
+    usage: EmbeddingModelUsage;
   }> {
     const {
       namespace,
@@ -386,12 +396,14 @@ export class RAG<
       vectorScoreThreshold,
     } = args;
     let embedding = Array.isArray(args.query) ? args.query : undefined;
+    let usage: EmbeddingModelUsage = { tokens: 0 };
     if (!embedding) {
       const embedResult = await embed({
         model: this.options.textEmbeddingModel,
         value: args.query,
       });
       embedding = embedResult.embedding;
+      usage = embedResult.usage;
     }
     const { results, entries } = await ctx.runAction(
       this.component.search.search,
@@ -431,6 +443,7 @@ export class RAG<
         .map((e) => (e.title ? `## ${e.title}:\n\n${e.text}` : e.text))
         .join(`\n\n---\n\n`),
       entries: entriesWithTexts,
+      usage,
     };
   }
 
@@ -880,7 +893,7 @@ export class RAG<
           chunkIterator,
           CHUNK_BATCH_SIZE
         )) {
-          const createChunkArgs = await createChunkArgsBatch(
+          const result = await createChunkArgsBatch(
             this.options.textEmbeddingModel,
             batch
           );
@@ -893,10 +906,10 @@ export class RAG<
             {
               entryId: entry.entryId,
               startOrder: batchOrder,
-              chunks: createChunkArgs,
+              chunks: result.chunks,
             }
           );
-          batchOrder += createChunkArgs.length;
+          batchOrder += result.chunks.length;
         }
       },
     });
@@ -961,7 +974,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 async function createChunkArgsBatch(
   embedModel: EmbeddingModel<string>,
   chunks: InputChunk[]
-): Promise<CreateChunkArgs[]> {
+): Promise<{ chunks: CreateChunkArgs[]; usage: EmbeddingModelUsage }> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
     embedding?: number[];
   })[] = chunks.map((chunk) => {
@@ -995,21 +1008,24 @@ async function createChunkArgsBatch(
           }
     )
     .filter((b) => b !== null);
+  const totalUsage: EmbeddingModelUsage = { tokens: 0 };
   for (const batch of makeBatches(missingEmbeddingsWithIndex, 100)) {
-    const { embeddings } = await embedMany({
+    const { embeddings, usage } = await embedMany({
       model: embedModel,
       values: batch.map((b) => b.text.trim() || "<empty>"),
     });
+    totalUsage.tokens += usage.tokens;
     for (const [index, embedding] of embeddings.entries()) {
       argsMaybeMissingEmbeddings[batch[index].index].embedding = embedding;
     }
   }
-  return argsMaybeMissingEmbeddings.filter((a) => {
+  const finalChunks = argsMaybeMissingEmbeddings.filter((a) => {
     if (a.embedding === undefined) {
       throw new Error("Embedding is undefined for chunk " + a.content.text);
     }
     return true;
   }) as CreateChunkArgs[];
+  return { chunks: finalChunks, usage: totalUsage };
 }
 
 type MastraChunk = {
