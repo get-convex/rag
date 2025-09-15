@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3
+
+- Return usage data from embedding for search/add
+
 ## 0.5.2
 
 - Support text embedding models as a string
