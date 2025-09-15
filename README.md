@@ -95,6 +95,7 @@ Search across content with vector similarity
 - `results` is an array of matching chunks with scores and more metadata.
 - `entries` is an array of the entries that matched the query.
   Each result has a `entryId` referencing one of these source entries.
+- `usage` contains embedding token usage information. Will be `{ tokens: 0 }` if no embedding was performed (e.g. when passing pre-computed embeddings).
 
 ```ts
 export const search = action({
@@ -102,14 +103,14 @@ export const search = action({
     query: v.string(),
   },
   handler: async (ctx, args) => {
-    const { results, text, entries } = await rag.search(ctx, {
+    const { results, text, entries, usage } = await rag.search(ctx, {
       namespace: "global",
       query: args.query,
       limit: 10,
       vectorScoreThreshold: 0.5, // Only return results with a score >= 0.5
     });
 
-    return { results, text, entries };
+    return { results, text, entries, usage };
   },
 });
 ```
@@ -253,14 +254,14 @@ export const searchWithContext = action({
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const { results, text, entries } = await rag.search(ctx, {
+    const { results, text, entries, usage } = await rag.search(ctx, {
       namespace: args.userId,
       query: args.query,
       chunkContext: { before: 2, after: 1 }, // Include 2 chunks before, 1 after
       limit: 5,
     });
 
-    return { results, text, entries };
+    return { results, text, entries, usage };
   },
 });
 ```
