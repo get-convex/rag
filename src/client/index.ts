@@ -410,7 +410,7 @@ export class RAG<
       {
         embedding,
         namespace,
-        modelId: this.options.textEmbeddingModel.modelId,
+        modelId: getModelId(this.options.textEmbeddingModel),
         filters,
         limit,
         vectorScoreThreshold,
@@ -629,7 +629,7 @@ export class RAG<
       namespace: args.namespace,
       dimension: this.options.embeddingDimension,
       filterNames: this.options.filterNames ?? [],
-      modelId: this.options.textEmbeddingModel.modelId,
+      modelId: getModelId(this.options.textEmbeddingModel),
       key: args.key,
       contentHash: args.contentHash,
     });
@@ -675,7 +675,7 @@ export class RAG<
         namespace: args.namespace,
         status: args.status ?? "ready",
         onComplete,
-        modelId: this.options.textEmbeddingModel.modelId,
+        modelId: getModelId(this.options.textEmbeddingModel),
         dimension: this.options.embeddingDimension,
         filterNames: this.options.filterNames ?? [],
       }
@@ -695,7 +695,7 @@ export class RAG<
   ): Promise<Namespace | null> {
     return ctx.runQuery(this.component.namespaces.get, {
       namespace: args.namespace,
-      modelId: this.options.textEmbeddingModel.modelId,
+      modelId: getModelId(this.options.textEmbeddingModel),
       dimension: this.options.embeddingDimension,
       filterNames: this.options.filterNames ?? [],
     }) as Promise<Namespace | null>;
@@ -847,9 +847,10 @@ export class RAG<
       args: vChunkerArgs,
       handler: async (ctx, args) => {
         const { namespace, entry } = args;
-        if (namespace.modelId !== this.options.textEmbeddingModel.modelId) {
+        const modelId = getModelId(this.options.textEmbeddingModel);
+        if (namespace.modelId !== modelId) {
           console.error(
-            `You are using a different embedding model ${this.options.textEmbeddingModel.modelId} for asynchronously ` +
+            `You are using a different embedding model ${modelId} for asynchronously ` +
               `generating chunks than the one provided when it was started: ${namespace.modelId}`
           );
           return;
@@ -1190,4 +1191,28 @@ function getModelCategory(model: string | { provider: string }) {
     return "xai";
   }
   return model;
+}
+
+// fetch metadata from either a string or EmbeddingModelV2 or LanguageModelV2
+export type ModelOrMetadata =
+  | string
+  | ({ provider: string } & ({ modelId: string } | { model: string }));
+
+export function getModelId(embeddingModel: ModelOrMetadata): string {
+  if (typeof embeddingModel === "string") {
+    if (embeddingModel.includes("/")) {
+      return embeddingModel.split("/").slice(1).join("/");
+    }
+    return embeddingModel;
+  }
+  return "modelId" in embeddingModel
+    ? embeddingModel.modelId
+    : embeddingModel.model;
+}
+
+export function getProviderName(embeddingModel: ModelOrMetadata): string {
+  if (typeof embeddingModel === "string") {
+    return embeddingModel.split("/").at(0)!;
+  }
+  return embeddingModel.provider;
 }
