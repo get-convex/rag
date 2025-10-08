@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4
+
+- Support gateway string IDs for models
+
 ## 0.5.3
 
 - Return usage data from embedding for search/add
