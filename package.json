@@ -67,7 +67,7 @@
     "convex-helpers": "^0.1.94"
   },
   "devDependencies": {
-    "@ai-sdk/openai": "2.0.0",
+    "@ai-sdk/openai": "2.0.46",
     "@arethetypeswrong/cli": "0.17.4",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/js": "9.29.0",
