@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@ai-sdk/openai": "2.0.46",
-    "@arethetypeswrong/cli": "0.17.4",
+    "@arethetypeswrong/cli": "0.18.2",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/js": "9.29.0",
     "@types/node": "18.17.0",
