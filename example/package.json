@@ -33,7 +33,7 @@
     "convex-test": "0.0.37",
     "eslint": "9.29.0",
     "eslint-plugin-react-hooks": "5.2.0",
-    "eslint-plugin-react-refresh": "0.4.20",
+    "eslint-plugin-react-refresh": "0.4.23",
     "globals": "15.15.0",
     "npm-run-all2": "7.0.2",
     "postcss": "8.5.6",
