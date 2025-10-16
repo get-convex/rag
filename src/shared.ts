@@ -3,6 +3,7 @@ import type { Infer, Validator, Value, VObject } from "convex/values";
 import { vNamedFilter, type NamedFilter } from "./component/filters.js";
 import { brandedString } from "convex-helpers/validators";
 import type { FunctionReference } from "convex/server";
+import { OpaqueIds } from "./client/types.js";
 
 // A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
 // Also a reasonable number of writes to the DB.
@@ -197,32 +198,34 @@ export const vOnCompleteArgs = v.object({
   error: v.optional(v.string()),
 });
 
-export type OnComplete<
+export type OnCompleteArgs<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Filters extends Record<string, Value> = any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   EntryMetadata extends Record<string, Value> = any,
-> = FunctionReference<
+> = {
+  /**
+   * The namespace that the entry belongs to.
+   */
+  namespace: Namespace;
+  /**
+   * The entry that was added.
+   */
+  entry: Entry<Filters, EntryMetadata>;
+  /**
+   * The previous "ready" entry with the same key that was replaced.
+   */
+  replacedEntry: Entry<Filters, EntryMetadata> | undefined;
+  /**
+   * If async generation failed, this is the error.
+   */
+  error: string | undefined;
+};
+
+export type OnComplete = FunctionReference<
   "mutation",
   "internal",
-  {
-    /**
-     * The namespace that the entry belongs to.
-     */
-    namespace: Namespace;
-    /**
-     * The entry that was added.
-     */
-    entry: Entry<Filters, EntryMetadata>;
-    /**
-     * The previous "ready" entry with the same key that was replaced.
-     */
-    replacedEntry: Entry<Filters, EntryMetadata> | undefined;
-    /**
-     * If async generation failed, this is the error.
-     */
-    error: string | undefined;
-  },
+  OpaqueIds<Infer<typeof vOnCompleteArgs>>,
   null
 >;
 
@@ -235,7 +238,7 @@ export const vChunkerArgs = v.object({
 export type ChunkerAction = FunctionReference<
   "action",
   "internal",
-  Infer<typeof vChunkerArgs>,
+  OpaqueIds<Infer<typeof vChunkerArgs>>,
   null
 >;
 

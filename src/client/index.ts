@@ -26,6 +26,7 @@ import { type Value } from "convex/values";
 import {
   CHUNK_BATCH_SIZE,
   filterNamesContain,
+  OnCompleteArgs,
   vChunkerArgs,
   vEntryId,
   vNamespaceId,
@@ -802,13 +803,9 @@ export class RAG<
   defineOnComplete<DataModel extends GenericDataModel>(
     fn: (
       ctx: GenericMutationCtx<DataModel>,
-      args: FunctionArgs<OnComplete<FitlerSchemas, EntryMetadata>>
+      args: OnCompleteArgs<FitlerSchemas, EntryMetadata>
     ) => Promise<void>
-  ): RegisteredMutation<
-    "internal",
-    FunctionArgs<OnComplete<FitlerSchemas, EntryMetadata>>,
-    null
-  > {
+  ): RegisteredMutation<"internal", FunctionArgs<OnComplete>, null> {
     return internalMutationGeneric({
       args: vOnCompleteArgs,
       handler: fn,
