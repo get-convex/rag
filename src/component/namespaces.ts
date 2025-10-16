@@ -18,11 +18,11 @@ import {
   vStatus,
   statuses,
   filterNamesContain,
-  Entry,
+  vEntry,
 } from "../shared.js";
 import { paginationOptsValidator, PaginationResult } from "convex/server";
 import { paginator } from "convex-helpers/server/pagination";
-import type { ObjectType } from "convex/values";
+import type { Infer, ObjectType } from "convex/values";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { assert } from "convex-helpers";
 import { api } from "./_generated/api.js";
@@ -360,17 +360,14 @@ export const deleteNamespaceSync = action({
     for (const status of statuses) {
       let cursor: string | null = null;
       while (true) {
-        const entries: PaginationResult<Entry> = await ctx.runQuery(
-          api.entries.list,
-          {
-            namespaceId: args.namespaceId,
-            status: status,
-            paginationOpts: {
-              numItems: 100,
-              cursor,
-            },
-          }
-        );
+        const entries = (await ctx.runQuery(api.entries.list, {
+          namespaceId: args.namespaceId,
+          status: status,
+          paginationOpts: {
+            numItems: 100,
+            cursor,
+          },
+        })) as PaginationResult<Infer<typeof vEntry>>;
         if (entries.isDone) {
           break;
         }

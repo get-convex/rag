@@ -8,40 +8,18 @@
  * @module
  */
 
-import type * as chunks from "../chunks.js";
-import type * as embeddings_importance from "../embeddings/importance.js";
-import type * as embeddings_index from "../embeddings/index.js";
-import type * as embeddings_tables from "../embeddings/tables.js";
-import type * as entries from "../entries.js";
-import type * as filters from "../filters.js";
-import type * as namespaces from "../namespaces.js";
-import type * as search from "../search.js";
-
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { FunctionReference } from "convex/server";
+import type { GenericId as Id } from "convex/values";
 
 /**
- * A utility for referencing Convex functions in your app's API.
+ * A utility for referencing Convex functions in your app's public API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-declare const fullApi: ApiFromModules<{
-  chunks: typeof chunks;
-  "embeddings/importance": typeof embeddings_importance;
-  "embeddings/index": typeof embeddings_index;
-  "embeddings/tables": typeof embeddings_tables;
-  entries: typeof entries;
-  filters: typeof filters;
-  namespaces: typeof namespaces;
-  search: typeof search;
-}>;
-export type Mounts = {
+export declare const api: {
   chunks: {
     insert: FunctionReference<
       "mutation",
@@ -52,7 +30,7 @@ export type Mounts = {
           embedding: Array<number>;
           searchableText?: string;
         }>;
-        entryId: string;
+        entryId: Id<"entries">;
         startOrder: number;
       },
       { status: "pending" | "ready" | "replaced" }
@@ -61,7 +39,7 @@ export type Mounts = {
       "query",
       "public",
       {
-        entryId: string;
+        entryId: Id<"entries">;
         order: "desc" | "asc";
         paginationOpts: {
           cursor: string | null;
@@ -88,7 +66,7 @@ export type Mounts = {
     replaceChunksPage: FunctionReference<
       "mutation",
       "public",
-      { entryId: string; startOrder: number },
+      { entryId: Id<"entries">; startOrder: number },
       { nextStartOrder: number; status: "pending" | "ready" | "replaced" }
     >;
   };
@@ -108,14 +86,14 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
-          namespaceId: string;
+          namespaceId: Id<"namespaces">;
           title?: string;
         };
         onComplete?: string;
       },
       {
         created: boolean;
-        entryId: string;
+        entryId: Id<"entries">;
         status: "pending" | "ready" | "replaced";
       }
     >;
@@ -130,35 +108,35 @@ export type Mounts = {
           importance: number;
           key?: string;
           metadata?: Record<string, any>;
-          namespaceId: string;
+          namespaceId: Id<"namespaces">;
           title?: string;
         };
         onComplete?: string;
       },
-      { created: boolean; entryId: string; status: "pending" | "ready" }
+      { created: boolean; entryId: Id<"entries">; status: "pending" | "ready" }
     >;
     deleteAsync: FunctionReference<
       "mutation",
       "public",
-      { entryId: string; startOrder: number },
+      { entryId: Id<"entries">; startOrder: number },
       null
     >;
     deleteByKeyAsync: FunctionReference<
       "mutation",
       "public",
-      { beforeVersion?: number; key: string; namespaceId: string },
+      { beforeVersion?: number; key: string; namespaceId: Id<"namespaces"> },
       null
     >;
     deleteByKeySync: FunctionReference<
       "action",
       "public",
-      { key: string; namespaceId: string },
+      { key: string; namespaceId: Id<"namespaces"> },
       null
     >;
     deleteSync: FunctionReference<
       "action",
       "public",
-      { entryId: string },
+      { entryId: Id<"entries"> },
       null
     >;
     findByContentHash: FunctionReference<
@@ -187,7 +165,7 @@ export type Mounts = {
     get: FunctionReference<
       "query",
       "public",
-      { entryId: string },
+      { entryId: Id<"entries"> },
       {
         contentHash?: string;
         entryId: string;
@@ -204,7 +182,7 @@ export type Mounts = {
       "query",
       "public",
       {
-        namespaceId?: string;
+        namespaceId?: Id<"namespaces">;
         order?: "desc" | "asc";
         paginationOpts: {
           cursor: string | null;
@@ -237,7 +215,7 @@ export type Mounts = {
     promoteToReady: FunctionReference<
       "mutation",
       "public",
-      { entryId: string },
+      { entryId: Id<"entries"> },
       {
         replacedEntry: {
           contentHash?: string;
@@ -257,7 +235,7 @@ export type Mounts = {
     deleteNamespace: FunctionReference<
       "mutation",
       "public",
-      { namespaceId: string },
+      { namespaceId: Id<"namespaces"> },
       {
         deletedNamespace: null | {
           createdAt: number;
@@ -274,7 +252,7 @@ export type Mounts = {
     deleteNamespaceSync: FunctionReference<
       "action",
       "public",
-      { namespaceId: string },
+      { namespaceId: Id<"namespaces"> },
       null
     >;
     get: FunctionReference<
@@ -308,7 +286,7 @@ export type Mounts = {
         onComplete?: string;
         status: "pending" | "ready";
       },
-      { namespaceId: string; status: "pending" | "ready" }
+      { namespaceId: Id<"namespaces">; status: "pending" | "ready" }
     >;
     list: FunctionReference<
       "query",
@@ -381,12 +359,12 @@ export type Mounts = {
         modelId: string;
         namespace: string;
       },
-      null | string
+      null | Id<"namespaces">
     >;
     promoteToReady: FunctionReference<
       "mutation",
       "public",
-      { namespaceId: string },
+      { namespaceId: Id<"namespaces"> },
       {
         replacedNamespace: null | {
           createdAt: number;
@@ -437,19 +415,130 @@ export type Mounts = {
     >;
   };
 };
-// For now fullApiWithMounts is only fullApi which provides
-// jump-to-definition in component client code.
-// Use Mounts for the same type without the inference.
-declare const fullApiWithMounts: typeof fullApi;
 
-export declare const api: FilterApi<
-  typeof fullApiWithMounts,
-  FunctionReference<any, "public">
->;
-export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
-  FunctionReference<any, "internal">
->;
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
+export declare const internal: {
+  chunks: {
+    deleteChunksPage: FunctionReference<
+      "mutation",
+      "internal",
+      { entryId: Id<"entries">; startOrder: number },
+      { isDone: boolean; nextStartOrder: number }
+    >;
+    getRangesOfChunks: FunctionReference<
+      "query",
+      "internal",
+      {
+        chunkContext: { after: number; before: number };
+        embeddingIds: Array<
+          | Id<"vectors_128">
+          | Id<"vectors_256">
+          | Id<"vectors_512">
+          | Id<"vectors_768">
+          | Id<"vectors_1024">
+          | Id<"vectors_1408">
+          | Id<"vectors_1536">
+          | Id<"vectors_2048">
+          | Id<"vectors_3072">
+          | Id<"vectors_4096">
+        >;
+      },
+      {
+        entries: Array<{
+          contentHash?: string;
+          entryId: string;
+          filterValues: Array<{ name: string; value: any }>;
+          importance: number;
+          key?: string;
+          metadata?: Record<string, any>;
+          replacedAt?: number;
+          status: "pending" | "ready" | "replaced";
+          title?: string;
+        }>;
+        ranges: Array<null | {
+          content: Array<{ metadata?: Record<string, any>; text: string }>;
+          entryId: Id<"entries">;
+          order: number;
+          startOrder: number;
+        }>;
+      }
+    >;
+  };
+  entries: {
+    _del: FunctionReference<
+      "mutation",
+      "internal",
+      { entryId: Id<"entries"> },
+      null
+    >;
+    addAsyncOnComplete: FunctionReference<
+      "mutation",
+      "internal",
+      {
+        context: Id<"entries">;
+        result:
+          | { kind: "success"; returnValue: any }
+          | { error: string; kind: "failed" }
+          | { kind: "canceled" };
+        workId: string;
+      },
+      null
+    >;
+    getEntriesForNamespaceByKey: FunctionReference<
+      "query",
+      "internal",
+      { beforeVersion?: number; key: string; namespaceId: Id<"namespaces"> },
+      Array<{
+        _creationTime: number;
+        _id: Id<"entries">;
+        contentHash?: string;
+        filterValues: Array<{ name: string; value: any }>;
+        importance: number;
+        key?: string;
+        metadata?: Record<string, any>;
+        namespaceId: Id<"namespaces">;
+        status:
+          | { kind: "pending"; onComplete?: string }
+          | { kind: "ready" }
+          | { kind: "replaced"; replacedAt: number };
+        title?: string;
+        version: number;
+      }>
+    >;
+  };
+  namespaces: {
+    getCompatibleNamespace: FunctionReference<
+      "query",
+      "internal",
+      {
+        dimension: number;
+        filterNames: Array<string>;
+        modelId: string;
+        namespace: string;
+      },
+      null | {
+        _creationTime: number;
+        _id: Id<"namespaces">;
+        dimension: number;
+        filterNames: Array<string>;
+        modelId: string;
+        namespace: string;
+        status:
+          | { kind: "pending"; onComplete?: string }
+          | { kind: "ready" }
+          | { kind: "replaced"; replacedAt: number };
+        version: number;
+      }
+    >;
+  };
+};
 
 export declare const components: {
   workpool: {
@@ -468,6 +557,7 @@ export declare const components: {
         "internal",
         {
           before?: number;
+          limit?: number;
           logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
         },
         any
@@ -494,6 +584,30 @@ export declare const components: {
         },
         string
       >;
+      enqueueBatch: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism: number;
+          };
+          items: Array<{
+            fnArgs: any;
+            fnHandle: string;
+            fnName: string;
+            fnType: "action" | "mutation" | "query";
+            onComplete?: { context?: any; fnHandle: string };
+            retryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            runAt: number;
+          }>;
+        },
+        Array<string>
+      >;
       status: FunctionReference<
         "query",
         "internal",
@@ -501,6 +615,16 @@ export declare const components: {
         | { previousAttempts: number; state: "pending" }
         | { previousAttempts: number; state: "running" }
         | { state: "finished" }
+      >;
+      statusBatch: FunctionReference<
+        "query",
+        "internal",
+        { ids: Array<string> },
+        Array<
+          | { previousAttempts: number; state: "pending" }
+          | { previousAttempts: number; state: "running" }
+          | { state: "finished" }
+        >
       >;
     };
   };

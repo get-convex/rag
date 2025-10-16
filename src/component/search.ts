@@ -5,7 +5,6 @@ import { numberedFiltersFromNamedFilters, vNamedFilter } from "./filters.js";
 import { internal } from "./_generated/api.js";
 import {
   vEntry,
-  type Entry,
   vSearchResult,
   type SearchResult,
   type EntryId,
@@ -29,13 +28,7 @@ export const search = action({
     results: v.array(vSearchResult),
     entries: v.array(vEntry),
   }),
-  handler: async (
-    ctx,
-    args
-  ): Promise<{
-    results: SearchResult[];
-    entries: Entry[];
-  }> => {
+  handler: async (ctx, args) => {
     const { modelId, embedding, filters, limit } = args;
     const namespace = await ctx.runQuery(
       internal.namespaces.getCompatibleNamespace,
@@ -77,7 +70,7 @@ export const search = action({
       results: ranges
         .map((r, i) => publicSearchResult(r, aboveThreshold[i]._score))
         .filter((r) => r !== null),
-      entries,
+      entries: entries as Infer<typeof vEntry>[],
     };
   },
 });
