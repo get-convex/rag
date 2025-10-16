@@ -1,6 +1,7 @@
 import { literals } from "convex-helpers/validators";
 import {
   defineTable,
+  GenericTableIndexes,
   type GenericTableSearchIndexes,
   type SchemaDefinition,
   type TableDefinition,
@@ -32,7 +33,7 @@ function table(dimensions: VectorDimension): Table {
 
 type Table = TableDefinition<
   VObject<ObjectType<typeof embeddingsFields>, typeof embeddingsFields>,
-  { model_table_threadId: ["model", "table", "threadId", "_creationTime"] },
+  GenericTableIndexes,
   GenericTableSearchIndexes,
   VectorIndex
 >;
@@ -41,7 +42,7 @@ type VectorIndex = {
   vector: {
     vectorField: "vector";
     dimensions: number;
-    filterFields: string;
+    filterFields: keyof typeof vAllFilterFields & string;
   };
 };
 
