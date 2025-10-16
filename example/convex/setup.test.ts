@@ -5,15 +5,11 @@ import schema from "./schema.js";
 export const modules = import.meta.glob("./**/*.*s");
 
 // This is how users write tests that use your component.
-import componentSchema from "../node_modules/@convex-dev/rag/src/component/schema.js";
-export { componentSchema };
-export const componentModules = import.meta.glob(
-  "../node_modules/@convex-dev/rag/src/component/**/*.ts"
-);
+import rag from "@convex-dev/rag/test";
 
 export function initConvexTest() {
   const t = convexTest(schema, modules);
-  t.registerComponent("agent", componentSchema, componentModules);
+  rag.register(t, "rag");
   return t;
 }
 
