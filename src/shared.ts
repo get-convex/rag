@@ -78,10 +78,7 @@ export type VEntry<
 const _1: Entry = {} as Infer<typeof vEntry> & { status: "pending" | "ready" };
 const _2: Infer<typeof vEntry> = {} as Entry;
 
-export const vSearchEntry = v.object({
-  ...vEntry.fields,
-  text: v.string(),
-});
+export const vSearchEntry = v.object({ ...vEntry.fields, text: v.string() });
 
 export type VSearchEntry<
   Filters extends Record<string, Value>,
@@ -96,9 +93,7 @@ export type VSearchEntry<
 export type SearchEntry<
   Filters extends Record<string, Value>,
   Metadata extends Record<string, Value>,
-> = Entry<Filters, Metadata> & {
-  text: string;
-};
+> = Entry<Filters, Metadata> & { text: string };
 
 export type EntryFilter<
   Filters extends Record<string, Value> = Record<string, Value>,
@@ -137,10 +132,7 @@ export type Entry<
       /** Whether this entry's contents have all been inserted and indexed. */
       status: "pending" | "ready";
     }
-  | {
-      status: "replaced";
-      replacedAt: number;
-    }
+  | { status: "replaced"; replacedAt: number }
 );
 
 export const vChunk = v.object({
@@ -183,10 +175,7 @@ export function vPaginationResult<
 export type OnCompleteNamespace = FunctionReference<
   "mutation",
   "internal",
-  {
-    namespace: Namespace;
-    replacedNamespace: Namespace | null;
-  },
+  { namespace: Namespace; replacedNamespace: Namespace | null },
   null,
   string
 >;

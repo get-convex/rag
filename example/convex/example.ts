@@ -30,15 +30,9 @@ import {
 } from "./_generated/server";
 import { getText } from "./getText";
 
-export type Filters = {
-  filename: string;
-  category: string | null;
-};
+export type Filters = { filename: string; category: string | null };
 
-type Metadata = {
-  storageId: Id<"_storage">;
-  uploadedBy: string;
-};
+type Metadata = { storageId: Id<"_storage">; uploadedBy: string };
 
 const rag = new RAG<Filters, Metadata>(components.rag, {
   filterNames: ["filename", "category"],
@@ -85,10 +79,7 @@ export const addFile = action({
       console.debug("entry already exists, skipping upload metadata");
       await ctx.storage.delete(storageId);
     }
-    return {
-      url: (await ctx.storage.getUrl(storageId))!,
-      entryId,
-    };
+    return { url: (await ctx.storage.getUrl(storageId))!, entryId };
   },
 });
 
@@ -98,10 +89,7 @@ export const search = action({
     globalNamespace: v.boolean(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({
-        before: v.number(),
-        after: v.number(),
-      })
+      v.object({ before: v.number(), after: v.number() })
     ),
   },
   handler: async (ctx, args) => {
@@ -113,10 +101,7 @@ export const search = action({
       limit: args.limit ?? 10,
       chunkContext: args.chunkContext,
     });
-    return {
-      ...results,
-      files: await toFiles(ctx, results.entries),
-    };
+    return { ...results, files: await toFiles(ctx, results.entries) };
   },
 });
 
@@ -127,10 +112,7 @@ export const searchFile = action({
     filename: v.string(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({
-        before: v.number(),
-        after: v.number(),
-      })
+      v.object({ before: v.number(), after: v.number() })
     ),
   },
   handler: async (ctx, args) => {
@@ -145,10 +127,7 @@ export const searchFile = action({
       filters: [{ name: "filename", value: args.filename }],
       limit: args.limit ?? 10,
     });
-    return {
-      ...results,
-      files: await toFiles(ctx, results.entries),
-    };
+    return { ...results, files: await toFiles(ctx, results.entries) };
   },
 });
 
@@ -159,10 +138,7 @@ export const searchCategory = action({
     category: v.string(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({
-        before: v.number(),
-        after: v.number(),
-      })
+      v.object({ before: v.number(), after: v.number() })
     ),
   },
   handler: async (ctx, args) => {
@@ -177,10 +153,7 @@ export const searchCategory = action({
       filters: [{ name: "category", value: args.category }],
       chunkContext: args.chunkContext,
     });
-    return {
-      ...results,
-      files: await toFiles(ctx, results.entries),
-    };
+    return { ...results, files: await toFiles(ctx, results.entries) };
   },
 });
 
@@ -194,18 +167,12 @@ export const askQuestion = action({
           name: v.literal("category"),
           value: v.union(v.null(), v.string()),
         }),
-        v.object({
-          name: v.literal("filename"),
-          value: v.string(),
-        })
+        v.object({ name: v.literal("filename"), value: v.string() })
       )
     ),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({
-        before: v.number(),
-        after: v.number(),
-      })
+      v.object({ before: v.number(), after: v.number() })
     ),
   },
   handler: async (ctx, args) => {
@@ -257,9 +224,7 @@ export async function addFileAsync(
   });
   if (existing) {
     console.debug("entry already exists, skipping async add");
-    return {
-      entryId: existing.entryId,
-    };
+    return { entryId: existing.entryId };
   }
   // If it doesn't exist, we need to store the file and chunk it asynchronously.
   const storageId = await ctx.storage.store(
@@ -277,10 +242,7 @@ export async function addFileAsync(
     chunkerAction: internal.example.chunkerAction,
     onComplete: internal.example.recordUploadMetadata,
   });
-  return {
-    url: (await ctx.storage.getUrl(storageId))!,
-    entryId,
-  };
+  return { url: (await ctx.storage.getUrl(storageId))!, entryId };
 }
 
 export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
