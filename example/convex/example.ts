@@ -417,7 +417,7 @@ export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
       await ctx.db.insert("fileMetadata", metadata);
     } else if (error) {
       console.debug("adding file failed", entry, error);
-      await rag.delete(ctx, { entryId: entry.entryId });
+      await rag.deleteAsync(ctx, { entryId: entry.entryId });
     }
   }
 );
