@@ -130,9 +130,7 @@ export async function insertChunks(
     );
     order++;
   }
-  return {
-    status: previousEntry ? ("pending" as const) : ("ready" as const),
-  };
+  return { status: previousEntry ? ("pending" as const) : ("ready" as const) };
 }
 
 async function ensureLatestEntryVersion(ctx: QueryCtx, entry: Doc<"entries">) {
@@ -163,14 +161,8 @@ async function ensureLatestEntryVersion(ctx: QueryCtx, entry: Doc<"entries">) {
 }
 
 export const replaceChunksPage = mutation({
-  args: v.object({
-    entryId: v.id("entries"),
-    startOrder: v.number(),
-  }),
-  returns: v.object({
-    status: vStatus,
-    nextStartOrder: v.number(),
-  }),
+  args: v.object({ entryId: v.id("entries"), startOrder: v.number() }),
+  returns: v.object({ status: vStatus, nextStartOrder: v.number() }),
   handler: async (ctx, args) => {
     const { entryId, startOrder } = args;
     const entryOrNull = await ctx.db.get(entryId);
@@ -180,10 +172,7 @@ export const replaceChunksPage = mutation({
     const entry = entryOrNull;
     const isLatest = await ensureLatestEntryVersion(ctx, entry);
     if (!isLatest) {
-      return {
-        status: "replaced" as const,
-        nextStartOrder: startOrder,
-      };
+      return { status: "replaced" as const, nextStartOrder: startOrder };
     }
 
     // Get the namespace for filter conversion
@@ -232,9 +221,7 @@ export const replaceChunksPage = mutation({
         entry.importance,
         namedFilters
       );
-      await ctx.db.patch(chunk._id, {
-        state: { kind: "ready", embeddingId },
-      });
+      await ctx.db.patch(chunk._id, { state: { kind: "ready", embeddingId } });
     }
     let dataUsedSoFar = 0;
     let indexToDelete = startOrder;
@@ -277,17 +264,11 @@ export const replaceChunksPage = mutation({
         // check if we're close to the limit
         // if so, bail and pick up on this chunk.order.
         if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
-          return {
-            status: "pending" as const,
-            nextStartOrder: indexToDelete,
-          };
+          return { status: "pending" as const, nextStartOrder: indexToDelete };
         }
       }
       if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
-        return {
-          status: "pending" as const,
-          nextStartOrder: indexToDelete,
-        };
+        return { status: "pending" as const, nextStartOrder: indexToDelete };
       }
       if (chunk.state.kind === "pending") {
         if (chunk.entryId === entryId) {
@@ -312,10 +293,7 @@ export const replaceChunksPage = mutation({
     // handle the last batch
     await handleBatch();
 
-    return {
-      status: "ready" as const,
-      nextStartOrder: 0,
-    };
+    return { status: "ready" as const, nextStartOrder: 0 };
   },
 });
 
@@ -447,18 +425,10 @@ export const getRangesOfChunks = internalQuery({
         })
       );
 
-      result.push({
-        entryId,
-        order: chunk.order,
-        startOrder,
-        content,
-      });
+      result.push({ entryId, order: chunk.order, startOrder, content });
     }
 
-    return {
-      ranges: result,
-      entries,
-    };
+    return { ranges: result, entries };
   },
 });
 
@@ -516,10 +486,7 @@ async function publicChunk(chunk: Doc<"chunks">, content: Doc<"content">) {
 }
 
 export const deleteChunksPage = internalMutation({
-  args: v.object({
-    entryId: v.id("entries"),
-    startOrder: v.number(),
-  }),
+  args: v.object({ entryId: v.id("entries"), startOrder: v.number() }),
   returns: v.object({ isDone: v.boolean(), nextStartOrder: v.number() }),
   handler: deleteChunksPageHandler,
 });
