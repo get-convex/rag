@@ -23,5 +23,5 @@
     // it's better to leave this commented out to catch build errors faster.
     // "customConditions": ["@convex-dev/component-source"]
   },
-  "include": ["./src", "vite.config.ts"]
+  "include": ["./src", "vite.config.ts", "eslint.config.js"]
 }

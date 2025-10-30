@@ -439,7 +439,7 @@ async function _deleteFile(ctx: MutationCtx, entryId: EntryId) {
   if (file) {
     await ctx.db.delete(file._id);
     await ctx.storage.delete(file.storageId);
-    await rag.delete(ctx, { entryId });
+    await rag.deleteAsync(ctx, { entryId });
   }
 }
 
