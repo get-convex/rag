@@ -8,8 +8,23 @@
  * @module
  */
 
-import type { FunctionReference } from "convex/server";
-import type { GenericId as Id } from "convex/values";
+import type * as crons from "../crons.js";
+import type * as example from "../example.js";
+import type * as getText from "../getText.js";
+import type * as http from "../http.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
+  example: typeof example;
+  getText: typeof getText;
+  http: typeof http;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
@@ -19,112 +34,10 @@ import type { GenericId as Id } from "convex/values";
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-export declare const api: {
-  example: {
-    addFile: FunctionReference<
-      "action",
-      "public",
-      {
-        bytes: ArrayBuffer;
-        category?: string;
-        filename: string;
-        globalNamespace: boolean;
-        mimeType: string;
-      },
-      any
-    >;
-    askQuestion: FunctionReference<
-      "action",
-      "public",
-      {
-        chunkContext?: { after: number; before: number };
-        filter?:
-          | { name: "category"; value: null | string }
-          | { name: "filename"; value: string };
-        globalNamespace: boolean;
-        limit?: number;
-        prompt: string;
-      },
-      any
-    >;
-    deleteFile: FunctionReference<
-      "mutation",
-      "public",
-      { entryId: string },
-      any
-    >;
-    listChunks: FunctionReference<
-      "query",
-      "public",
-      {
-        entryId: string;
-        order: "desc" | "asc";
-        paginationOpts: {
-          cursor: string | null;
-          endCursor?: string | null;
-          id?: number;
-          maximumBytesRead?: number;
-          maximumRowsRead?: number;
-          numItems: number;
-        };
-      },
-      any
-    >;
-    listFiles: FunctionReference<
-      "query",
-      "public",
-      {
-        category?: string;
-        globalNamespace: boolean;
-        paginationOpts: {
-          cursor: string | null;
-          endCursor?: string | null;
-          id?: number;
-          maximumBytesRead?: number;
-          maximumRowsRead?: number;
-          numItems: number;
-        };
-      },
-      any
-    >;
-    listPendingFiles: FunctionReference<"query", "public", {}, any>;
-    search: FunctionReference<
-      "action",
-      "public",
-      {
-        chunkContext?: { after: number; before: number };
-        globalNamespace: boolean;
-        limit?: number;
-        query: string;
-      },
-      any
-    >;
-    searchCategory: FunctionReference<
-      "action",
-      "public",
-      {
-        category: string;
-        chunkContext?: { after: number; before: number };
-        globalNamespace: boolean;
-        limit?: number;
-        query: string;
-      },
-      any
-    >;
-    searchFile: FunctionReference<
-      "action",
-      "public",
-      {
-        chunkContext?: { after: number; before: number };
-        filename: string;
-        globalNamespace: boolean;
-        limit?: number;
-        query: string;
-      },
-      any
-    >;
-  };
-};
+export declare const api: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "public">
+>;
 
 /**
  * A utility for referencing Convex functions in your app's internal API.
@@ -134,85 +47,10 @@ export declare const api: {
  * const myFunctionReference = internal.myModule.myFunction;
  * ```
  */
-export declare const internal: {
-  example: {
-    chunkerAction: FunctionReference<
-      "action",
-      "internal",
-      {
-        entry: {
-          contentHash?: string;
-          entryId: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key?: string;
-          metadata?: Record<string, any>;
-          replacedAt?: number;
-          status: "pending" | "ready" | "replaced";
-          title?: string;
-        };
-        insertChunks: string;
-        namespace: {
-          createdAt: number;
-          dimension: number;
-          filterNames: Array<string>;
-          modelId: string;
-          namespace: string;
-          namespaceId: string;
-          status: "pending" | "ready" | "replaced";
-          version: number;
-        };
-      },
-      any
-    >;
-    deleteOldContent: FunctionReference<
-      "mutation",
-      "internal",
-      { cursor?: string },
-      any
-    >;
-    recordUploadMetadata: FunctionReference<
-      "mutation",
-      "internal",
-      {
-        entry: {
-          contentHash?: string;
-          entryId: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key?: string;
-          metadata?: Record<string, any>;
-          replacedAt?: number;
-          status: "pending" | "ready" | "replaced";
-          title?: string;
-        };
-        error?: string;
-        namespace: {
-          createdAt: number;
-          dimension: number;
-          filterNames: Array<string>;
-          modelId: string;
-          namespace: string;
-          namespaceId: string;
-          status: "pending" | "ready" | "replaced";
-          version: number;
-        };
-        replacedEntry?: {
-          contentHash?: string;
-          entryId: string;
-          filterValues: Array<{ name: string; value: any }>;
-          importance: number;
-          key?: string;
-          metadata?: Record<string, any>;
-          replacedAt?: number;
-          status: "pending" | "ready" | "replaced";
-          title?: string;
-        };
-      },
-      any
-    >;
-  };
-};
+export declare const internal: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "internal">
+>;
 
 export declare const components: {
   rag: {

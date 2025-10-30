@@ -2,13 +2,14 @@ import {
   embed,
   embedMany,
   generateText,
-  type ModelMessage,
   type EmbeddingModel,
   type EmbeddingModelUsage,
+  type ModelMessage,
 } from "ai";
 import { assert } from "convex-helpers";
 import {
   createFunctionHandle,
+  FunctionReference,
   internalActionGeneric,
   internalMutationGeneric,
   type FunctionArgs,
@@ -23,6 +24,8 @@ import {
   type RegisteredMutation,
 } from "convex/server";
 import { type Value } from "convex/values";
+import { ComponentApi } from "../component/_generated/component.js";
+import type { NamedFilter } from "../component/filters.js";
 import {
   CHUNK_BATCH_SIZE,
   filterNamesContain,
@@ -32,28 +35,19 @@ import {
   vNamespaceId,
   vOnCompleteArgs,
   type Chunk,
+  type ChunkerAction,
   type CreateChunkArgs,
   type Entry,
   type EntryFilter,
   type EntryId,
   type Namespace,
   type NamespaceId,
+  type OnComplete,
+  type OnCompleteNamespace,
   type SearchEntry,
   type SearchResult,
   type Status,
 } from "../shared.js";
-import {
-  type RAGComponent,
-  type RunActionCtx,
-  type RunMutationCtx,
-  type RunQueryCtx,
-} from "./types.js";
-import {
-  type ChunkerAction,
-  type OnComplete,
-  type OnCompleteNamespace,
-} from "../shared.js";
-import type { NamedFilter } from "../component/filters.js";
 import { defaultChunker } from "./defaultChunker.js";
 
 export { hybridRank } from "./hybridRank.js";
@@ -62,7 +56,6 @@ export type {
   ChunkerAction,
   Entry,
   EntryId,
-  RAGComponent,
   NamespaceId,
   OnComplete,
   OnCompleteNamespace,
@@ -72,18 +65,18 @@ export type {
 };
 
 export {
-  type VEntry,
-  type VSearchEntry,
-  type EntryFilter,
   vEntry,
+  vOnCompleteArgs,
   vSearchEntry,
   vSearchResult,
-  vOnCompleteArgs,
+  type EntryFilter,
+  type VEntry,
+  type VSearchEntry,
 } from "../shared.js";
 export {
   contentHashFromArrayBuffer,
-  guessMimeTypeFromExtension,
   guessMimeTypeFromContents,
+  guessMimeTypeFromExtension,
 } from "./fileUtils.js";
 
 const DEFAULT_SEARCH_LIMIT = 10;
@@ -116,7 +109,7 @@ export class RAG<
    * and then entry results will have the metadata type `{ source: "website" }`.
    */
   constructor(
-    public component: RAGComponent,
+    public component: ComponentApi,
     public options: {
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModel<string>;
@@ -135,7 +128,7 @@ export class RAG<
    * The filterValues you provide can be used later to search for it.
    */
   async add(
-    ctx: RunMutationCtx,
+    ctx: CtxWith<"runMutation">,
     args: NamespaceSelection &
       EntryArgs<FitlerSchemas, EntryMetadata> &
       (
@@ -307,7 +300,7 @@ export class RAG<
    * ```
    */
   async addAsync(
-    ctx: RunMutationCtx,
+    ctx: CtxWith<"runMutation">,
     args: NamespaceSelection &
       EntryArgs<FitlerSchemas, EntryMetadata> & {
         /**
@@ -370,7 +363,7 @@ export class RAG<
    * parameters to filter and constrain the results.
    */
   async search(
-    ctx: RunActionCtx,
+    ctx: CtxWith<"runAction">,
     args: {
       /**
        * The namespace to search in. e.g. a userId if entries are per-user.
@@ -459,7 +452,7 @@ export class RAG<
    * extra context / conversation history.
    */
   async generateText(
-    ctx: RunActionCtx,
+    ctx: CtxWith<"runAction">,
     args: {
       /**
        * The search options to use for context search, including the namespace.
@@ -577,7 +570,7 @@ export class RAG<
    * List all entries in a namespace.
    */
   async list(
-    ctx: RunQueryCtx,
+    ctx: CtxWith<"runQuery">,
     args: {
       namespaceId?: NamespaceId;
       order?: "desc" | "asc";
@@ -601,7 +594,7 @@ export class RAG<
    * Get entry metadata by its id.
    */
   async getEntry(
-    ctx: RunQueryCtx,
+    ctx: CtxWith<"runQuery">,
     args: {
       entryId: EntryId;
     }
@@ -618,7 +611,7 @@ export class RAG<
    * when updating content.
    */
   async findEntryByContentHash(
-    ctx: RunQueryCtx,
+    ctx: CtxWith<"runQuery">,
     args: {
       namespace: string;
       key: string;
@@ -642,7 +635,7 @@ export class RAG<
    * filterNames of the RAG instance. If it doesn't exist, it will be created.
    */
   async getOrCreateNamespace(
-    ctx: RunMutationCtx,
+    ctx: CtxWith<"runMutation">,
     args: {
       /**
        * The namespace to get or create. e.g. a userId if entries are per-user.
@@ -689,7 +682,7 @@ export class RAG<
    * filterNames of the RAG instance. If it doesn't exist, it will return null.
    */
   async getNamespace(
-    ctx: RunQueryCtx,
+    ctx: CtxWith<"runQuery">,
     args: {
       namespace: string;
     }
@@ -706,7 +699,7 @@ export class RAG<
    * List all chunks for an entry, paginated.
    */
   async listChunks(
-    ctx: RunQueryCtx,
+    ctx: CtxWith<"runQuery">,
     args: {
       paginationOpts: PaginationOptions;
       entryId: EntryId;
@@ -723,7 +716,7 @@ export class RAG<
   /**
    * Delete an entry and all its chunks in the background using a workpool.
    */
-  async deleteAsync(ctx: RunMutationCtx, args: { entryId: EntryId }) {
+  async deleteAsync(ctx: CtxWith<"runMutation">, args: { entryId: EntryId }) {
     await ctx.runMutation(this.component.entries.deleteAsync, {
       entryId: args.entryId,
       startOrder: 0,
@@ -736,10 +729,19 @@ export class RAG<
    * you're likely running this in a mutation.
    * Use `deleteAsync` or run `delete` in an action.
    */
-  async delete(ctx: RunActionCtx, args: { entryId: EntryId }): Promise<void>;
+  async delete(
+    ctx: CtxWith<"runAction">,
+    args: { entryId: EntryId }
+  ): Promise<void>;
   /** @deprecated Use `deleteAsync` in mutations. */
-  async delete(ctx: RunMutationCtx, args: { entryId: EntryId }): Promise<void>;
-  async delete(ctx: RunActionCtx | RunMutationCtx, args: { entryId: EntryId }) {
+  async delete(
+    ctx: CtxWith<"runMutation">,
+    args: { entryId: EntryId }
+  ): Promise<void>;
+  async delete(
+    ctx: CtxWith<"runMutation"> | CtxWith<"runAction">,
+    args: { entryId: EntryId }
+  ) {
     if ("runAction" in ctx) {
       await ctx.runAction(this.component.entries.deleteSync, {
         entryId: args.entryId,
@@ -759,7 +761,7 @@ export class RAG<
    * Delete all entries with a given key (asynchrounously).
    */
   async deleteByKeyAsync(
-    ctx: RunMutationCtx,
+    ctx: CtxWith<"runMutation">,
     args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
   ) {
     await ctx.runMutation(this.component.entries.deleteByKeyAsync, {
@@ -776,7 +778,7 @@ export class RAG<
    * Use `deleteByKeyAsync` or run `delete` in an action.
    */
   async deleteByKey(
-    ctx: RunActionCtx,
+    ctx: CtxWith<"runAction">,
     args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
   ) {
     await ctx.runAction(this.component.entries.deleteByKeySync, args);
@@ -898,7 +900,7 @@ export class RAG<
           await ctx.runMutation(
             args.insertChunks as FunctionHandle<
               "mutation",
-              FunctionArgs<RAGComponent["chunks"]["insert"]>,
+              FunctionArgs<ComponentApi["chunks"]["insert"]>,
               null
             >,
             {
@@ -1213,3 +1215,21 @@ export function getProviderName(embeddingModel: ModelOrMetadata): string {
   }
   return embeddingModel.provider;
 }
+
+type CtxWith<T extends "runQuery" | "runMutation" | "runAction"> = Pick<
+  {
+    runQuery: <Query extends FunctionReference<"query", "internal">>(
+      query: Query,
+      args: FunctionArgs<Query>
+    ) => Promise<FunctionReturnType<Query>>;
+    runMutation: <Mutation extends FunctionReference<"mutation", "internal">>(
+      mutation: Mutation,
+      args: FunctionArgs<Mutation>
+    ) => Promise<FunctionReturnType<Mutation>>;
+    runAction: <Action extends FunctionReference<"action", "internal">>(
+      action: Action,
+      args: FunctionArgs<Action>
+    ) => Promise<FunctionReturnType<Action>>;
+  },
+  T
+>;

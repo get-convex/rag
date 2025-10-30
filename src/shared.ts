@@ -1,9 +1,14 @@
 import { v } from "convex/values";
-import type { Infer, Validator, Value, VObject } from "convex/values";
+import type {
+  GenericId,
+  Infer,
+  Validator,
+  Value,
+  VObject,
+} from "convex/values";
 import { vNamedFilter, type NamedFilter } from "./component/filters.js";
 import { brandedString } from "convex-helpers/validators";
 import type { FunctionReference } from "convex/server";
-import { OpaqueIds } from "./client/types.js";
 
 // A good middle-ground that has up to ~3MB if embeddings are 4096 (max).
 // Also a reasonable number of writes to the DB.
@@ -214,7 +219,7 @@ export type OnCompleteArgs<
 export type OnComplete = FunctionReference<
   "mutation",
   "internal",
-  OpaqueIds<Infer<typeof vOnCompleteArgs>>,
+  IdsToStrings<Infer<typeof vOnCompleteArgs>>,
   null
 >;
 
@@ -227,7 +232,7 @@ export const vChunkerArgs = v.object({
 export type ChunkerAction = FunctionReference<
   "action",
   "internal",
-  OpaqueIds<Infer<typeof vChunkerArgs>>,
+  IdsToStrings<Infer<typeof vChunkerArgs>>,
   null
 >;
 
@@ -245,3 +250,12 @@ export function filterNamesContain(existing: string[], args: string[]) {
   }
   return true;
 }
+
+type IdsToStrings<T> =
+  T extends GenericId<string>
+    ? string
+    : T extends (infer U)[]
+      ? IdsToStrings<U>[]
+      : T extends Record<string, Value | undefined>
+        ? { [K in keyof T]: IdsToStrings<T[K]> }
+        : T;

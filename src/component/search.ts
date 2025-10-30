@@ -28,7 +28,13 @@ export const search = action({
     results: v.array(vSearchResult),
     entries: v.array(vEntry),
   }),
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    results: SearchResult[];
+    entries: Infer<typeof vEntry>[];
+  }> => {
     const { modelId, embedding, filters, limit } = args;
     const namespace = await ctx.runQuery(
       internal.namespaces.getCompatibleNamespace,
