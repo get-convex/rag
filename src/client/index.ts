@@ -1028,14 +1028,14 @@ async function createChunkArgsBatch(
 
 type MastraChunk = {
   text: string;
-  metadata: Record<string, Value>;
+  metadata?: Record<string, Value>;
   embedding?: Array<number>;
 };
 
 type LangChainChunk = {
   id?: string;
   pageContent: string;
-  metadata: Record<string, Value>; //{ loc: { lines: { from: number; to: number } } };
+  metadata?: Record<string, Value>; //{ loc: { lines: { from: number; to: number } } };
   embedding?: Array<number>;
 };
 
