@@ -141,7 +141,7 @@ async function setup() {
       `Enter your component name (e.g., "rag" or "RAG") [${currentDirName}]: `,
       (answer) => {
         resolve(answer.trim() || currentDirName);
-      }
+      },
     );
   });
 
@@ -156,7 +156,7 @@ async function setup() {
       `Enter your npm package name [@convex-dev/${toKebabCase(componentName)}]: `,
       (answer) => {
         resolve(answer.trim() || `@convex-dev/${toKebabCase(componentName)}`);
-      }
+      },
     );
   });
 
@@ -166,7 +166,7 @@ async function setup() {
       `Enter your repository name [get-convex/${toKebabCase(componentName)}]: `,
       (answer) => {
         resolve(answer.trim() || `get-convex/${toKebabCase(componentName)}`);
-      }
+      },
     );
   });
 
@@ -242,9 +242,9 @@ async function setup() {
       (answer) => {
         resolve(
           answer.toLowerCase().trim() === "y" ||
-            answer.toLowerCase().trim() === "yes"
+            answer.toLowerCase().trim() === "yes",
         );
-      }
+      },
     );
   });
 

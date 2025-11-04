@@ -7,7 +7,7 @@ crons.interval(
   "deleteOldContent",
   { hours: 1 },
   internal.example.deleteOldContent,
-  {}
+  {},
 );
 
 export default crons;

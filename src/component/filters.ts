@@ -55,7 +55,7 @@ export type NamedFilter<K extends string = string, V = Value> = {
  */
 export function filterFieldsFromNumbers(
   namespaceId: GenericId<"namespaces">,
-  filters: NumberedFilter | undefined
+  filters: NumberedFilter | undefined,
 ): NamedFilterField {
   const filterFields: NamedFilterField = {};
   if (!filters) return filterFields;
@@ -63,7 +63,7 @@ export function filterFieldsFromNumbers(
     const index = Number(i);
     if (isNaN(index) || index < 0 || index >= filterFieldNames.length) {
       console.warn(
-        `Unknown filter index: ${index} for value ${JSON.stringify(filter)}`
+        `Unknown filter index: ${index} for value ${JSON.stringify(filter)}`,
       );
       break;
     }
@@ -78,7 +78,7 @@ export function filterFieldsFromNumbers(
  */
 export function numberedFilterFromNamedFilters(
   namedFilters: Array<{ name: string; value: Value }>,
-  filterNames: string[]
+  filterNames: string[],
 ): NumberedFilter {
   const numberedFilter: NumberedFilter = {};
   for (const namedFilter of namedFilters) {
@@ -86,8 +86,8 @@ export function numberedFilterFromNamedFilters(
     if (index === -1) {
       throw new Error(
         `Unknown filter name: ${namedFilter.name} for namespace with names ${filterNames.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
     numberedFilter[index] = namedFilter.value;
@@ -101,7 +101,7 @@ export function numberedFilterFromNamedFilters(
  */
 export function numberedFiltersFromNamedFilters(
   filters: NamedFilter[],
-  filterNames: string[]
+  filterNames: string[],
 ): Array<NumberedFilter> {
   const filterFields: Array<NumberedFilter> = [];
   for (const filter of filters) {
@@ -109,8 +109,8 @@ export function numberedFiltersFromNamedFilters(
     if (index === -1) {
       throw new Error(
         `Unknown filter name: ${filter.name} for namespace with names ${filterNames.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
     filterFields.push({ [index]: filter.value });

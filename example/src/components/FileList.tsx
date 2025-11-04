@@ -28,7 +28,7 @@ function PendingDocumentProgress({ doc }: { doc: PublicFile }) {
 
     // Find first chunk with state "ready" to get live count
     const firstReadyChunk = chunks.page.find(
-      (chunk) => chunk.state === "ready"
+      (chunk) => chunk.state === "ready",
     );
     const live = firstReadyChunk ? firstReadyChunk.order + 1 : 0;
 
@@ -135,7 +135,7 @@ export function FileList({
     {
       globalNamespace: true,
     },
-    { initialNumItems: 10 }
+    { initialNumItems: 10 },
   );
 
   const userFiles = usePaginatedQuery(
@@ -143,7 +143,7 @@ export function FileList({
     {
       globalNamespace: false,
     },
-    { initialNumItems: 10 }
+    { initialNumItems: 10 },
   );
 
   const pendingFiles = useQuery(api.example.listPendingFiles);
@@ -162,20 +162,20 @@ export function FileList({
       } catch (error) {
         console.error("Delete failed:", error);
         alert(
-          `Failed to delete entry. ${error instanceof Error ? error.message : String(error)}`
+          `Failed to delete entry. ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     },
-    [convex, selectedDocument, onFileSelect]
+    [convex, selectedDocument, onFileSelect],
   );
 
   useEffect(() => {
     const categories = new Set<string>();
     globalFiles?.results?.forEach(
-      (doc) => doc.category && categories.add(doc.category)
+      (doc) => doc.category && categories.add(doc.category),
     );
     userFiles?.results?.forEach(
-      (doc) => doc.category && categories.add(doc.category)
+      (doc) => doc.category && categories.add(doc.category),
     );
     onCategoriesChange(Array.from(categories).sort());
   }, [globalFiles?.results, userFiles?.results, onCategoriesChange]);

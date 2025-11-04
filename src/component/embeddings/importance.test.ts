@@ -45,7 +45,7 @@ describe("importance.ts", () => {
       expect(result[0]).toBeCloseTo(embedding[0] * importance);
       expect(result[1]).toBeCloseTo(embedding[1] * importance);
       expect(
-        Math.sqrt(result[0] ** 2 + result[1] ** 2 + result[2] ** 2)
+        Math.sqrt(result[0] ** 2 + result[1] ** 2 + result[2] ** 2),
       ).toBeCloseTo(1);
     });
 
@@ -175,7 +175,7 @@ describe("importance.ts", () => {
 
         expect(retrievedImportance).toBeCloseTo(importance, 3);
         expect(Math.abs(retrievedImportance - importance)).toBeLessThan(
-          tolerance
+          tolerance,
         );
       });
     });
@@ -198,13 +198,13 @@ describe("importance.ts", () => {
       // Create vector with initial importance
       const vectorWithInitialImp = vectorWithImportance(
         embedding,
-        initialImportance
+        initialImportance,
       );
 
       // Modify importance
       const vectorWithModifiedImp = modifyImportance(
         vectorWithInitialImp,
-        newImportance
+        newImportance,
       );
 
       // Retrieve and verify

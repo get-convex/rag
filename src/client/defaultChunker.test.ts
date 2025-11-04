@@ -47,7 +47,7 @@ Short para 4.`;
     });
     expect(chunks.length).toBe(1);
     expect(chunks[0]).toBe(
-      "Short para 1.\n\nShort para 2.\n\nShort para 3.\n\nShort para 4."
+      "Short para 1.\n\nShort para 2.\n\nShort para 3.\n\nShort para 4.",
     );
     expect(chunks.join("\n")).toBe(text);
   });

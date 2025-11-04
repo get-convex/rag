@@ -21,7 +21,7 @@ export const search = action({
     limit: v.number(),
     vectorScoreThreshold: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({ before: v.number(), after: v.number() })
+      v.object({ before: v.number(), after: v.number() }),
     ),
   },
   returns: v.object({
@@ -30,7 +30,7 @@ export const search = action({
   }),
   handler: async (
     ctx,
-    args
+    args,
   ): Promise<{
     results: SearchResult[];
     entries: Infer<typeof vEntry>[];
@@ -43,11 +43,11 @@ export const search = action({
         modelId,
         dimension: embedding.length,
         filterNames: filters.map((f) => f.name),
-      }
+      },
     );
     if (!namespace) {
       console.debug(
-        `No compatible namespace found for ${args.namespace} with model ${args.modelId} and dimension ${embedding.length} and filters ${filters.map((f) => f.name).join(", ")}.`
+        `No compatible namespace found for ${args.namespace} with model ${args.modelId} and dimension ${embedding.length} and filters ${filters.map((f) => f.name).join(", ")}.`,
       );
       return {
         results: [],
@@ -70,7 +70,7 @@ export const search = action({
       {
         embeddingIds: aboveThreshold.map((r) => r._id),
         chunkContext,
-      }
+      },
     );
     return {
       results: ranges
@@ -83,7 +83,7 @@ export const search = action({
 
 function publicSearchResult(
   r: Infer<typeof vRangeResult> | null,
-  score: number
+  score: number,
 ): SearchResult | null {
   if (r === null) {
     return null;

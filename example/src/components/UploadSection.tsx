@@ -75,7 +75,7 @@ export function UploadSection({ onFileUploaded }: UploadSectionProps) {
         }
       }
     },
-    [uploadForm.filename]
+    [uploadForm.filename],
   );
 
   const handleFileClear = useCallback(() => {
@@ -88,7 +88,7 @@ export function UploadSection({ onFileUploaded }: UploadSectionProps) {
     });
     // Clear file input
     const fileInput = document.querySelector(
-      'input[type="file"]'
+      'input[type="file"]',
     ) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   }, []);
@@ -102,7 +102,7 @@ export function UploadSection({ onFileUploaded }: UploadSectionProps) {
     // For PDFs with extraction errors, ask user if they want to proceed
     if (selectedFile && isPdfFile(selectedFile) && pdfExtraction.error) {
       const proceed = confirm(
-        `PDF text extraction failed: ${pdfExtraction.error}\n\nDo you want to upload the PDF file directly instead?`
+        `PDF text extraction failed: ${pdfExtraction.error}\n\nDo you want to upload the PDF file directly instead?`,
       );
       if (!proceed) return;
     }
@@ -161,7 +161,7 @@ export function UploadSection({ onFileUploaded }: UploadSectionProps) {
 
       // Clear file input
       const fileInput = document.querySelector(
-        'input[type="file"]'
+        'input[type="file"]',
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
@@ -174,7 +174,7 @@ export function UploadSection({ onFileUploaded }: UploadSectionProps) {
       }));
       setSelectedFile(selectedFile);
       alert(
-        `Upload failed. ${error instanceof Error ? error.message : String(error)}`
+        `Upload failed. ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       setIsAdding(false);

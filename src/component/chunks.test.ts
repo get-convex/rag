@@ -30,7 +30,7 @@ describe("chunks", () => {
     namespaceId: Id<"namespaces">,
     key = "test-entry",
     version = 0,
-    status: "ready" | "pending" = "ready"
+    status: "ready" | "pending" = "ready",
   ) {
     return await t.run(async (ctx) => {
       return ctx.db.insert("entries", {
@@ -70,7 +70,7 @@ describe("chunks", () => {
           startOrder: 0,
           chunks,
         });
-      })
+      }),
     ).rejects.toThrow(`Entry ${nonExistentDocId} not found`);
   });
 
@@ -141,10 +141,10 @@ describe("chunks", () => {
     expect(overwrittenChunk2).toBeDefined();
 
     const content1 = await t.run(async (ctx) =>
-      ctx.db.get(overwrittenChunk1!.contentId)
+      ctx.db.get(overwrittenChunk1!.contentId),
     );
     const content2 = await t.run(async (ctx) =>
-      ctx.db.get(overwrittenChunk2!.contentId)
+      ctx.db.get(overwrittenChunk2!.contentId),
     );
 
     expect(content1!.text).toBe("Overwritten chunk 1 content");
@@ -176,7 +176,7 @@ describe("chunks", () => {
       namespaceId,
       "versioned-entry",
       2,
-      "pending"
+      "pending",
     );
 
     // Insert chunks in version 2 (this should mark v1 chunks as replaced)
@@ -279,10 +279,10 @@ describe("chunks", () => {
 
     // Verify chunk content
     const doc1Content0 = await t.run(async (ctx) =>
-      ctx.db.get(doc1ChunksList[0].contentId)
+      ctx.db.get(doc1ChunksList[0].contentId),
     );
     const doc2Content0 = await t.run(async (ctx) =>
-      ctx.db.get(doc2ChunksList[0].contentId)
+      ctx.db.get(doc2ChunksList[0].contentId),
     );
 
     expect(doc1Content0!.text).toBe("Test chunk content 1");
@@ -309,7 +309,7 @@ describe("chunks", () => {
       return ctx.db
         .query("chunks")
         .withIndex("entryId_order", (q) =>
-          q.eq("entryId", entryId).eq("order", 2)
+          q.eq("entryId", entryId).eq("order", 2),
         )
         .first();
     });
@@ -319,7 +319,7 @@ describe("chunks", () => {
 
     // Verify content
     const content = await t.run(async (ctx) =>
-      ctx.db.get(singleChunk!.contentId)
+      ctx.db.get(singleChunk!.contentId),
     );
     expect(content!.text).toBe("Test chunk content 3");
   });
@@ -467,7 +467,7 @@ describe("chunks", () => {
         {
           embeddingIds: [chunkDocs[2].state.embeddingId],
           chunkContext: { before: 1, after: 2 },
-        }
+        },
       );
       expect(entries).toHaveLength(1);
       expect(entries[0].entryId).toBe(entryId);
@@ -532,7 +532,7 @@ describe("chunks", () => {
             doc2ChunkDocs[2].state.embeddingId, // doc2, chunk at order 2
           ],
           chunkContext: { before: 1, after: 1 },
-        }
+        },
       );
 
       expect(entries).toHaveLength(2);
@@ -562,7 +562,7 @@ describe("chunks", () => {
         namespaceId,
         "versioned-entry",
         1,
-        "ready"
+        "ready",
       );
 
       // Insert chunks in version 1
@@ -580,7 +580,7 @@ describe("chunks", () => {
         namespaceId,
         "versioned-entry",
         2,
-        "pending"
+        "pending",
       );
 
       // Insert chunks in version 2
@@ -631,7 +631,7 @@ describe("chunks", () => {
             v2ChunkDocs[1].state.embeddingId, // v2, chunk at order 1
           ],
           chunkContext: { before: 1, after: 1 },
-        }
+        },
       );
 
       expect(entries).toHaveLength(2);

@@ -21,7 +21,7 @@ export function hybridRank<T extends string>(
      * The cutoff score for a result to be returned.
      */
     cutoffScore?: number;
-  }
+  },
 ): T[] {
   const k = opts?.k ?? 10;
   const scores: Map<T, number> = new Map();

@@ -47,7 +47,7 @@ export async function insertEmbedding(
   embedding: number[],
   namespaceId: Id<"namespaces">,
   importance: number | undefined,
-  filters: NumberedFilter | undefined
+  filters: NumberedFilter | undefined,
 ) {
   const filterFields = filterFieldsFromNumbers(namespaceId, filters);
   const dimension = validateVectorDimension(embedding.length);
@@ -74,12 +74,12 @@ export async function searchEmbeddings(
     // filter3, filter1, or filter2 is present.
     filters: Array<NumberedFilter>;
     limit: number;
-  }
+  },
 ) {
   const dimension = validateVectorDimension(embedding.length);
   const tableName = getVectorTableName(dimension);
   const orFilters = filters.flatMap((filter) =>
-    filterFieldsFromNumbers(namespaceId, filter)
+    filterFieldsFromNumbers(namespaceId, filter),
   );
   return ctx.vectorSearch(tableName, "vector", {
     vector: searchVector(embedding),
@@ -89,9 +89,9 @@ export async function searchEmbeddings(
         : q.or(
             ...orFilters.flatMap((namedFilter) =>
               Object.entries(namedFilter).map(([filterField, filter]) =>
-                q.eq(filterField as keyof (typeof orFilters)[number], filter)
-              )
-            )
+                q.eq(filterField as keyof (typeof orFilters)[number], filter),
+              ),
+            ),
           ),
     limit,
   });

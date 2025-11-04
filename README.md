@@ -4,8 +4,8 @@
 
 <!-- START: Include on https://convex.dev/components -->
 
-A component for semantic search, usually used to look up context for LLMs.
-Use with an Agent for Retrieval-Augmented Generation (RAG).
+A component for semantic search, usually used to look up context for LLMs. Use
+with an Agent for Retrieval-Augmented Generation (RAG).
 
 [![Use AI to search HUGE amounts of text with the RAG Component](https://thumbs.video-to-markdown.com/1ff18153.jpg)](https://youtu.be/dGmtAmdAaFs)
 
@@ -17,17 +17,20 @@ Use with an Agent for Retrieval-Augmented Generation (RAG).
 - **Custom Filtering**: Filter content with custom indexed fields.
 - **Importance Weighting**: Weight content by providing a 0 to 1 "importance".
 - **Chunk Context**: Get surrounding chunks for better context.
-- **Graceful Migrations**: Migrate content or whole namespaces without disruption.
+- **Graceful Migrations**: Migrate content or whole namespaces without
+  disruption.
 
-Found a bug? Feature request? [File it here](https://github.com/get-convex/rag/issues).
+Found a bug? Feature request?
+[File it here](https://github.com/get-convex/rag/issues).
 
 ## Pre-requisite: Convex
 
-You'll need an existing Convex project to use the component.
-Convex is a hosted backend platform, including a database, serverless functions,
-and a ton more you can learn about [here](https://docs.convex.dev/get-started).
+You'll need an existing Convex project to use the component. Convex is a hosted
+backend platform, including a database, serverless functions, and a ton more you
+can learn about [here](https://docs.convex.dev/get-started).
 
-Run `npm create convex` or follow any of the [quickstarts](https://docs.convex.dev/home) to set one up.
+Run `npm create convex` or follow any of the
+[quickstarts](https://docs.convex.dev/home) to set one up.
 
 ## Installation
 
@@ -37,7 +40,8 @@ Install the component package:
 npm install @convex-dev/rag
 ```
 
-Create a `convex.config.ts` file in your app's `convex/` folder and install the component by calling `use`:
+Create a `convex.config.ts` file in your app's `convex/` folder and install the
+component by calling `use`:
 
 ```ts
 // convex/convex.config.ts
@@ -67,8 +71,8 @@ const rag = new RAG(components.rag, {
 
 ## Add context to RAG
 
-Add content with text chunks. Each call to `add` will create a new **entry**.
-It will embed the chunks automatically if you don't provide them.
+Add content with text chunks. Each call to `add` will create a new **entry**. It
+will embed the chunks automatically if you don't provide them.
 
 ```ts
 export const add = action({
@@ -83,19 +87,21 @@ export const add = action({
 });
 ```
 
-See below for how to chunk the text yourself or add content asynchronously, e.g. to handle large files.
+See below for how to chunk the text yourself or add content asynchronously, e.g.
+to handle large files.
 
 ## Semantic Search
 
 Search across content with vector similarity
 
-- `text` is a string with the full content of the results, for convenience.
-  It is in order of the entries, with titles at each entry boundary, and
-  separators between non-sequential chunks. See below for more details.
+- `text` is a string with the full content of the results, for convenience. It
+  is in order of the entries, with titles at each entry boundary, and separators
+  between non-sequential chunks. See below for more details.
 - `results` is an array of matching chunks with scores and more metadata.
-- `entries` is an array of the entries that matched the query.
-  Each result has a `entryId` referencing one of these source entries.
-- `usage` contains embedding token usage information. Will be `{ tokens: 0 }` if no embedding was performed (e.g. when passing pre-computed embeddings).
+- `entries` is an array of the entries that matched the query. Each result has a
+  `entryId` referencing one of these source entries.
+- `usage` contains embedding token usage information. Will be `{ tokens: 0 }` if
+  no embedding was performed (e.g. when passing pre-computed embeddings).
 
 ```ts
 export const search = action({
@@ -119,17 +125,17 @@ export const search = action({
 
 Once you have searched for the context, you can use it with an LLM.
 
-Generally you'll already be using something to make LLM requests, e.g.
-the [Agent Component](https://www.convex.dev/components/agent),
-which tracks the message history for you.
-See the [Agent Component docs](https://docs.convex.dev/agents)
-for more details on doing RAG with the Agent Component.
+Generally you'll already be using something to make LLM requests, e.g. the
+[Agent Component](https://www.convex.dev/components/agent), which tracks the
+message history for you. See the
+[Agent Component docs](https://docs.convex.dev/agents) for more details on doing
+RAG with the Agent Component.
 
 However, if you just want a one-off response, you can use the `generateText`
 function as a convenience.
 
-This will automatically search for relevant entries and use them as context
-for the LLM, using default formatting.
+This will automatically search for relevant entries and use them as context for
+the LLM, using default formatting.
 
 The arguments to `generateText` are compatible with all arguments to
 `generateText` from the AI SDK.
@@ -154,9 +160,9 @@ Note: You can specify any of the search options available on `rag.search`.
 
 ## Filtered Search
 
-You can provide filters when adding content and use them to search.
-To do this, you'll need to give the RAG component a list of the filter names.
-You can optionally provide a type parameter for type safety (no runtime validation).
+You can provide filters when adding content and use them to search. To do this,
+you'll need to give the RAG component a list of the filter names. You can
+optionally provide a type parameter for type safety (no runtime validation).
 
 Note: these filters can be OR'd together when searching. In order to get an AND,
 you provide a filter with a more complex value, such as `categoryAndType` below.
@@ -227,14 +233,13 @@ export const searchForNewsOrSports = action({
 
 ### Add surrounding chunks to results for context
 
-Instead of getting just the single matching chunk, you can request
-surrounding chunks so there's more context to the result.
+Instead of getting just the single matching chunk, you can request surrounding
+chunks so there's more context to the result.
 
 Note: If there are results that have overlapping ranges, it will not return
-duplicate chunks, but instead give priority to adding the "before" context
-to each chunk.
-For example if you requested 2 before and 1 after, and your results were for
-the same entryId indexes 1, 4, and 7, the results would be:
+duplicate chunks, but instead give priority to adding the "before" context to
+each chunk. For example if you requested 2 before and 1 after, and your results
+were for the same entryId indexes 1, 4, and 7, the results would be:
 
 ```ts
 [
@@ -268,10 +273,10 @@ export const searchWithContext = action({
 
 ## Formatting results
 
-Formatting the results for use in a prompt depends a bit on the use case.
-By default, the results will be sorted by score, not necessarily in the order
-they appear in the original text. You may want to sort them by the order they
-appear in the original text so they follow the flow of the original document.
+Formatting the results for use in a prompt depends a bit on the use case. By
+default, the results will be sorted by score, not necessarily in the order they
+appear in the original text. You may want to sort them by the order they appear
+in the original text so they follow the flow of the original document.
 
 For convenience, the `text` field of the search results is a string formatted
 with `...` separating non-sequential chunks, `---` separating entries, and
@@ -300,8 +305,8 @@ Chunk 5 contents
 ```
 
 There is also a `text` field on each entry that is the full text of the entry,
-similarly formatted with `...` separating non-sequential chunks, if you want
-to format each entry differently.
+similarly formatted with `...` separating non-sequential chunks, if you want to
+format each entry differently.
 
 For a fully custom format, you can use the `results` field and entries directly:
 
@@ -350,33 +355,33 @@ await generateText({
 
 ## Using keys to gracefully replace content
 
-When you add content to a namespace, you can provide a `key` to uniquely identify the content.
-If you add content with the same key, it will make a new entry to replace the old one.
+When you add content to a namespace, you can provide a `key` to uniquely
+identify the content. If you add content with the same key, it will make a new
+entry to replace the old one.
 
 ```ts
 await rag.add(ctx, { namespace: userId, key: "my-file.txt", text });
 ```
 
-When a new document is added, it will start with a status of "pending" while
-it chunks, embeds, and inserts the data into the database.
-Once all data is inserted, it will iterate over the chunks and swap the old
-content embeddings with the new ones, and then update the status to "ready",
-marking the previous version as "replaced".
+When a new document is added, it will start with a status of "pending" while it
+chunks, embeds, and inserts the data into the database. Once all data is
+inserted, it will iterate over the chunks and swap the old content embeddings
+with the new ones, and then update the status to "ready", marking the previous
+version as "replaced".
 
 The old content is kept around by default, so in-flight searches will get
-results for old vector search results.
-See below for more details on deleting.
+results for old vector search results. See below for more details on deleting.
 
 This means that if searches are happening while the document is being added,
-they will see the old content results
-This is useful if you want to add content to a namespace and then immediately
-search for it, or if you want to add content to a namespace and then immediately
-add more content to the same namespace.
+they will see the old content results This is useful if you want to add content
+to a namespace and then immediately search for it, or if you want to add content
+to a namespace and then immediately add more content to the same namespace.
 
 ## Using your own content splitter
 
-By default, the component uses the `defaultChunker` to split the content into chunks.
-You can pass in your own content chunks to the `add` or `addAsync` functions.
+By default, the component uses the `defaultChunker` to split the content into
+chunks. You can pass in your own content chunks to the `add` or `addAsync`
+functions.
 
 ```ts
 const chunks = await textSplitter.split(content);
@@ -386,8 +391,8 @@ await rag.add(ctx, { namespace: "global", chunks });
 Note: The `textSplitter` here could be LangChain, Mastra, or something custom.
 The simplest version makes an array of strings like `content.split("\n")`.
 
-Note: you can pass in an async iterator instead of an array to handle large content.
-Or use the `addAsync` function (see below).
+Note: you can pass in an async iterator instead of an array to handle large
+content. Or use the `addAsync` function (see below).
 
 ## Providing custom embeddings per-chunk
 
@@ -404,7 +409,7 @@ const chunksWithEmbeddings = await Promise.all(
       ...chunk,
       embedding: await embedSummary(chunk),
     };
-  })
+  }),
 );
 await rag.add(ctx, { namespace: "global", chunks });
 ```
@@ -451,14 +456,14 @@ export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
 export default cors.http;
 ```
 
-You can upload files directly to a Convex action, httpAction, or upload url.
-See the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
+You can upload files directly to a Convex action, httpAction, or upload url. See
+the [docs](https://docs.convex.dev/file-storage/upload-files) for details.
 
 ### OnComplete Handling
 
 You can register an `onComplete` handler when adding content that will be called
-when the entry was created and is ready, or if there was an error or it was replaced before it
-finished.
+when the entry was created and is ready, or if there was an error or it was
+replaced before it finished.
 
 ```ts
 // in an action
@@ -476,12 +481,14 @@ export const docComplete = rag.defineOnComplete<DataModel>(
     }
     // You can associate the entry with your own data here. This will commit
     // in the same transaction as the entry becoming ready.
-  }
+  },
 );
 ```
 
-Note: The `onComplete` callback is only triggered when new content is processed. If you add content that already exists (`contentHash` did not change for the same `key`), `onComplete` will not be called.
-To handle this case, you can check the return value of `rag.add()`:
+Note: The `onComplete` callback is only triggered when new content is processed.
+If you add content that already exists (`contentHash` did not change for the
+same `key`), `onComplete` will not be called. To handle this case, you can check
+the return value of `rag.add()`:
 
 ```ts
 const { status, created } = await rag.add(ctx, {
@@ -502,8 +509,8 @@ if (status === "ready" && !created) {
 
 Here's a simple example fetching content from a URL to add.
 
-It also adds filters to the entry, so you can search for it later by
-category, contentType, or both.
+It also adds filters to the entry, so you can search for it later by category,
+contentType, or both.
 
 ```ts
 export const add = action({
@@ -581,7 +588,7 @@ crons.interval(
   "deleteOldContent",
   { hours: 1 },
   internal.crons.deleteOldContent,
-  {}
+  {},
 );
 export default crons;
 ```
@@ -604,13 +611,13 @@ Types for the various elements:
 - While the `EntryId` and `NamespaceId` are strings under the hood, they are
   given more specific types to make it easier to use them correctly.
 
-Validators can be used in `args` and schema table definitions:
-`vEntry`, `vEntryId`, `vNamespaceId`, `vSearchEntry`, `vSearchResult`
+Validators can be used in `args` and schema table definitions: `vEntry`,
+`vEntryId`, `vNamespaceId`, `vSearchEntry`, `vSearchResult`
 
 e.g. `defineTable({ myDocTitle: v.string(), entryId: vEntryId })`
 
-The validators for the branded IDs will only validate they are strings,
-but will have the more specific types, to provide type safety.
+The validators for the branded IDs will only validate they are strings, but will
+have the more specific types, to provide type safety.
 
 ## Utility Functions
 
@@ -665,29 +672,29 @@ const results = hybridRank(
   [textSearchResults, vectorSearchResults, recentSearchResults],
   {
     weights: [2, 1, 3], // prefer recent results more than text or vector
-  }
+  },
 );
 // results = [ id3, id5, id1, id2, id4 ]
 ```
 
-To have it more biased towards the top few results, you can set the `k` value
-to a lower number (10 by default).
+To have it more biased towards the top few results, you can set the `k` value to
+a lower number (10 by default).
 
 ```ts
 const results = hybridRank(
   [textSearchResults, vectorSearchResults, recentSearchResults],
-  { k: 1 }
+  { k: 1 },
 );
 // results = [ id5, id1, id3, id2, id4 ]
 ```
 
 ### `contentHashFromArrayBuffer`
 
-This generates the hash of a file's contents, which can be used to avoid
-adding the same file twice.
+This generates the hash of a file's contents, which can be used to avoid adding
+the same file twice.
 
-Note: doing `blob.arrayBuffer()` will consume the blob's data, so you'll need
-to make a new blob to use it after calling this function.
+Note: doing `blob.arrayBuffer()` will consume the blob's data, so you'll need to
+make a new blob to use it after calling this function.
 
 ```ts
 import { contentHashFromArrayBuffer } from "@convex-dev/rag";

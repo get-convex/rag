@@ -12,7 +12,7 @@ export interface PdfExtractionResult {
 }
 
 export async function extractTextFromPdf(
-  file: File
+  file: File,
 ): Promise<PdfExtractionResult> {
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -57,7 +57,7 @@ export async function extractTextFromPdf(
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
     throw new Error(
-      "Failed to extract text from PDF. The file may be corrupted or password-protected."
+      "Failed to extract text from PDF. The file may be corrupted or password-protected.",
     );
   }
 }

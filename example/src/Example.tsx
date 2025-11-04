@@ -34,14 +34,14 @@ function Example() {
   const [searchGlobal, setSearchGlobal] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
-    null
+    null,
   );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchResults, setSearchResults] = useState<UISearchResult | null>(
-    null
+    null,
   );
   const [questionResult, setQuestionResult] = useState<UIQuestionResult | null>(
-    null
+    null,
   );
   const [isSearching, setIsSearching] = useState(false);
   const [showChunks, setShowChunks] = useState(false);
@@ -65,7 +65,7 @@ function Example() {
           order: "asc",
         }
       : "skip",
-    { initialNumItems: 10 }
+    { initialNumItems: 10 },
   );
 
   const handleSearch = useCallback(
@@ -186,7 +186,7 @@ function Example() {
       } catch (error) {
         console.error("Search/Question failed:", error);
         alert(
-          `${mode === "question" ? "Question" : "Search"} failed. ${error instanceof Error ? error.message : String(error)}`
+          `${mode === "question" ? "Question" : "Search"} failed. ${error instanceof Error ? error.message : String(error)}`,
         );
       } finally {
         setIsSearching(false);
@@ -203,7 +203,7 @@ function Example() {
       limit,
       chunksBefore,
       chunksAfter,
-    ]
+    ],
   );
 
   const handleFileSelect = (file: PublicFile | null) => {

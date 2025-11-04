@@ -21,7 +21,7 @@ export async function getText(
     filename: string;
     bytes?: ArrayBuffer;
     mimeType: string;
-  }
+  },
 ) {
   const url = await ctx.storage.getUrl(storageId);
   assert(url);

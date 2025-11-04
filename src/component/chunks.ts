@@ -50,7 +50,7 @@ export const insert = mutation({
 
 export async function insertChunks(
   ctx: MutationCtx,
-  { entryId, startOrder, chunks }: InsertChunksArgs
+  { entryId, startOrder, chunks }: InsertChunksArgs,
 ) {
   const entry = await ctx.db.get(entryId);
   if (!entry) {
@@ -71,12 +71,12 @@ export async function insertChunks(
       q
         .eq("entryId", entryId)
         .gte("order", startOrder)
-        .lt("order", startOrder + chunks.length)
+        .lt("order", startOrder + chunks.length),
     )
     .collect();
   if (existingChunks.length > 0) {
     console.debug(
-      `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`
+      `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`,
     );
   }
   // TODO: avoid writing if they're the same
@@ -87,11 +87,11 @@ export async function insertChunks(
       }
       await ctx.db.delete(c.contentId);
       await ctx.db.delete(c._id);
-    })
+    }),
   );
   const numberedFilter = numberedFilterFromNamedFilters(
     entry.filterValues,
-    namespace!.filterNames
+    namespace!.filterNames,
   );
   for (const chunk of chunks) {
     const contentId = await ctx.db.insert("content", {
@@ -110,7 +110,7 @@ export async function insertChunks(
         chunk.embedding,
         entry.namespaceId,
         entry.importance,
-        numberedFilter
+        numberedFilter,
       );
       state = {
         kind: "ready",
@@ -126,7 +126,7 @@ export async function insertChunks(
         contentId,
         namespaceId: entry.namespaceId,
         ...filterFieldsFromNumbers(entry.namespaceId, numberedFilter),
-      })
+      }),
     );
     order++;
   }
@@ -146,14 +146,14 @@ async function ensureLatestEntryVersion(ctx: QueryCtx, entry: Doc<"entries">) {
             .eq("namespaceId", entry.namespaceId)
             .eq("status.kind", status)
             .eq("key", entry.key)
-            .gt("version", entry.version)
-        )
+            .gt("version", entry.version),
+        ),
     ),
-    ["version"]
+    ["version"],
   ).first();
   if (newerEntry) {
     console.warn(
-      `Bailing from inserting chunks for entry ${entry.key} at version ${entry.version} since there's a newer version ${newerEntry.version} (status ${newerEntry.status}) creation time difference ${(newerEntry._creationTime - entry._creationTime).toFixed(0)}ms`
+      `Bailing from inserting chunks for entry ${entry.key} at version ${entry.version} since there's a newer version ${newerEntry.version} (status ${newerEntry.status}) creation time difference ${(newerEntry._creationTime - entry._creationTime).toFixed(0)}ms`,
     );
     return false;
   }
@@ -189,7 +189,7 @@ export const replaceChunksPage = mutation({
                 q
                   .eq("namespaceId", entry.namespaceId)
                   .eq("status.kind", "pending")
-                  .eq("key", entry.key)
+                  .eq("key", entry.key),
               )
               .collect()
           ).filter((e) => e._id !== entry._id)
@@ -201,25 +201,25 @@ export const replaceChunksPage = mutation({
           stream(ctx.db, schema)
             .query("chunks")
             .withIndex("entryId_order", (q) =>
-              q.eq("entryId", entry._id).gte("order", startOrder)
-            )
+              q.eq("entryId", entry._id).gte("order", startOrder),
+            ),
         ),
-      ["order"]
+      ["order"],
     );
     const namespaceId = entry.namespaceId;
     const namedFilters = numberedFilterFromNamedFilters(
       entry.filterValues,
-      namespace!.filterNames
+      namespace!.filterNames,
     );
     async function addChunk(
-      chunk: Doc<"chunks"> & { state: { kind: "pending" } }
+      chunk: Doc<"chunks"> & { state: { kind: "pending" } },
     ) {
       const embeddingId = await insertEmbedding(
         ctx,
         chunk.state.embedding,
         namespaceId,
         entry.importance,
-        namedFilters
+        namedFilters,
       );
       await ctx.db.patch(chunk._id, { state: { kind: "ready", embeddingId } });
     }
@@ -243,7 +243,7 @@ export const replaceChunksPage = mutation({
               pendingSearchableText: chunk.state.searchableText,
             },
           });
-        })
+        }),
       );
       chunksToDeleteEmbeddings = [];
       if (chunkToAdd) {
@@ -274,7 +274,7 @@ export const replaceChunksPage = mutation({
         if (chunk.entryId === entryId) {
           if (chunkToAdd) {
             console.warn(
-              `Multiple pending chunks before changing order ${chunk.order} for entry ${entryId} version ${entry.version}: ${chunkToAdd._id} and ${chunk._id}`
+              `Multiple pending chunks before changing order ${chunk.order} for entry ${entryId} version ${entry.version}: ${chunkToAdd._id} and ${chunk._id}`,
             );
             await addChunk(chunkToAdd);
           }
@@ -285,7 +285,7 @@ export const replaceChunksPage = mutation({
           chunksToDeleteEmbeddings.push(chunk);
         } else {
           console.debug(
-            `Skipping adding chunk ${chunk._id} for entry ${entryId} version ${entry.version} since it's already ready`
+            `Skipping adding chunk ${chunk._id} for entry ${entryId} version ${entry.version} since it's already ready`,
           );
         }
       }
@@ -305,7 +305,7 @@ export const vRangeResult = v.object({
     v.object({
       text: v.string(),
       metadata: v.optional(v.record(v.string(), v.any())),
-    })
+    }),
   ),
 });
 
@@ -320,7 +320,7 @@ export const getRangesOfChunks = internalQuery({
   }),
   handler: async (
     ctx,
-    args
+    args,
   ): Promise<{
     ranges: (null | Infer<typeof vRangeResult>)[];
     entries: Entry[];
@@ -331,19 +331,19 @@ export const getRangesOfChunks = internalQuery({
         ctx.db
           .query("chunks")
           .withIndex("embeddingId", (q) =>
-            q.eq("state.embeddingId", embeddingId)
+            q.eq("state.embeddingId", embeddingId),
           )
           .order("desc")
-          .first()
-      )
+          .first(),
+      ),
     );
 
     // Note: This preserves order of entries as they first appeared.
     const entries = (
       await Promise.all(
         Array.from(
-          new Set(chunks.filter((c) => c !== null).map((c) => c.entryId))
-        ).map((id) => ctx.db.get(id))
+          new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
+        ).map((id) => ctx.db.get(id)),
       )
     )
       .filter((d) => d !== null)
@@ -361,7 +361,7 @@ export const getRangesOfChunks = internalQuery({
           acc[entryId] = [...(acc[entryId] ?? []), order].sort((a, b) => a - b);
           return acc;
         },
-        {} as Record<Id<"entries">, number[]>
+        {} as Record<Id<"entries">, number[]>,
       );
 
     const result: Array<Infer<typeof vRangeResult> | null> = [];
@@ -375,7 +375,7 @@ export const getRangesOfChunks = internalQuery({
       // instead we'd check that other chunks are not the same doc/order
       if (
         result.find(
-          (r) => r?.entryId === chunk.entryId && r?.order === chunk.order
+          (r) => r?.entryId === chunk.entryId && r?.order === chunk.order,
         )
       ) {
         // De-dupe chunks
@@ -393,12 +393,12 @@ export const getRangesOfChunks = internalQuery({
       const startOrder = Math.max(
         chunk.order - chunkContext.before,
         0,
-        Math.min(previousOrder + 1, chunk.order)
+        Math.min(previousOrder + 1, chunk.order),
       );
       // We stop short if the next chunk order's "before" context will cover it.
       const endOrder = Math.min(
         chunk.order + chunkContext.after + 1,
-        Math.max(nextOrder - chunkContext.before, chunk.order + 1)
+        Math.max(nextOrder - chunkContext.before, chunk.order + 1),
       );
       const contentIds: Id<"content">[] = [];
       if (startOrder === chunk.order && endOrder === chunk.order + 1) {
@@ -410,7 +410,7 @@ export const getRangesOfChunks = internalQuery({
             q
               .eq("entryId", entryId)
               .gte("order", startOrder)
-              .lt("order", endOrder)
+              .lt("order", endOrder),
           )
           .collect();
         for (const chunk of chunks) {
@@ -422,7 +422,7 @@ export const getRangesOfChunks = internalQuery({
           const content = await ctx.db.get(contentId);
           assert(content, `Content ${contentId} not found`);
           return { text: content.text, metadata: content.metadata };
-        })
+        }),
       );
 
       result.push({ entryId, order: chunk.order, startOrder, content });
@@ -453,7 +453,7 @@ export const list = query({
           const content = await ctx.db.get(chunk.contentId);
           assert(content, `Content ${chunk.contentId} not found`);
           return publicChunk(chunk, content);
-        })
+        }),
       ),
     };
   },
@@ -493,12 +493,12 @@ export const deleteChunksPage = internalMutation({
 
 export async function deleteChunksPageHandler(
   ctx: MutationCtx,
-  { entryId, startOrder }: { entryId: Id<"entries">; startOrder: number }
+  { entryId, startOrder }: { entryId: Id<"entries">; startOrder: number },
 ) {
   const chunkStream = ctx.db
     .query("chunks")
     .withIndex("entryId_order", (q) =>
-      q.eq("entryId", entryId).gte("order", startOrder)
+      q.eq("entryId", entryId).gte("order", startOrder),
     );
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {
@@ -557,7 +557,7 @@ async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
   if (content) {
     dataUsedSoFar += content.text.length;
     dataUsedSoFar += JSON.stringify(
-      convexToJson(content.metadata ?? {})
+      convexToJson(content.metadata ?? {}),
     ).length;
   }
   return dataUsedSoFar;

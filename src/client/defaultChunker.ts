@@ -18,7 +18,7 @@ export function defaultChunker(
     maxCharsSoftLimit?: number;
     maxCharsHardLimit?: number;
     delimiter?: string;
-  } = {}
+  } = {},
 ): string[] {
   if (!text) return [];
 
@@ -42,7 +42,7 @@ export function defaultChunker(
       const processedChunk = processChunkForOutput(
         currentChunk,
         lines,
-        i - currentChunk.length
+        i - currentChunk.length,
       );
       if (processedChunk.trim()) {
         chunks.push(processedChunk);
@@ -73,7 +73,7 @@ export function defaultChunker(
         const processedChunk = processChunkForOutput(
           currentChunk,
           lines,
-          i - currentChunk.length
+          i - currentChunk.length,
         );
         if (processedChunk.trim()) {
           chunks.push(processedChunk);
@@ -113,7 +113,7 @@ export function defaultChunker(
         const processedChunk = processChunkForOutput(
           currentChunk,
           lines,
-          i - currentChunk.length
+          i - currentChunk.length,
         );
         if (processedChunk.trim()) {
           chunks.push(processedChunk);
@@ -134,7 +134,7 @@ export function defaultChunker(
       const processedChunk = processChunkForOutput(
         currentChunk,
         lines,
-        lines.length - currentChunk.length
+        lines.length - currentChunk.length,
       );
       if (processedChunk.trim()) {
         chunks.push(processedChunk);
@@ -149,7 +149,7 @@ export function defaultChunker(
 function processChunkForOutput(
   chunkLines: string[],
   allLines: string[],
-  startIndex: number
+  startIndex: number,
 ): string {
   if (chunkLines.length === 0) return "";
 
@@ -195,7 +195,7 @@ function maybeSplitLine(line: string, maxCharsHardLimit: number): string[] {
 function shouldStartNewSection(
   lines: string[],
   index: number,
-  delimiter: string
+  delimiter: string,
 ): boolean {
   if (index === 0) return false;
 

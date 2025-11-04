@@ -1,5 +1,5 @@
 export function guessMimeTypeFromExtension(
-  filename: string
+  filename: string,
 ): string | undefined {
   const extension = filename.split(".").pop();
   if (!extension || extension.includes(" ")) {
@@ -140,10 +140,10 @@ export function guessMimeTypeFromContents(buf: ArrayBuffer | string): string {
  */
 export async function contentHashFromArrayBuffer(
   buffer: ArrayBuffer,
-  algorithm: "SHA-256" | "SHA-1" = "SHA-256"
+  algorithm: "SHA-256" | "SHA-1" = "SHA-256",
 ) {
   return Array.from(
-    new Uint8Array(await crypto.subtle.digest(algorithm, buffer))
+    new Uint8Array(await crypto.subtle.digest(algorithm, buffer)),
   )
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

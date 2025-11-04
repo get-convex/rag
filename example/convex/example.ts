@@ -89,7 +89,7 @@ export const search = action({
     globalNamespace: v.boolean(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({ before: v.number(), after: v.number() })
+      v.object({ before: v.number(), after: v.number() }),
     ),
   },
   handler: async (ctx, args) => {
@@ -112,7 +112,7 @@ export const searchFile = action({
     filename: v.string(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({ before: v.number(), after: v.number() })
+      v.object({ before: v.number(), after: v.number() }),
     ),
   },
   handler: async (ctx, args) => {
@@ -138,7 +138,7 @@ export const searchCategory = action({
     category: v.string(),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({ before: v.number(), after: v.number() })
+      v.object({ before: v.number(), after: v.number() }),
     ),
   },
   handler: async (ctx, args) => {
@@ -167,12 +167,12 @@ export const askQuestion = action({
           name: v.literal("category"),
           value: v.union(v.null(), v.string()),
         }),
-        v.object({ name: v.literal("filename"), value: v.string() })
-      )
+        v.object({ name: v.literal("filename"), value: v.string() }),
+      ),
     ),
     limit: v.optional(v.number()),
     chunkContext: v.optional(
-      v.object({ before: v.number(), after: v.number() })
+      v.object({ before: v.number(), after: v.number() }),
     ),
   },
   handler: async (ctx, args) => {
@@ -208,7 +208,7 @@ export async function addFileAsync(
     filename: string;
     blob: Blob;
     category: string | null;
-  }
+  },
 ) {
   const userId = await getUserId(ctx);
   // Maybe rate limit how often a user can upload a file / attribute?
@@ -228,7 +228,7 @@ export async function addFileAsync(
   }
   // If it doesn't exist, we need to store the file and chunk it asynchronously.
   const storageId = await ctx.storage.store(
-    new Blob([bytes], { type: blob.type })
+    new Blob([bytes], { type: blob.type }),
   );
   const { entryId } = await rag.addAsync(ctx, {
     namespace,
@@ -284,7 +284,7 @@ export const listFiles = query({
     return {
       ...results,
       page: await Promise.all(
-        results.page.map((entry) => toFile(ctx, entry, args.globalNamespace))
+        results.page.map((entry) => toFile(ctx, entry, args.globalNamespace)),
       ),
     };
   },
@@ -338,7 +338,7 @@ export type PublicFile = {
 
 async function toFiles(
   ctx: ActionCtx,
-  files: SearchEntry<Filters, Metadata>[]
+  files: SearchEntry<Filters, Metadata>[],
 ): Promise<PublicFile[]> {
   return await Promise.all(files.map((entry) => toFile(ctx, entry, false)));
 }
@@ -346,7 +346,7 @@ async function toFiles(
 async function toFile(
   ctx: { storage: StorageReader },
   entry: Entry<Filters, Metadata>,
-  global: boolean
+  global: boolean,
 ): Promise<PublicFile> {
   assert(entry.metadata, "Entry metadata not found");
   const storageId = entry.metadata.storageId;
@@ -419,7 +419,7 @@ export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
       console.debug("adding file failed", entry, error);
       await rag.deleteAsync(ctx, { entryId: entry.entryId });
     }
-  }
+  },
 );
 
 export const deleteFile = mutation({

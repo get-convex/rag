@@ -97,8 +97,8 @@ describe("entries", () => {
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), entry.key)
-          )
+            q.eq(q.field("key"), entry.key),
+          ),
         )
         .collect();
     });
@@ -143,8 +143,8 @@ describe("entries", () => {
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), entry.key)
-          )
+            q.eq(q.field("key"), entry.key),
+          ),
         )
         .collect();
     });
@@ -537,7 +537,7 @@ describe("entries", () => {
       {
         namespaceId,
         key: "shared-key",
-      }
+      },
     );
     expect(sharedBefore).toHaveLength(2);
 
@@ -563,7 +563,7 @@ describe("entries", () => {
 
     const sharedAfter = await t.query(
       internal.entries.getEntriesForNamespaceByKey,
-      { namespaceId, key: "shared-key" }
+      { namespaceId, key: "shared-key" },
     );
     expect(sharedAfter).toHaveLength(0);
 
@@ -722,8 +722,8 @@ describe("entries", () => {
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), "versioned-key")
-          )
+            q.eq(q.field("key"), "versioned-key"),
+          ),
         )
         .collect();
     });
@@ -747,8 +747,8 @@ describe("entries", () => {
         .filter((q) =>
           q.and(
             q.eq(q.field("namespaceId"), namespaceId),
-            q.eq(q.field("key"), "versioned-key")
-          )
+            q.eq(q.field("key"), "versioned-key"),
+          ),
         )
         .collect();
     });

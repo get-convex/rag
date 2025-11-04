@@ -27,7 +27,7 @@ export const vSearchResult = v.object({
     v.object({
       text: v.string(),
       metadata: v.optional(v.record(v.string(), v.any())),
-    })
+    }),
   ),
   startOrder: v.number(),
   score: v.number(),
@@ -38,7 +38,7 @@ export type SearchResult = Infer<typeof vSearchResult>;
 export const vStatus = v.union(
   v.literal("pending"),
   v.literal("ready"),
-  v.literal("replaced")
+  v.literal("replaced"),
 );
 export const vActiveStatus = v.union(v.literal("pending"), v.literal("ready"));
 export type Status = Infer<typeof vStatus>;
@@ -169,8 +169,8 @@ export function vPaginationResult<
       v.union(
         v.literal("SplitRecommended"),
         v.literal("SplitRequired"),
-        v.null()
-      )
+        v.null(),
+      ),
     ),
   });
 }

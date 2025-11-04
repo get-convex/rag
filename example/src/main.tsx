@@ -13,5 +13,5 @@ createRoot(document.getElementById("root")!).render(
     <ConvexProvider client={convex}>
       <Example />
     </ConvexProvider>
-  </StrictMode>
+  </StrictMode>,
 );

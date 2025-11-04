@@ -33,7 +33,7 @@ function namespaceIsCompatible(
     modelId: string;
     dimension: number;
     filterNames: string[];
-  }
+  },
 ) {
   // Check basic compatibility
   if (
@@ -79,12 +79,12 @@ export const getCompatibleNamespace = internalQuery({
 
 export async function getCompatibleNamespaceHandler(
   ctx: QueryCtx,
-  args: ObjectType<typeof vNamespaceLookupArgs>
+  args: ObjectType<typeof vNamespaceLookupArgs>,
 ) {
   const iter = ctx.db
     .query("namespaces")
     .withIndex("status_namespace_version", (q) =>
-      q.eq("status.kind", "ready").eq("namespace", args.namespace)
+      q.eq("status.kind", "ready").eq("namespace", args.namespace),
     )
     .order("desc");
   for await (const existing of iter) {
@@ -132,11 +132,11 @@ export const getOrCreate = mutation({
         stream(ctx.db, schema)
           .query("namespaces")
           .withIndex("status_namespace_version", (q) =>
-            q.eq("status.kind", status).eq("namespace", args.namespace)
+            q.eq("status.kind", status).eq("namespace", args.namespace),
           )
-          .order("desc")
+          .order("desc"),
       ),
-      ["version"]
+      ["version"],
     );
 
     let version: number = 0;
@@ -172,7 +172,7 @@ async function runOnComplete(
   ctx: MutationCtx,
   onComplete: string | undefined,
   namespace: Doc<"namespaces">,
-  replacedNamespace: Doc<"namespaces"> | null
+  replacedNamespace: Doc<"namespaces"> | null,
 ) {
   const onCompleteFn = onComplete as unknown as OnCompleteNamespace;
   if (!onCompleteFn) {
@@ -198,25 +198,25 @@ export const promoteToReady = mutation({
 
 async function promoteToReadyHandler(
   ctx: MutationCtx,
-  args: { namespaceId: Id<"namespaces"> }
+  args: { namespaceId: Id<"namespaces"> },
 ) {
   const namespace = await ctx.db.get(args.namespaceId);
   assert(namespace, `Namespace ${args.namespaceId} not found`);
   if (namespace.status.kind === "ready") {
     console.debug(
-      `Namespace ${args.namespaceId} is already ready, not promoting`
+      `Namespace ${args.namespaceId} is already ready, not promoting`,
     );
     return { replacedNamespace: null };
   } else if (namespace.status.kind === "replaced") {
     console.debug(
-      `Namespace ${args.namespaceId} is already replaced, not promoting and returning itself`
+      `Namespace ${args.namespaceId} is already replaced, not promoting and returning itself`,
     );
     return { replacedNamespace: publicNamespace(namespace) };
   }
   const previousNamespace = await ctx.db
     .query("namespaces")
     .withIndex("status_namespace_version", (q) =>
-      q.eq("status.kind", "ready").eq("namespace", namespace.namespace)
+      q.eq("status.kind", "ready").eq("namespace", namespace.namespace),
     )
     .order("desc")
     .unique();
@@ -237,7 +237,7 @@ async function promoteToReadyHandler(
       ctx,
       previousStatus.onComplete,
       namespace,
-      previousNamespace
+      previousNamespace,
     );
   }
   const previousPendingNamespaces = await ctx.db
@@ -246,7 +246,7 @@ async function promoteToReadyHandler(
       q
         .eq("status.kind", "pending")
         .eq("namespace", namespace.namespace)
-        .lt("version", namespace.version)
+        .lt("version", namespace.version),
     )
     .collect();
   // Then mark all previous pending namespaces as replaced,
@@ -259,7 +259,7 @@ async function promoteToReadyHandler(
       if (previousStatus.kind === "pending" && previousStatus.onComplete) {
         await runOnComplete(ctx, previousStatus.onComplete, namespace, null);
       }
-    })
+    }),
   );
   return {
     replacedNamespace: previousNamespace
@@ -278,7 +278,7 @@ export const list = query({
     const namespaces = await paginator(ctx.db, schema)
       .query("namespaces")
       .withIndex("status_namespace_version", (q) =>
-        q.eq("status.kind", args.status ?? "ready")
+        q.eq("status.kind", args.status ?? "ready"),
       )
       .order("desc")
       .paginate(args.paginationOpts);
@@ -298,11 +298,11 @@ export const listNamespaceVersions = query({
         stream(ctx.db, schema)
           .query("namespaces")
           .withIndex("status_namespace_version", (q) =>
-            q.eq("status.kind", status).eq("namespace", args.namespace)
+            q.eq("status.kind", status).eq("namespace", args.namespace),
           )
-          .order("desc")
+          .order("desc"),
       ),
-      ["version"]
+      ["version"],
     ).paginate(args.paginationOpts);
 
     return {
@@ -332,21 +332,21 @@ export const deleteNamespace = mutation({
 
 async function deleteHandler(
   ctx: MutationCtx,
-  args: { namespaceId: Id<"namespaces"> }
+  args: { namespaceId: Id<"namespaces"> },
 ) {
   const namespace = await ctx.db.get(args.namespaceId);
   assert(namespace, `Namespace ${args.namespaceId} not found`);
   const anyEntry = await ctx.db
     .query("entries")
     .withIndex("namespaceId_status_key_version", (q) =>
-      q.eq("namespaceId", args.namespaceId)
+      q.eq("namespaceId", args.namespaceId),
     )
     .first();
   if (anyEntry) {
     throw new Error(
       `Namespace ${args.namespaceId} cannot delete, has entries` +
         "First delete all entries." +
-        `Entry: ${anyEntry.key} id ${anyEntry._id} (${anyEntry.status.kind})`
+        `Entry: ${anyEntry.key} id ${anyEntry._id} (${anyEntry.status.kind})`,
     );
   }
   await ctx.db.delete(args.namespaceId);

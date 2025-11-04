@@ -20,7 +20,7 @@ export const vStatusWithOnComplete = v.union(
   v.object({
     kind: v.literal("replaced"),
     replacedAt: v.number(),
-  })
+  }),
 );
 
 export type StatusWithOnComplete = Infer<typeof vStatusWithOnComplete>;
@@ -79,7 +79,7 @@ export const schema = defineSchema({
         embeddingId: vVectorId,
         vector: v.array(v.number()),
         pendingSearchableText: v.optional(v.string()),
-      })
+      }),
     ),
     // TODO: should content be inline?
     contentId: v.id("content"),

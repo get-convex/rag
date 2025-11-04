@@ -35,7 +35,7 @@ export function vectorWithImportance(embedding: number[], importance: number) {
   // We drop the final dimension if it'd make it larger than 4096.
   // Unfortunate current limitation of Convex vector search.
   const vectorToModify = normalizeVector(
-    embedding.length === 4096 ? embedding.slice(0, 4095) : embedding
+    embedding.length === 4096 ? embedding.slice(0, 4095) : embedding,
   );
   const scaled = scaleVector(vectorToModify, importance);
 

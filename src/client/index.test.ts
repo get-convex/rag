@@ -51,7 +51,7 @@ export const add = mutation({
         text: v.string(),
         metadata: v.record(v.string(), v.any()),
         embedding: v.array(v.number()),
-      })
+      }),
     ),
     namespace: v.string(),
     title: v.optional(v.string()),
@@ -69,9 +69,9 @@ export const add = mutation({
           v.object({
             name: v.literal("customObject"),
             value: v.record(v.string(), v.any()),
-          })
-        )
-      )
+          }),
+        ),
+      ),
     ),
     importance: v.optional(v.number()),
     contentHash: v.optional(v.string()),
@@ -90,7 +90,7 @@ export const search = action({
       v.object({
         before: v.number(),
         after: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -120,7 +120,7 @@ const testApi: ApiFromModules<{
 
 function dummyEmbeddings(text: string) {
   return Array.from({ length: 1536 }, (_, i) =>
-    i === 0 ? text.charCodeAt(0) / 256 : 0.1
+    i === 0 ? text.charCodeAt(0) / 256 : 0.1,
   );
 }
 
@@ -238,12 +238,12 @@ describe("RAG thick client", () => {
       expect(text).toContain("## Test Document:");
       expect(entries).toHaveLength(1);
       expect(entries[0].text).toBe(
-        "Chunk 1 content\nChunk 2 content\nChunk 3 content"
+        "Chunk 1 content\nChunk 2 content\nChunk 3 content",
       );
 
       // Overall text should be: "## Test Document:\nChunk 1 content\nChunk 2 content\nChunk 3 content"
       expect(text).toBe(
-        "## Test Document:\n\nChunk 1 content\nChunk 2 content\nChunk 3 content"
+        "## Test Document:\n\nChunk 1 content\nChunk 2 content\nChunk 3 content",
       );
       expect(usage).toEqual({ tokens: 0 });
     });
@@ -508,7 +508,7 @@ Chunk 2 contents
 ## Title 2:
 
 Chunk 3 contents
-Chunk 4 contents`
+Chunk 4 contents`,
       );
     });
   });

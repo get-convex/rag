@@ -111,7 +111,7 @@ export const addAsync = mutation({
         name: workpoolName(namespace.namespace, args.entry.key, entryId),
         onComplete: internal.entries.addAsyncOnComplete,
         context: entryId,
-      }
+      },
     );
     return { entryId, status: status.kind, created: true };
   },
@@ -120,7 +120,7 @@ export const addAsync = mutation({
 function workpoolName(
   namespace: string,
   key: string | undefined,
-  entryId: Id<"entries">
+  entryId: Id<"entries">,
 ) {
   return `rag-async-${namespace}-${key ? key + "-" + entryId : entryId}`;
 }
@@ -137,7 +137,7 @@ export const addAsyncOnComplete = internalMutation({
     const entry = await ctx.db.get(args.context);
     if (!entry) {
       console.error(
-        `Entry ${args.context} not found when trying to complete chunker for async add`
+        `Entry ${args.context} not found when trying to complete chunker for async add`,
       );
       return;
     }
@@ -154,7 +154,7 @@ export const addAsyncOnComplete = internalMutation({
           namespace,
           entry,
           null,
-          args.result.kind === "canceled" ? "Canceled" : args.result.error
+          args.result.kind === "canceled" ? "Canceled" : args.result.error,
         );
       }
     }
@@ -169,7 +169,7 @@ type AddEntryArgs = Pick<
 async function findExistingEntry(
   ctx: MutationCtx,
   namespaceId: Id<"namespaces">,
-  key: string | undefined
+  key: string | undefined,
 ) {
   if (!key) {
     return null;
@@ -182,11 +182,11 @@ async function findExistingEntry(
           q
             .eq("namespaceId", namespaceId)
             .eq("status.kind", status)
-            .eq("key", key)
+            .eq("key", key),
         )
-        .order("desc")
+        .order("desc"),
     ),
-    ["version"]
+    ["version"],
   ).first();
   return existing;
 }
@@ -256,7 +256,7 @@ async function runOnComplete(
   namespace: Doc<"namespaces">,
   entry: Doc<"entries">,
   replacedEntry: Doc<"entries"> | null,
-  error?: string
+  error?: string,
 ) {
   await ctx.runMutation(onComplete as unknown as OnComplete, {
     namespace: publicNamespace(namespace),
@@ -282,8 +282,8 @@ function entryIsSame(existing: Doc<"entries">, newEntry: AddEntryArgs) {
   if (
     !existing.filterValues.every((filter) =>
       newEntry.filterValues.some(
-        (f) => f.name === filter.name && f.value === filter.value
-      )
+        (f) => f.name === filter.name && f.value === filter.value,
+      ),
     )
   ) {
     return false;
@@ -309,7 +309,7 @@ export const list = query({
       .withIndex("status_namespaceId", (q) =>
         namespaceId
           ? q.eq("status.kind", args.status).eq("namespaceId", namespaceId)
-          : q.eq("status.kind", args.status)
+          : q.eq("status.kind", args.status),
       )
       .order(args.order ?? "asc")
       .paginate(args.paginationOpts);
@@ -359,16 +359,16 @@ export const findByContentHash = query({
             q
               .eq("namespaceId", namespace._id)
               .eq("status.kind", status)
-              .eq("key", args.key)
+              .eq("key", args.key),
           )
-          .order("desc")
+          .order("desc"),
       ),
-      ["version"]
+      ["version"],
     )) {
       attempts++;
       if (attempts > 20) {
         console.debug(
-          `Giving up after checking ${attempts} entries for ${args.key} content hash ${args.contentHash}, returning null`
+          `Giving up after checking ${attempts} entries for ${args.key} content hash ${args.contentHash}, returning null`,
         );
         return null;
       }
@@ -407,7 +407,7 @@ export const promoteToReady = mutation({
 
 async function promoteToReadyHandler(
   ctx: MutationCtx,
-  args: { entryId: Id<"entries"> }
+  args: { entryId: Id<"entries"> },
 ) {
   const entry = await ctx.db.get(args.entryId);
   assert(entry, `Entry ${args.entryId} not found`);
@@ -418,7 +418,7 @@ async function promoteToReadyHandler(
     return { replacedEntry: null };
   } else if (entry.status.kind === "replaced") {
     console.debug(
-      `Entry ${args.entryId} is already replaced, returning the current version...`
+      `Entry ${args.entryId} is already replaced, returning the current version...`,
     );
     return { replacedEntry: publicEntry(entry) };
   }
@@ -441,7 +441,7 @@ async function promoteToReadyHandler(
       previousStatus.onComplete,
       namespace,
       entry,
-      previousEntry
+      previousEntry,
     );
   }
   // Then mark all previous pending entries as replaced,
@@ -454,7 +454,7 @@ async function promoteToReadyHandler(
           .eq("namespaceId", entry.namespaceId)
           .eq("status.kind", "pending")
           .eq("key", entry.key)
-          .lt("version", entry.version)
+          .lt("version", entry.version),
       )
       .collect();
     await Promise.all(
@@ -468,10 +468,10 @@ async function promoteToReadyHandler(
             previousStatus.onComplete,
             namespace,
             entry,
-            null
+            null,
           );
         }
-      })
+      }),
     );
   }
   return {
@@ -489,7 +489,7 @@ export async function getPreviousEntry(ctx: QueryCtx, entry: Doc<"entries">) {
       q
         .eq("namespaceId", entry.namespaceId)
         .eq("status.kind", "ready")
-        .eq("key", entry.key)
+        .eq("key", entry.key),
     )
     .unique();
   if (previousEntry?._id === entry._id) return null;
@@ -542,7 +542,7 @@ export const deleteAsync = mutation({
 
 async function deleteAsyncHandler(
   ctx: MutationCtx,
-  args: { entryId: Id<"entries">; startOrder: number }
+  args: { entryId: Id<"entries">; startOrder: number },
 ) {
   const { entryId, startOrder } = args;
   const entry = await ctx.db.get(entryId);
@@ -614,7 +614,7 @@ export const deleteByKeyAsync = mutation({
 
 async function getEntriesByKey(
   ctx: QueryCtx,
-  args: { namespaceId: Id<"namespaces">; key: string; beforeVersion?: number }
+  args: { namespaceId: Id<"namespaces">; key: string; beforeVersion?: number },
 ): Promise<Doc<"entries">[]> {
   return mergedStream(
     statuses.map((status) =>
@@ -625,11 +625,11 @@ async function getEntriesByKey(
             .eq("namespaceId", args.namespaceId)
             .eq("status.kind", status)
             .eq("key", args.key)
-            .lt("version", args.beforeVersion ?? Infinity)
+            .lt("version", args.beforeVersion ?? Infinity),
         )
-        .order("desc")
+        .order("desc"),
     ),
-    ["version"]
+    ["version"],
   ).take(100);
 }
 
@@ -653,7 +653,7 @@ export const deleteByKeySync = action({
     while (true) {
       const entries: Doc<"entries">[] = await ctx.runQuery(
         internal.entries.getEntriesForNamespaceByKey,
-        { namespaceId: args.namespaceId, key: args.key }
+        { namespaceId: args.namespaceId, key: args.key },
       );
       for await (const entry of entries) {
         await ctx.runAction(api.entries.deleteSync, {

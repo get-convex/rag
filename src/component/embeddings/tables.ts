@@ -56,11 +56,11 @@ export const VectorDimensions = [
 ] as const;
 
 export function assertVectorDimension(
-  dimension: number
+  dimension: number,
 ): asserts dimension is VectorDimension {
   if (!VectorDimensions.includes(dimension as VectorDimension)) {
     throw new Error(
-      `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`
+      `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`,
     );
   }
 }
@@ -68,14 +68,14 @@ export function assertVectorDimension(
 export function validateVectorDimension(dimension: number): VectorDimension {
   if (!VectorDimensions.includes(dimension as VectorDimension)) {
     throw new Error(
-      `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`
+      `Unsupported vector dimension${dimension}. Supported: ${VectorDimensions.join(", ")}`,
     );
   }
   return dimension as VectorDimension;
 }
 export type VectorDimension = (typeof VectorDimensions)[number];
 export const VectorTableNames = VectorDimensions.map(
-  (d) => `vectors_${d}`
+  (d) => `vectors_${d}`,
 ) as `vectors_${(typeof VectorDimensions)[number]}`[];
 export type VectorTableName = (typeof VectorTableNames)[number];
 export type VectorTableId = GenericId<(typeof VectorTableNames)[number]>;
@@ -83,7 +83,7 @@ export type VectorTableId = GenericId<(typeof VectorTableNames)[number]>;
 export const vVectorDimension = literals(...VectorDimensions);
 export const vVectorTableName = literals(...VectorTableNames);
 export const vVectorId = v.union(
-  ...VectorTableNames.map((name) => v.id(name))
+  ...VectorTableNames.map((name) => v.id(name)),
 ) as VUnion<
   GenericId<(typeof VectorTableNames)[number]>,
   VId<(typeof VectorTableNames)[number]>[]
@@ -109,7 +109,7 @@ const tables: {
   VectorDimensions.map((dimensions) => [
     `vectors_${dimensions}`,
     table(dimensions),
-  ])
+  ]),
 ) as Record<`vectors_${(typeof VectorDimensions)[number]}`, Table>;
 
 export default tables;

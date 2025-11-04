@@ -16,7 +16,7 @@ describe("search", () => {
     t: ConvexTest,
     namespace = "test-namespace",
     dimension = 128,
-    filterNames: string[] = []
+    filterNames: string[] = [],
   ) {
     return await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -35,7 +35,7 @@ describe("search", () => {
     namespaceId: Id<"namespaces">,
     key = "test-entry",
     version = 0,
-    filterValues: Array<{ name: string; value: Value }> = []
+    filterValues: Array<{ name: string; value: Value }> = [],
   ) {
     return await t.run(async (ctx) => {
       return ctx.db.insert("entries", {
@@ -207,7 +207,7 @@ describe("search", () => {
 
     // With threshold should return fewer results
     expect(resultWithThreshold.results.length).toBeLessThan(
-      resultWithoutThreshold.results.length
+      resultWithoutThreshold.results.length,
     );
     expect(resultWithoutThreshold.results).toHaveLength(2);
 
@@ -305,7 +305,7 @@ describe("search", () => {
       t,
       "multi-filter-namespace",
       128,
-      ["category", "priority_category"]
+      ["category", "priority_category"],
     );
 
     // Create entries with different filter combinations
@@ -438,7 +438,7 @@ describe("search", () => {
     // Results should be sorted by score (best first)
     for (let i = 1; i < result.results.length; i++) {
       expect(result.results[i - 1].score).toBeGreaterThanOrEqual(
-        result.results[i].score
+        result.results[i].score,
       );
     }
   });

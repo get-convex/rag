@@ -61,7 +61,7 @@ describe("embeddings", () => {
     expect(insertedVector).toBeDefined();
     expect(insertedVector!.namespaceId).toBe(namespaceId);
     expect(insertedVector!.vector).toHaveLength(
-      vectorWithImportanceDimension(128)
+      vectorWithImportanceDimension(128),
     );
     expect(insertedVector!.filter0).toBeUndefined();
     expect(insertedVector!.filter1).toBeUndefined();
@@ -93,7 +93,7 @@ describe("embeddings", () => {
         embedding,
         namespaceId,
         importance,
-        undefined
+        undefined,
       );
     });
 
@@ -115,7 +115,7 @@ describe("embeddings", () => {
 
     // Vectors should be different due to importance scaling
     expect(insertedVector!.vector).not.toEqual(
-      vectorWithoutImportanceData!.vector
+      vectorWithoutImportanceData!.vector,
     );
 
     // The last element should be the weight: sqrt(1 - importance^2)

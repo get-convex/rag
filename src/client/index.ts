@@ -114,7 +114,7 @@ export class RAG<
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModel<string>;
       filterNames?: FilterNames<FitlerSchemas>;
-    }
+    },
   ) {}
 
   /**
@@ -152,7 +152,7 @@ export class RAG<
             /** @deprecated You cannot specify both chunks and text currently. */
             chunks?: undefined;
           }
-      )
+      ),
   ): Promise<{
     entryId: EntryId;
     status: Status;
@@ -179,7 +179,7 @@ export class RAG<
     if (Array.isArray(chunks) && chunks.length < CHUNK_BATCH_SIZE) {
       const result = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
-        chunks
+        chunks,
       );
       allChunks = result.chunks;
       totalUsage.tokens += result.usage.tokens;
@@ -202,7 +202,7 @@ export class RAG<
         },
         onComplete,
         allChunks,
-      }
+      },
     );
     if (status === "ready") {
       return {
@@ -224,7 +224,7 @@ export class RAG<
       for await (const batch of batchIterator(chunks, CHUNK_BATCH_SIZE)) {
         const result = await createChunkArgsBatch(
           this.options.textEmbeddingModel,
-          batch
+          batch,
         );
         totalUsage.tokens += result.usage.tokens;
         const { status } = await ctx.runMutation(this.component.chunks.insert, {
@@ -244,7 +244,7 @@ export class RAG<
       while (true) {
         const { status, nextStartOrder } = await ctx.runMutation(
           this.component.chunks.replaceChunksPage,
-          { entryId, startOrder }
+          { entryId, startOrder },
         );
         if (status === "ready") {
           break;
@@ -262,7 +262,7 @@ export class RAG<
     }
     const promoted = await ctx.runMutation(
       this.component.entries.promoteToReady,
-      { entryId }
+      { entryId },
     );
     return {
       entryId: entryId as EntryId,
@@ -318,7 +318,7 @@ export class RAG<
          *   });
          */
         chunkerAction: ChunkerAction;
-      }
+      },
   ): Promise<{ entryId: EntryId; status: "ready" | "pending" }> {
     let namespaceId: NamespaceId;
     if ("namespaceId" in args) {
@@ -352,7 +352,7 @@ export class RAG<
         },
         onComplete,
         chunker,
-      }
+      },
     );
     return { entryId: entryId as EntryId, status };
   }
@@ -375,7 +375,7 @@ export class RAG<
        * The query to search for. Optional if embedding is provided.
        */
       query: string | Array<number>;
-    } & SearchOptions<FitlerSchemas>
+    } & SearchOptions<FitlerSchemas>,
   ): Promise<{
     results: SearchResult[];
     text: string;
@@ -409,7 +409,7 @@ export class RAG<
         limit,
         vectorScoreThreshold,
         chunkContext,
-      }
+      },
     );
     const entriesWithTexts = entries.map((e) => {
       const ranges = results
@@ -479,7 +479,7 @@ export class RAG<
        * to the prompt, in which case it will precede the prompt.
        */
       messages?: ModelMessage[];
-    } & Parameters<typeof generateText>[0]
+    } & Parameters<typeof generateText>[0],
   ): Promise<
     Awaited<ReturnType<typeof generateText>> & {
       context: {
@@ -524,7 +524,7 @@ export class RAG<
           .map((e) =>
             e.title
               ? `<document title="${e.title}">${e.text}</document>`
-              : `<document>${e.text}</document>`
+              : `<document>${e.text}</document>`,
           )
           .join("\n");
         contextFooter = "</context>";
@@ -575,7 +575,7 @@ export class RAG<
       namespaceId?: NamespaceId;
       order?: "desc" | "asc";
       status?: Status;
-    } & ({ paginationOpts: PaginationOptions } | { limit: number })
+    } & ({ paginationOpts: PaginationOptions } | { limit: number }),
   ): Promise<PaginationResult<Entry<FitlerSchemas, EntryMetadata>>> {
     const paginationOpts =
       "paginationOpts" in args
@@ -597,7 +597,7 @@ export class RAG<
     ctx: CtxWith<"runQuery">,
     args: {
       entryId: EntryId;
-    }
+    },
   ): Promise<Entry<FitlerSchemas, EntryMetadata> | null> {
     const entry = await ctx.runQuery(this.component.entries.get, {
       entryId: args.entryId,
@@ -617,7 +617,7 @@ export class RAG<
       key: string;
       /** The hash of the entry contents to try to match. */
       contentHash: string;
-    }
+    },
   ): Promise<Entry<FitlerSchemas, EntryMetadata> | null> {
     const entry = await ctx.runQuery(this.component.entries.findByContentHash, {
       namespace: args.namespace,
@@ -651,7 +651,7 @@ export class RAG<
        * along the way.
        */
       onComplete?: OnCompleteNamespace;
-    }
+    },
   ): Promise<{
     namespaceId: NamespaceId;
     status: "pending" | "ready";
@@ -661,7 +661,7 @@ export class RAG<
       : undefined;
     assert(
       !onComplete || args.status === "pending",
-      "You can only supply an onComplete handler for pending namespaces"
+      "You can only supply an onComplete handler for pending namespaces",
     );
     const { namespaceId, status } = await ctx.runMutation(
       this.component.namespaces.getOrCreate,
@@ -672,7 +672,7 @@ export class RAG<
         modelId: getModelId(this.options.textEmbeddingModel),
         dimension: this.options.embeddingDimension,
         filterNames: this.options.filterNames ?? [],
-      }
+      },
     );
     return { namespaceId: namespaceId as NamespaceId, status };
   }
@@ -685,7 +685,7 @@ export class RAG<
     ctx: CtxWith<"runQuery">,
     args: {
       namespace: string;
-    }
+    },
   ): Promise<Namespace | null> {
     return ctx.runQuery(this.component.namespaces.get, {
       namespace: args.namespace,
@@ -704,7 +704,7 @@ export class RAG<
       paginationOpts: PaginationOptions;
       entryId: EntryId;
       order?: "desc" | "asc";
-    }
+    },
   ): Promise<PaginationResult<Chunk>> {
     return ctx.runQuery(this.component.chunks.list, {
       entryId: args.entryId,
@@ -731,16 +731,16 @@ export class RAG<
    */
   async delete(
     ctx: CtxWith<"runAction">,
-    args: { entryId: EntryId }
+    args: { entryId: EntryId },
   ): Promise<void>;
   /** @deprecated Use `deleteAsync` in mutations. */
   async delete(
     ctx: CtxWith<"runMutation">,
-    args: { entryId: EntryId }
+    args: { entryId: EntryId },
   ): Promise<void>;
   async delete(
     ctx: CtxWith<"runMutation"> | CtxWith<"runAction">,
-    args: { entryId: EntryId }
+    args: { entryId: EntryId },
   ) {
     if ("runAction" in ctx) {
       await ctx.runAction(this.component.entries.deleteSync, {
@@ -748,7 +748,7 @@ export class RAG<
       });
     } else {
       console.warn(
-        "You are running `rag.delete` in a mutation. This is deprecated. Use `rag.deleteAsync` from mutations, or `rag.delete` in actions."
+        "You are running `rag.delete` in a mutation. This is deprecated. Use `rag.deleteAsync` from mutations, or `rag.delete` in actions.",
       );
       await ctx.runMutation(this.component.entries.deleteAsync, {
         entryId: args.entryId,
@@ -762,7 +762,7 @@ export class RAG<
    */
   async deleteByKeyAsync(
     ctx: CtxWith<"runMutation">,
-    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
+    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number },
   ) {
     await ctx.runMutation(this.component.entries.deleteByKeyAsync, {
       namespaceId: args.namespaceId,
@@ -779,7 +779,7 @@ export class RAG<
    */
   async deleteByKey(
     ctx: CtxWith<"runAction">,
-    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number }
+    args: { namespaceId: NamespaceId; key: string; beforeVersion?: number },
   ) {
     await ctx.runAction(this.component.entries.deleteByKeySync, args);
   }
@@ -805,8 +805,8 @@ export class RAG<
   defineOnComplete<DataModel extends GenericDataModel>(
     fn: (
       ctx: GenericMutationCtx<DataModel>,
-      args: OnCompleteArgs<FitlerSchemas, EntryMetadata>
-    ) => Promise<void>
+      args: OnCompleteArgs<FitlerSchemas, EntryMetadata>,
+    ) => Promise<void>,
   ): RegisteredMutation<"internal", FunctionArgs<OnComplete>, null> {
     return internalMutationGeneric({
       args: vOnCompleteArgs,
@@ -835,8 +835,11 @@ export class RAG<
   defineChunkerAction<DataModel extends GenericDataModel>(
     fn: (
       ctx: GenericActionCtx<DataModel>,
-      args: { namespace: Namespace; entry: Entry<FitlerSchemas, EntryMetadata> }
-    ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>
+      args: {
+        namespace: Namespace;
+        entry: Entry<FitlerSchemas, EntryMetadata>;
+      },
+    ) => AsyncIterable<InputChunk> | Promise<{ chunks: InputChunk[] }>,
   ): RegisteredAction<
     "internal",
     FunctionArgs<ChunkerAction>,
@@ -850,26 +853,26 @@ export class RAG<
         if (namespace.modelId !== modelId) {
           console.error(
             `You are using a different embedding model ${modelId} for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.modelId}`
+              `generating chunks than the one provided when it was started: ${namespace.modelId}`,
           );
           return;
         }
         if (namespace.dimension !== this.options.embeddingDimension) {
           console.error(
             `You are using a different embedding dimension ${this.options.embeddingDimension} for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.dimension}`
+              `generating chunks than the one provided when it was started: ${namespace.dimension}`,
           );
           return;
         }
         if (
           !filterNamesContain(
             namespace.filterNames,
-            this.options.filterNames ?? []
+            this.options.filterNames ?? [],
           )
         ) {
           console.error(
             `You are using a different filters (${this.options.filterNames?.join(", ")}) for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.filterNames.join(", ")}`
+              `generating chunks than the one provided when it was started: ${namespace.filterNames.join(", ")}`,
           );
           return;
         }
@@ -891,11 +894,11 @@ export class RAG<
         let batchOrder = 0;
         for await (const batch of batchIterator(
           chunkIterator,
-          CHUNK_BATCH_SIZE
+          CHUNK_BATCH_SIZE,
         )) {
           const result = await createChunkArgsBatch(
             this.options.textEmbeddingModel,
-            batch
+            batch,
           );
           await ctx.runMutation(
             args.insertChunks as FunctionHandle<
@@ -907,7 +910,7 @@ export class RAG<
               entryId: entry.entryId,
               startOrder: batchOrder,
               chunks: result.chunks,
-            }
+            },
           );
           batchOrder += result.chunks.length;
         }
@@ -918,7 +921,7 @@ export class RAG<
 
 async function* batchIterator<T>(
   iterator: Iterable<T> | AsyncIterable<T>,
-  batchSize: number
+  batchSize: number,
 ): AsyncIterable<T[]> {
   let batch: T[] = [];
   for await (const item of iterator) {
@@ -935,21 +938,21 @@ async function* batchIterator<T>(
 
 function validateAddFilterValues(
   filterValues: NamedFilter[] | undefined,
-  filterNames: string[] | undefined
+  filterNames: string[] | undefined,
 ) {
   if (!filterValues) {
     return;
   }
   if (!filterNames) {
     throw new Error(
-      "You must provide filter names to RAG to add entries with filters."
+      "You must provide filter names to RAG to add entries with filters.",
     );
   }
   const seen = new Set<string>();
   for (const filterValue of filterValues) {
     if (seen.has(filterValue.name)) {
       throw new Error(
-        `You cannot provide the same filter name twice: ${filterValue.name}.`
+        `You cannot provide the same filter name twice: ${filterValue.name}.`,
       );
     }
     seen.add(filterValue.name);
@@ -957,7 +960,7 @@ function validateAddFilterValues(
   for (const filterName of filterNames) {
     if (!seen.has(filterName)) {
       throw new Error(
-        `Filter name ${filterName} is not valid (one of ${filterNames.join(", ")}).`
+        `Filter name ${filterName} is not valid (one of ${filterNames.join(", ")}).`,
       );
     }
   }
@@ -973,7 +976,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 
 async function createChunkArgsBatch(
   embedModel: EmbeddingModel<string>,
-  chunks: InputChunk[]
+  chunks: InputChunk[],
 ): Promise<{ chunks: CreateChunkArgs[]; usage: EmbeddingModelUsage }> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
     embedding?: number[];
@@ -1005,7 +1008,7 @@ async function createChunkArgsBatch(
         : {
             text: arg.content.text,
             index,
-          }
+          },
     )
     .filter((b) => b !== null);
   const totalUsage: EmbeddingModelUsage = { tokens: 0 };
@@ -1220,15 +1223,15 @@ type CtxWith<T extends "runQuery" | "runMutation" | "runAction"> = Pick<
   {
     runQuery: <Query extends FunctionReference<"query", "internal">>(
       query: Query,
-      args: FunctionArgs<Query>
+      args: FunctionArgs<Query>,
     ) => Promise<FunctionReturnType<Query>>;
     runMutation: <Mutation extends FunctionReference<"mutation", "internal">>(
       mutation: Mutation,
-      args: FunctionArgs<Mutation>
+      args: FunctionArgs<Mutation>,
     ) => Promise<FunctionReturnType<Mutation>>;
     runAction: <Action extends FunctionReference<"action", "internal">>(
       action: Action,
-      args: FunctionArgs<Action>
+      args: FunctionArgs<Action>,
     ) => Promise<FunctionReturnType<Action>>;
   },
   T
