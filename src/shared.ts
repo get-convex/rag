@@ -107,9 +107,7 @@ export type EntryFilter<
 }[keyof Filters & string];
 
 export type Entry<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Filters extends Record<string, Value> = any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Metadata extends Record<string, Value> = any,
 > = {
   /** The entry's id, uniquely identifying the key + contents + namespace etc. */
@@ -193,9 +191,7 @@ export const vOnCompleteArgs = v.object({
 });
 
 export type OnCompleteArgs<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Filters extends Record<string, Value> = any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   EntryMetadata extends Record<string, Value> = any,
 > = {
   /**

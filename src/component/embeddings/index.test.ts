@@ -25,7 +25,6 @@ const testApi: ApiFromModules<{
   fns: {
     search: typeof search;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["embeddings"]["index.test"] as any;
 
 describe("embeddings", () => {

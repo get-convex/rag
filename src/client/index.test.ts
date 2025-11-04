@@ -116,7 +116,6 @@ const testApi: ApiFromModules<{
     add: typeof add;
     search: typeof search;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }>["fns"] = anyApi["index.test"] as any;
 
 function dummyEmbeddings(text: string) {
@@ -177,14 +176,15 @@ describe("RAG thick client", () => {
     expect(entryId).toBeDefined();
     expect(status).toBe("ready");
     expect(usage).toEqual({ tokens: 0 });
-    const { entryId: entryId2, status: status2, usage: usage2 } = await t.mutation(
-      testApi.add,
-      {
-        key: "test",
-        chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
-        namespace: "test",
-      }
-    );
+    const {
+      entryId: entryId2,
+      status: status2,
+      usage: usage2,
+    } = await t.mutation(testApi.add, {
+      key: "test",
+      chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
+      namespace: "test",
+    });
     expect(entryId2).toBeDefined();
     expect(status2).toBe("ready");
     expect(usage2).toEqual({ tokens: 0 });

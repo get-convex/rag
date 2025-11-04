@@ -6,6 +6,6 @@ export default defineConfig({
   envDir: "../",
   plugins: [react()],
   optimizeDeps: {
-    include: ["pdfjs-dist"]
-  }
+    include: ["pdfjs-dist"],
+  },
 });
