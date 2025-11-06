@@ -4,7 +4,6 @@
 
 ```sh
 npm i
-npm run setup
 npm run dev
 ```
 
@@ -24,7 +23,7 @@ npm run test
 
 ```sh
 npm run clean
-npm run build
+npm ci
 npm pack
 ```
 
@@ -34,9 +33,7 @@ npm pack
 npm run release
 ```
 
-#### Alpha release
-
-The same as above, but it will publish the release with the `@alpha` tag:
+or for alpha release:
 
 ```sh
 npm run alpha
