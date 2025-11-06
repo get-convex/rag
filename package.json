@@ -96,7 +96,7 @@
     "eslint-plugin-react-refresh": "0.4.24",
     "globals": "16.5.0",
     "npm-run-all2": "8.0.4",
-    "pdfjs-dist": "4.10.38",
+    "pdfjs-dist": "5.4.394",
     "pkg-pr-new": "0.0.60",
     "postcss": "8.5.6",
     "prettier": "3.6.2",
