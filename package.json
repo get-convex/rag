@@ -75,7 +75,6 @@
   },
   "devDependencies": {
     "@ai-sdk/openai": "2.0.56",
-    "@arethetypeswrong/cli": "0.18.2",
     "@convex-dev/workpool": "0.2.19",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/eslintrc": "3.3.1",
