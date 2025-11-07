@@ -495,26 +495,27 @@ export async function deleteChunksPageHandler(
   ctx: MutationCtx,
   { entryId, startOrder }: { entryId: Id<"entries">; startOrder: number }
 ) {
-  const chunkStream = ctx.db
+  const chunkStream = stream(ctx.db, schema)
     .query("chunks")
     .withIndex("entryId_order", (q) =>
       q.eq("entryId", entryId).gte("order", startOrder)
     );
   let dataUsedSoFar = 0;
+  let lastOrder = startOrder - 1;
   for await (const chunk of chunkStream) {
-    dataUsedSoFar += await estimateChunkSize(chunk);
-    await ctx.db.delete(chunk._id);
-    if (chunk.state.kind === "ready") {
-      const embedding = await ctx.db.get(chunk.state.embeddingId);
-      if (embedding) {
-        dataUsedSoFar += estimateEmbeddingSize(embedding);
-        await ctx.db.delete(chunk.state.embeddingId);
-      }
-    }
-    dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
-    await ctx.db.delete(chunk.contentId);
-    if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
+    const estimated = await estimateChunkSize(chunk);
+    if (dataUsedSoFar + estimated > BANDWIDTH_PER_TRANSACTION_SOFT_LIMIT) {
       return { isDone: false, nextStartOrder: chunk.order };
+    }
+    dataUsedSoFar += estimated;
+    if (chunk.state.kind === "ready") {
+      await ctx.db.delete(chunk.state.embeddingId);
+    }
+    await ctx.db.delete(chunk.contentId);
+    await ctx.db.delete(chunk._id);
+    lastOrder = chunk.order;
+    if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
+      return { isDone: false, nextStartOrder: lastOrder + 1 };
     }
   }
   return { isDone: true, nextStartOrder: -1 };
