@@ -96,6 +96,7 @@
     "ai": "5.0.86",
     "autoprefixer": "10.4.21",
     "chokidar-cli": "3.0.0",
+    "convex": "1.29.0",
     "convex-helpers": "0.1.104",
     "convex-test": "0.0.38",
     "cpy-cli": "6.0.0",
