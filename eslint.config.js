@@ -14,7 +14,6 @@ export default [
       "example/**/*.config.{js,mjs,cjs,ts,tsx}",
       "vitest.config.ts",
       "**/_generated/",
-      "node10stubs.mjs",
     ],
   },
   {
