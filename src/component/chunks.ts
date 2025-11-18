@@ -234,6 +234,8 @@ export const replaceChunksPage = mutation({
           assert(chunk.state.kind === "ready");
           const vector = await ctx.db.get(chunk.state.embeddingId);
           assert(vector, `Vector ${chunk.state.embeddingId} not found`);
+          // get and delete both count as bandwidth reads
+          dataUsedSoFar += estimateEmbeddingSize(vector) * 2;
           await ctx.db.delete(chunk.state.embeddingId);
           await ctx.db.patch(chunk._id, {
             state: {
@@ -252,9 +254,9 @@ export const replaceChunksPage = mutation({
       chunkToAdd = null;
     }
     for await (const chunk of chunkStream) {
-      if (chunk.state.kind === "pending") {
-        dataUsedSoFar += await estimateChunkSize(chunk);
-      } else {
+      // one for the stream read, one for patching / replacing
+      dataUsedSoFar += estimateChunkSize(chunk) * 2;
+      if (chunk.state.kind !== "pending") {
         dataUsedSoFar += 17 * KB; // embedding conservative estimate
       }
       if (chunk.order > indexToDelete) {
@@ -502,12 +504,14 @@ export async function deleteChunksPageHandler(
     );
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {
-    dataUsedSoFar += await estimateChunkSize(chunk);
+    // one for the stream read, one for deleting
+    dataUsedSoFar += estimateChunkSize(chunk) * 2;
     await ctx.db.delete(chunk._id);
     if (chunk.state.kind === "ready") {
       const embedding = await ctx.db.get(chunk.state.embeddingId);
       if (embedding) {
-        dataUsedSoFar += estimateEmbeddingSize(embedding);
+        // get and delete both count as bandwidth reads
+        dataUsedSoFar += estimateEmbeddingSize(embedding) * 2;
         await ctx.db.delete(chunk.state.embeddingId);
       }
     }
@@ -539,7 +543,7 @@ function estimateEmbeddingSize(embedding: Doc<VectorTableName>) {
   return dataUsedSoFar;
 }
 
-async function estimateChunkSize(chunk: Doc<"chunks">) {
+function estimateChunkSize(chunk: Doc<"chunks">) {
   let dataUsedSoFar = 100; // constant metadata - roughly
   if (chunk.state.kind === "pending") {
     dataUsedSoFar += chunk.state.embedding.length * 8;
