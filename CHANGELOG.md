@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- Track bandwidth more accurately to avoid going over the limits while deleting
+  chunks.
+
 ## 0.6.0
 
 - Adds /test and /\_generated/component.js entrypoints
