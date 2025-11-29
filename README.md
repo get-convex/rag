@@ -23,6 +23,8 @@ with an Agent for Retrieval-Augmented Generation (RAG).
 Found a bug? Feature request?
 [File it here](https://github.com/get-convex/rag/issues).
 
+<!-- END: Include on https://convex.dev/components -->
+
 ## Pre-requisite: Convex
 
 You'll need an existing Convex project to use the component. Convex is a hosted
@@ -747,5 +749,3 @@ See more example usage in [example.ts](./example/convex/example.ts).
 ### Running the example
 
 Run the example with `npm run setup && npm run dev`.
-
-<!-- END: Include on https://convex.dev/components -->
