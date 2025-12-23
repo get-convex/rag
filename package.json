@@ -93,7 +93,7 @@
     "@typescript-eslint/eslint-plugin": "8.50.0",
     "@typescript-eslint/parser": "8.50.0",
     "@vitejs/plugin-react": "5.1.2",
-    "ai": "5.0.115",
+    "ai": "5.0.116",
     "autoprefixer": "10.4.23",
     "chokidar-cli": "3.0.0",
     "convex": "1.31.2",
