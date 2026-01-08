@@ -5,6 +5,7 @@ import {
   type EmbeddingModel,
   type EmbeddingModelUsage,
   type ModelMessage,
+  type ProviderMetadata,
 } from "ai";
 import { assert } from "convex-helpers";
 import {
@@ -114,6 +115,7 @@ export class RAG<
       embeddingDimension: number;
       textEmbeddingModel: EmbeddingModel<string>;
       filterNames?: FilterNames<FitlerSchemas>;
+      usageHandler?: UsageHandler;
     },
   ) {}
 
@@ -176,6 +178,7 @@ export class RAG<
     const chunks = args.chunks ?? defaultChunker(args.text);
     let allChunks: CreateChunkArgs[] | undefined;
     const totalUsage: EmbeddingModelUsage = { tokens: 0 };
+    let totalProviderMetadata: ProviderMetadata | undefined;
     if (Array.isArray(chunks) && chunks.length < CHUNK_BATCH_SIZE) {
       const result = await createChunkArgsBatch(
         this.options.textEmbeddingModel,
@@ -183,6 +186,9 @@ export class RAG<
       );
       allChunks = result.chunks;
       totalUsage.tokens += result.usage.tokens;
+      if (result.providerMetadata) {
+        totalProviderMetadata = result.providerMetadata;
+      }
     }
 
     const onComplete =
@@ -205,6 +211,14 @@ export class RAG<
       },
     );
     if (status === "ready") {
+      if (this.options.usageHandler && totalUsage.tokens > 0) {
+        await this.options.usageHandler(ctx, {
+          usage: totalUsage,
+          providerMetadata: totalProviderMetadata,
+          model: getModelId(this.options.textEmbeddingModel),
+          provider: getProviderName(this.options.textEmbeddingModel),
+        });
+      }
       return {
         entryId: entryId as EntryId,
         status,
@@ -227,6 +241,11 @@ export class RAG<
           batch,
         );
         totalUsage.tokens += result.usage.tokens;
+        if (result.providerMetadata) {
+          totalProviderMetadata = totalProviderMetadata
+            ? { ...totalProviderMetadata, ...result.providerMetadata }
+            : result.providerMetadata;
+        }
         const { status } = await ctx.runMutation(this.component.chunks.insert, {
           entryId,
           startOrder,
@@ -249,6 +268,14 @@ export class RAG<
         if (status === "ready") {
           break;
         } else if (status === "replaced") {
+          if (this.options.usageHandler && totalUsage.tokens > 0) {
+            await this.options.usageHandler(ctx, {
+              usage: totalUsage,
+              providerMetadata: totalProviderMetadata,
+              model: getModelId(this.options.textEmbeddingModel),
+              provider: getProviderName(this.options.textEmbeddingModel),
+            });
+          }
           return {
             entryId: entryId as EntryId,
             status: "replaced" as const,
@@ -264,6 +291,14 @@ export class RAG<
       this.component.entries.promoteToReady,
       { entryId },
     );
+    if (this.options.usageHandler && totalUsage.tokens > 0) {
+      await this.options.usageHandler(ctx, {
+        usage: totalUsage,
+        providerMetadata: totalProviderMetadata,
+        model: getModelId(this.options.textEmbeddingModel),
+        provider: getProviderName(this.options.textEmbeddingModel),
+      });
+    }
     return {
       entryId: entryId as EntryId,
       status: "ready" as const,
@@ -363,7 +398,7 @@ export class RAG<
    * parameters to filter and constrain the results.
    */
   async search(
-    ctx: CtxWith<"runAction">,
+    ctx: CtxWith<"runAction"> & Partial<CtxWith<"runMutation">>,
     args: {
       /**
        * The namespace to search in. e.g. a userId if entries are per-user.
@@ -391,6 +426,7 @@ export class RAG<
     } = args;
     let embedding = Array.isArray(args.query) ? args.query : undefined;
     let usage: EmbeddingModelUsage = { tokens: 0 };
+    let providerMetadata: ProviderMetadata | undefined;
     if (!embedding) {
       const embedResult = await embed({
         model: this.options.textEmbeddingModel,
@@ -398,6 +434,7 @@ export class RAG<
       });
       embedding = embedResult.embedding;
       usage = embedResult.usage;
+      providerMetadata = embedResult.providerMetadata;
     }
     const { results, entries } = await ctx.runAction(
       this.component.search.search,
@@ -430,6 +467,15 @@ export class RAG<
       }
       return { ...e, text } as SearchEntry<FitlerSchemas, EntryMetadata>;
     });
+
+    if (this.options.usageHandler && ctx.runMutation && usage.tokens > 0) {
+      await this.options.usageHandler(ctx as CtxWith<"runMutation">, {
+        usage,
+        providerMetadata,
+        model: getModelId(this.options.textEmbeddingModel),
+        provider: getProviderName(this.options.textEmbeddingModel),
+      });
+    }
 
     return {
       results: results as SearchResult[],
@@ -977,7 +1023,11 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 async function createChunkArgsBatch(
   embedModel: EmbeddingModel<string>,
   chunks: InputChunk[],
-): Promise<{ chunks: CreateChunkArgs[]; usage: EmbeddingModelUsage }> {
+): Promise<{
+  chunks: CreateChunkArgs[];
+  usage: EmbeddingModelUsage;
+  providerMetadata: ProviderMetadata | undefined;
+}> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
     embedding?: number[];
   })[] = chunks.map((chunk) => {
@@ -1012,12 +1062,18 @@ async function createChunkArgsBatch(
     )
     .filter((b) => b !== null);
   const totalUsage: EmbeddingModelUsage = { tokens: 0 };
+  let combinedProviderMetadata: ProviderMetadata | undefined;
   for (const batch of makeBatches(missingEmbeddingsWithIndex, 100)) {
-    const { embeddings, usage } = await embedMany({
+    const { embeddings, usage, providerMetadata } = await embedMany({
       model: embedModel,
       values: batch.map((b) => b.text.trim() || "<empty>"),
     });
     totalUsage.tokens += usage.tokens;
+    if (providerMetadata) {
+      combinedProviderMetadata = combinedProviderMetadata
+        ? { ...combinedProviderMetadata, ...providerMetadata }
+        : providerMetadata;
+    }
     for (const [index, embedding] of embeddings.entries()) {
       argsMaybeMissingEmbeddings[batch[index].index].embedding = embedding;
     }
@@ -1028,7 +1084,7 @@ async function createChunkArgsBatch(
     }
     return true;
   }) as CreateChunkArgs[];
-  return { chunks: finalChunks, usage: totalUsage };
+  return { chunks: finalChunks, usage: totalUsage, providerMetadata: combinedProviderMetadata };
 }
 
 type MastraChunk = {
@@ -1236,3 +1292,13 @@ type CtxWith<T extends "runQuery" | "runMutation" | "runAction"> = Pick<
   },
   T
 >;
+
+export type UsageHandler = (
+  ctx: CtxWith<"runMutation">,
+  args: {
+    usage: EmbeddingModelUsage;
+    providerMetadata: ProviderMetadata | undefined;
+    model: string;
+    provider: string;
+  },
+) => void | Promise<void>;
