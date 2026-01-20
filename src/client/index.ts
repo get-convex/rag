@@ -112,7 +112,7 @@ export class RAG<
     public component: ComponentApi,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModel<string>;
+      textEmbeddingModel: EmbeddingModel;
       filterNames?: FilterNames<FitlerSchemas>;
     },
   ) {}
@@ -389,9 +389,11 @@ export class RAG<
       chunkContext = { before: 0, after: 0 },
       vectorScoreThreshold,
     } = args;
-    let embedding = Array.isArray(args.query) ? args.query : undefined;
+    let embedding: number[];
     let usage: EmbeddingModelUsage = { tokens: 0 };
-    if (!embedding) {
+    if (Array.isArray(args.query)) {
+      embedding = args.query;
+    } else {
       const embedResult = await embed({
         model: this.options.textEmbeddingModel,
         value: args.query,
@@ -975,7 +977,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 }
 
 async function createChunkArgsBatch(
-  embedModel: EmbeddingModel<string>,
+  embedModel: EmbeddingModel,
   chunks: InputChunk[],
 ): Promise<{ chunks: CreateChunkArgs[]; usage: EmbeddingModelUsage }> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
