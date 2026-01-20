@@ -28,7 +28,7 @@ const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
 const rag = new RAG(components.rag, {
   embeddingDimension: 1536,
-  textEmbeddingModel: openai.textEmbeddingModel("text-embedding-3-small"),
+  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
 });
 
