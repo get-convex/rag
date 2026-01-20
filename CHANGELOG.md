@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0
+
+- AI SDK v6 support
+
 ## 0.6.1
 
 - Track bandwidth more accurately to avoid going over the limits while deleting
