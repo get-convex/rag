@@ -112,7 +112,7 @@ export class RAG<
     public component: ComponentApi,
     public options: {
       embeddingDimension: number;
-      textEmbeddingModel: EmbeddingModel;
+      textEmbeddingModel: EmbeddingModel<string>;
       filterNames?: FilterNames<FitlerSchemas>;
     },
   ) {}
@@ -394,7 +394,7 @@ export class RAG<
     if (!embedding) {
       const embedResult = await embed({
         model: this.options.textEmbeddingModel,
-        value: args.query as string,
+        value: args.query,
       });
       embedding = embedResult.embedding;
       usage = embedResult.usage;
@@ -975,7 +975,7 @@ function makeBatches<T>(items: T[], batchSize: number): T[][] {
 }
 
 async function createChunkArgsBatch(
-  embedModel: EmbeddingModel,
+  embedModel: EmbeddingModel<string>,
   chunks: InputChunk[],
 ): Promise<{ chunks: CreateChunkArgs[]; usage: EmbeddingModelUsage }> {
   const argsMaybeMissingEmbeddings: (Omit<CreateChunkArgs, "embedding"> & {
