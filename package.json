@@ -77,7 +77,7 @@
     "convex-helpers": "^0.1.94"
   },
   "devDependencies": {
-    "@ai-sdk/openai": "3.0.18",
+    "@ai-sdk/openai": "3.0.19",
     "@arethetypeswrong/cli": "0.18.2",
     "@convex-dev/workpool": "0.3.1",
     "@edge-runtime/vm": "5.0.0",
