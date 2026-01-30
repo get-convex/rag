@@ -311,6 +311,107 @@ export const vRangeResult = v.object({
   ),
 });
 
+async function buildRanges(
+  ctx: QueryCtx,
+  chunks: (Doc<"chunks"> | null)[],
+  chunkContext: { before: number; after: number },
+): Promise<{
+  ranges: (null | Infer<typeof vRangeResult>)[];
+  entries: Entry[];
+}> {
+  // Note: This preserves order of entries as they first appeared.
+  const entries = (
+    await Promise.all(
+      Array.from(
+        new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
+      ).map((id) => ctx.db.get(id)),
+    )
+  )
+    .filter((d) => d !== null)
+    .map(publicEntry);
+
+  const entryOrders = chunks
+    .filter((c) => c !== null)
+    .map((c) => [c.entryId, c.order] as const)
+    .reduce(
+      (acc, [entryId, order]) => {
+        if (acc[entryId]?.includes(order)) {
+          // De-dupe orders
+          return acc;
+        }
+        acc[entryId] = [...(acc[entryId] ?? []), order].sort((a, b) => a - b);
+        return acc;
+      },
+      {} as Record<Id<"entries">, number[]>,
+    );
+
+  const result: Array<Infer<typeof vRangeResult> | null> = [];
+
+  for (const chunk of chunks) {
+    if (chunk === null) {
+      result.push(null);
+      continue;
+    }
+    // Note: if we parallelize this in the future, we could have a race
+    // instead we'd check that other chunks are not the same doc/order
+    if (
+      result.find(
+        (r) => r?.entryId === chunk.entryId && r?.order === chunk.order,
+      )
+    ) {
+      // De-dupe chunks
+      result.push(null);
+      continue;
+    }
+    const entryId = chunk.entryId;
+    const entry = await ctx.db.get(entryId);
+    assert(entry, `Entry ${entryId} not found`);
+    const otherOrders = entryOrders[entryId] ?? [chunk.order];
+    const ourOrderIndex = otherOrders.indexOf(chunk.order);
+    const previousOrder = otherOrders[ourOrderIndex - 1] ?? -Infinity;
+    const nextOrder = otherOrders[ourOrderIndex + 1] ?? Infinity;
+    // We absorb all previous context up to the previous chunk.
+    const startOrder = Math.max(
+      chunk.order - chunkContext.before,
+      0,
+      Math.min(previousOrder + 1, chunk.order),
+    );
+    // We stop short if the next chunk order's "before" context will cover it.
+    const endOrder = Math.min(
+      chunk.order + chunkContext.after + 1,
+      Math.max(nextOrder - chunkContext.before, chunk.order + 1),
+    );
+    const contentIds: Id<"content">[] = [];
+    if (startOrder === chunk.order && endOrder === chunk.order + 1) {
+      contentIds.push(chunk.contentId);
+    } else {
+      const rangeChunks = await ctx.db
+        .query("chunks")
+        .withIndex("entryId_order", (q) =>
+          q
+            .eq("entryId", entryId)
+            .gte("order", startOrder)
+            .lt("order", endOrder),
+        )
+        .collect();
+      for (const c of rangeChunks) {
+        contentIds.push(c.contentId);
+      }
+    }
+    const content = await Promise.all(
+      contentIds.map(async (contentId) => {
+        const content = await ctx.db.get(contentId);
+        assert(content, `Content ${contentId} not found`);
+        return { text: content.text, metadata: content.metadata };
+      }),
+    );
+
+    result.push({ entryId, order: chunk.order, startOrder, content });
+  }
+
+  return { ranges: result, entries };
+}
+
 export const getRangesOfChunks = internalQuery({
   args: {
     embeddingIds: v.array(vVectorId),
@@ -339,98 +440,51 @@ export const getRangesOfChunks = internalQuery({
           .first(),
       ),
     );
+    return buildRanges(ctx, chunks, chunkContext);
+  },
+});
 
-    // Note: This preserves order of entries as they first appeared.
-    const entries = (
-      await Promise.all(
-        Array.from(
-          new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
-        ).map((id) => ctx.db.get(id)),
-      )
-    )
-      .filter((d) => d !== null)
-      .map(publicEntry);
+export const getRangesOfChunkIds = internalQuery({
+  args: {
+    chunkIds: v.array(v.id("chunks")),
+    chunkContext: v.object({ before: v.number(), after: v.number() }),
+  },
+  returns: v.object({
+    ranges: v.array(v.union(v.null(), vRangeResult)),
+    entries: v.array(vEntry),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    ranges: (null | Infer<typeof vRangeResult>)[];
+    entries: Entry[];
+  }> => {
+    const chunks = await Promise.all(
+      args.chunkIds.map((chunkId) => ctx.db.get(chunkId)),
+    );
+    return buildRanges(ctx, chunks, args.chunkContext);
+  },
+});
 
-    const entryOders = chunks
-      .filter((c) => c !== null)
-      .map((c) => [c.entryId, c.order] as const)
-      .reduce(
-        (acc, [entryId, order]) => {
-          if (acc[entryId]?.includes(order)) {
-            // De-dupe orders
-            return acc;
-          }
-          acc[entryId] = [...(acc[entryId] ?? []), order].sort((a, b) => a - b);
-          return acc;
-        },
-        {} as Record<Id<"entries">, number[]>,
-      );
-
-    const result: Array<Infer<typeof vRangeResult> | null> = [];
-
-    for (const chunk of chunks) {
-      if (chunk === null) {
-        result.push(null);
-        continue;
-      }
-      // Note: if we parallelize this in the future, we could have a race
-      // instead we'd check that other chunks are not the same doc/order
-      if (
-        result.find(
-          (r) => r?.entryId === chunk.entryId && r?.order === chunk.order,
-        )
-      ) {
-        // De-dupe chunks
-        result.push(null);
-        continue;
-      }
-      const entryId = chunk.entryId;
-      const entry = await ctx.db.get(entryId);
-      assert(entry, `Entry ${entryId} not found`);
-      const otherOrders = entryOders[entryId] ?? [chunk.order];
-      const ourOrderIndex = otherOrders.indexOf(chunk.order);
-      const previousOrder = otherOrders[ourOrderIndex - 1] ?? -Infinity;
-      const nextOrder = otherOrders[ourOrderIndex + 1] ?? Infinity;
-      // We absorb all previous context up to the previous chunk.
-      const startOrder = Math.max(
-        chunk.order - chunkContext.before,
-        0,
-        Math.min(previousOrder + 1, chunk.order),
-      );
-      // We stop short if the next chunk order's "before" context will cover it.
-      const endOrder = Math.min(
-        chunk.order + chunkContext.after + 1,
-        Math.max(nextOrder - chunkContext.before, chunk.order + 1),
-      );
-      const contentIds: Id<"content">[] = [];
-      if (startOrder === chunk.order && endOrder === chunk.order + 1) {
-        contentIds.push(chunk.contentId);
-      } else {
-        const chunks = await ctx.db
+export const getChunkIdsByEmbeddingIds = internalQuery({
+  args: {
+    embeddingIds: v.array(vVectorId),
+  },
+  returns: v.array(v.union(v.null(), v.id("chunks"))),
+  handler: async (ctx, args) => {
+    return Promise.all(
+      args.embeddingIds.map(async (embeddingId) => {
+        const chunk = await ctx.db
           .query("chunks")
-          .withIndex("entryId_order", (q) =>
-            q
-              .eq("entryId", entryId)
-              .gte("order", startOrder)
-              .lt("order", endOrder),
+          .withIndex("embeddingId", (q) =>
+            q.eq("state.embeddingId", embeddingId),
           )
-          .collect();
-        for (const chunk of chunks) {
-          contentIds.push(chunk.contentId);
-        }
-      }
-      const content = await Promise.all(
-        contentIds.map(async (contentId) => {
-          const content = await ctx.db.get(contentId);
-          assert(content, `Content ${contentId} not found`);
-          return { text: content.text, metadata: content.metadata };
-        }),
-      );
-
-      result.push({ entryId, order: chunk.order, startOrder, content });
-    }
-
-    return { ranges: result, entries };
+          .order("desc")
+          .first();
+        return chunk?._id ?? null;
+      }),
+    );
   },
 });
 
