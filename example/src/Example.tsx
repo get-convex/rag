@@ -52,6 +52,7 @@ function Example() {
   const [chunksBefore, setChunksBefore] = useState(1);
   const [chunksAfter, setChunksAfter] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
+  const [textSearch, setTextSearch] = useState(false);
 
   // Convex functions
   const convex = useConvex();
@@ -118,6 +119,7 @@ function Example() {
             filter,
             limit,
             chunkContext,
+            textSearch: textSearch || undefined,
           });
 
           const questionSources = questionResults?.files || [];
@@ -150,6 +152,7 @@ function Example() {
                 globalNamespace: searchGlobal,
                 limit,
                 chunkContext,
+                textSearch: textSearch || undefined,
               });
               break;
             case "category":
@@ -159,6 +162,7 @@ function Example() {
                 category: selectedCategory,
                 limit,
                 chunkContext,
+                textSearch: textSearch || undefined,
               });
               break;
             case "file":
@@ -168,6 +172,7 @@ function Example() {
                 filename: selectedDocument!.filename || "",
                 limit,
                 chunkContext,
+                textSearch: textSearch || undefined,
               });
               break;
             default:
@@ -202,6 +207,7 @@ function Example() {
       limit,
       chunksBefore,
       chunksAfter,
+      textSearch,
     ],
   );
 
@@ -265,6 +271,8 @@ function Example() {
           chunksAfter={chunksAfter}
           setChunksAfter={setChunksAfter}
           categories={categories}
+          textSearch={textSearch}
+          setTextSearch={setTextSearch}
         />
 
         {/* Results Area */}
