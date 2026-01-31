@@ -1190,6 +1190,10 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    * Enable hybrid search by combining vector search with full-text search.
    * When true and the query is a string, text search results are merged
    * with vector search results using Reciprocal Rank Fusion.
+   *
+   * Note: when enabled, result scores become position-based (1.0 for the
+   * top result, decreasing linearly) rather than cosine similarity scores.
+   *
    * Default: false
    */
   textSearch?: boolean;

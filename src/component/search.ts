@@ -1,7 +1,12 @@
 import { v, type Infer } from "convex/values";
 import { action, internalQuery } from "./_generated/server.js";
 import { searchEmbeddings } from "./embeddings/index.js";
-import { numberedFiltersFromNamedFilters, vNamedFilter } from "./filters.js";
+import {
+  filterFieldsFromNumbers,
+  numberedFiltersFromNamedFilters,
+  vNamedFilter,
+  type NumberedFilter,
+} from "./filters.js";
 import { internal } from "./_generated/api.js";
 import {
   vEntry,
@@ -109,23 +114,28 @@ export const search = action({
       internal.chunks.getChunkIdsByEmbeddingIds,
       { embeddingIds: aboveThreshold.map((r) => r._id) },
     );
-    const vectorChunkIdStrings: string[] = vectorChunkIds.filter(
+    const vectorChunkIdList: Id<"chunks">[] = vectorChunkIds.filter(
       (id) => id !== null,
     );
 
-    // Run text search.
+    // Run text search, respecting the same filters as vector search.
+    const numberedFilters = numberedFiltersFromNamedFilters(
+      filters,
+      namespace.filterNames,
+    );
     const textResults = await ctx.runQuery(internal.search.textSearch, {
       query: args.textQuery,
       namespaceId: namespace._id,
+      filters: numberedFilters,
       limit,
     });
-    const textChunkIdStrings: string[] = textResults.map((r) => r.chunkId);
+    const textChunkIds: Id<"chunks">[] = textResults.map((r) => r.chunkId);
 
     // Merge using Reciprocal Rank Fusion.
     const vectorWeight = args.vectorWeight ?? 1;
     const textWeight = args.textWeight ?? 1;
-    const mergedChunkIds = hybridRank(
-      [vectorChunkIdStrings, textChunkIdStrings],
+    const mergedChunkIds = hybridRank<Id<"chunks">>(
+      [vectorChunkIdList, textChunkIds],
       { k: 10, weights: [vectorWeight, textWeight] },
     ).slice(0, limit);
 
@@ -133,7 +143,7 @@ export const search = action({
     const { ranges, entries } = await ctx.runQuery(
       internal.chunks.getRangesOfChunkIds,
       {
-        chunkIds: mergedChunkIds as Id<"chunks">[],
+        chunkIds: mergedChunkIds,
         chunkContext,
       },
     );
@@ -154,6 +164,8 @@ export const textSearch = internalQuery({
   args: {
     query: v.string(),
     namespaceId: v.id("namespaces"),
+    // Numbered filters, OR'd together (same semantics as vector search).
+    filters: v.array(v.any()),
     limit: v.number(),
   },
   returns: v.array(
@@ -164,21 +176,62 @@ export const textSearch = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
-    const results = await ctx.db
-      .query("chunks")
-      .withSearchIndex("searchableText", (q) =>
-        q
-          .search("state.searchableText", args.query)
-          .eq("namespaceId", args.namespaceId),
-      )
-      .take(args.limit);
-    return results
-      .filter((chunk) => chunk.state.kind === "ready")
-      .map((chunk) => ({
-        chunkId: chunk._id,
-        entryId: chunk.entryId,
-        order: chunk.order,
-      }));
+    type TextSearchResult = {
+      chunkId: Id<"chunks">;
+      entryId: Id<"entries">;
+      order: number;
+    };
+
+    const toResults = (
+      chunks: { _id: Id<"chunks">; entryId: Id<"entries">; order: number; state: { kind: string } }[],
+    ): TextSearchResult[] =>
+      chunks
+        .filter((chunk) => chunk.state.kind === "ready")
+        .map((chunk) => ({
+          chunkId: chunk._id,
+          entryId: chunk.entryId,
+          order: chunk.order,
+        }));
+
+    // No user filters — just filter by namespaceId.
+    if (args.filters.length === 0) {
+      const results = await ctx.db
+        .query("chunks")
+        .withSearchIndex("searchableText", (q) =>
+          q
+            .search("state.searchableText", args.query)
+            .eq("namespaceId", args.namespaceId),
+        )
+        .take(args.limit);
+      return toResults(results);
+    }
+
+    // OR across filter conditions: run one text search per filter and dedupe.
+    const seen = new Set<Id<"chunks">>();
+    const merged: TextSearchResult[] = [];
+    for (const filter of args.filters as NumberedFilter[]) {
+      const fields = filterFieldsFromNumbers(args.namespaceId, filter);
+      const results = await ctx.db
+        .query("chunks")
+        .withSearchIndex("searchableText", (q) => {
+          let query = q.search("state.searchableText", args.query);
+          for (const [field, value] of Object.entries(fields)) {
+            query = query.eq(
+              field as "namespaceId" | "filter0" | "filter1" | "filter2" | "filter3",
+              value,
+            );
+          }
+          return query;
+        })
+        .take(args.limit);
+      for (const r of toResults(results)) {
+        if (!seen.has(r.chunkId)) {
+          seen.add(r.chunkId);
+          merged.push(r);
+        }
+      }
+    }
+    return merged.slice(0, args.limit);
   },
 });
 
