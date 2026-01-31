@@ -24,6 +24,8 @@ interface SearchInterfaceProps {
   chunksAfter: number;
   setChunksAfter: (chunks: number) => void;
   categories: string[];
+  textSearch: boolean;
+  setTextSearch: (enabled: boolean) => void;
 }
 
 export function SearchInterface({
@@ -47,6 +49,8 @@ export function SearchInterface({
   chunksAfter,
   setChunksAfter,
   categories,
+  textSearch,
+  setTextSearch,
 }: SearchInterfaceProps) {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
@@ -263,6 +267,29 @@ export function SearchInterface({
 
         {showAdvancedOptions && (
           <div className="mt-3 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3 mb-4">
+              <label className="text-sm font-semibold text-gray-700">
+                Hybrid Search
+              </label>
+              <button
+                type="button"
+                onClick={() => setTextSearch(!textSearch)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  textSearch
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                    : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
+                    textSearch ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500">
+                Combine vector + full-text search
+              </span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">

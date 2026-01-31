@@ -71,7 +71,6 @@ export const schema = defineSchema({
       v.object({
         kind: v.literal("ready"),
         embeddingId: vVectorId,
-        // TODO: text search
         searchableText: v.optional(v.string()),
       }),
       v.object({

@@ -414,7 +414,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           limit: number;
           modelId: string;
           namespace: string;
+          textQuery?: string;
+          textWeight?: number;
           vectorScoreThreshold?: number;
+          vectorWeight?: number;
         },
         {
           entries: Array<{

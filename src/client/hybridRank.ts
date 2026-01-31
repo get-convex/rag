@@ -1,6 +1,6 @@
 /**
  * Rank results from multiple results, e.g. from vector search and text search.
- * Uses the "Recriprocal Rank Fusion" algorithm.
+ * Uses the "Reciprocal Rank Fusion" algorithm.
  * @param sortedResults The results arrays ordered by most important first.
  */
 export function hybridRank<T extends string>(
