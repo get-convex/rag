@@ -66,20 +66,24 @@ export const search = action({
     }
 
     const chunkContext = args.chunkContext ?? { before: 0, after: 0 };
+    const numberedFilters = numberedFiltersFromNamedFilters(
+      filters,
+      namespace.filterNames,
+    );
 
-    // When textQuery is not provided, use the existing vector-only path.
+    const vectorResults = await searchEmbeddings(ctx, {
+      embedding,
+      namespaceId: namespace._id,
+      filters: numberedFilters,
+      limit,
+    });
+    const threshold = args.vectorScoreThreshold ?? -1;
+    const aboveThreshold = vectorResults.filter(
+      (r) => r._score >= threshold,
+    );
+
+    // Vector-only path: return results with cosine similarity scores.
     if (!args.textQuery) {
-      const results = await searchEmbeddings(ctx, {
-        embedding,
-        namespaceId: namespace._id,
-        filters: numberedFiltersFromNamedFilters(
-          filters,
-          namespace.filterNames,
-        ),
-        limit,
-      });
-      const threshold = args.vectorScoreThreshold ?? -1;
-      const aboveThreshold = results.filter((r) => r._score >= threshold);
       // TODO: break this up if there are too many results
       const { ranges, entries } = await ctx.runQuery(
         internal.chunks.getRangesOfChunks,
@@ -96,20 +100,7 @@ export const search = action({
       };
     }
 
-    // Hybrid search: combine vector and text search results.
-    const vectorResults = await searchEmbeddings(ctx, {
-      embedding,
-      namespaceId: namespace._id,
-      filters: numberedFiltersFromNamedFilters(filters, namespace.filterNames),
-      limit,
-    });
-
-    const threshold = args.vectorScoreThreshold ?? -1;
-    const aboveThreshold = vectorResults.filter(
-      (r) => r._score >= threshold,
-    );
-
-    // Map vector embedding IDs to chunk IDs.
+    // Hybrid path: combine vector and text search results.
     const vectorChunkIds = await ctx.runQuery(
       internal.chunks.getChunkIdsByEmbeddingIds,
       { embeddingIds: aboveThreshold.map((r) => r._id) },
@@ -118,11 +109,6 @@ export const search = action({
       (id) => id !== null,
     );
 
-    // Run text search, respecting the same filters as vector search.
-    const numberedFilters = numberedFiltersFromNamedFilters(
-      filters,
-      namespace.filterNames,
-    );
     const textResults = await ctx.runQuery(internal.search.textSearch, {
       query: args.textQuery,
       namespaceId: namespace._id,
@@ -139,7 +125,10 @@ export const search = action({
       { k: 10, weights: [vectorWeight, textWeight] },
     ).slice(0, limit);
 
-    // Fetch ranges for the merged chunk IDs.
+    if (mergedChunkIds.length === 0) {
+      return { results: [], entries: [] };
+    }
+
     const { ranges, entries } = await ctx.runQuery(
       internal.chunks.getRangesOfChunkIds,
       {
@@ -148,11 +137,14 @@ export const search = action({
       },
     );
 
-    // Assign position-based scores (1.0 for first, decreasing).
+    // Position-based scores (1.0 for first, decreasing linearly).
     return {
       results: ranges
         .map((r, i) =>
-          publicSearchResult(r, (mergedChunkIds.length - i) / mergedChunkIds.length),
+          publicSearchResult(
+            r,
+            (mergedChunkIds.length - i) / mergedChunkIds.length,
+          ),
         )
         .filter((r) => r !== null),
       entries: entries as Infer<typeof vEntry>[],
@@ -214,10 +206,12 @@ export const textSearch = internalQuery({
       const results = await ctx.db
         .query("chunks")
         .withSearchIndex("searchableText", (q) => {
-          let query = q.search("state.searchableText", args.query);
+          let query = q
+            .search("state.searchableText", args.query)
+            .eq("namespaceId", args.namespaceId);
           for (const [field, value] of Object.entries(fields)) {
             query = query.eq(
-              field as "namespaceId" | "filter0" | "filter1" | "filter2" | "filter3",
+              field as "filter0" | "filter1" | "filter2" | "filter3",
               value,
             );
           }
