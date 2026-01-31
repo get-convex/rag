@@ -14,7 +14,7 @@ import {
   type SearchResult,
   type EntryId,
 } from "../shared.js";
-import type { Id } from "./_generated/dataModel.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import type { vRangeResult } from "./chunks.js";
 import { hybridRank } from "../client/hybridRank.js";
 
@@ -174,9 +174,7 @@ export const textSearch = internalQuery({
       order: number;
     };
 
-    const toResults = (
-      chunks: { _id: Id<"chunks">; entryId: Id<"entries">; order: number; state: { kind: string } }[],
-    ): TextSearchResult[] =>
+    const toResults = (chunks: Doc<"chunks">[]): TextSearchResult[] =>
       chunks
         .filter((chunk) => chunk.state.kind === "ready")
         .map((chunk) => ({
