@@ -311,7 +311,7 @@ export const vRangeResult = v.object({
   ),
 });
 
-async function buildRanges(
+export async function buildRanges(
   ctx: QueryCtx,
   chunks: (Doc<"chunks"> | null)[],
   chunkContext: { before: number; after: number },
@@ -444,49 +444,6 @@ export const getRangesOfChunks = internalQuery({
   },
 });
 
-export const getRangesOfChunkIds = internalQuery({
-  args: {
-    chunkIds: v.array(v.id("chunks")),
-    chunkContext: v.object({ before: v.number(), after: v.number() }),
-  },
-  returns: v.object({
-    ranges: v.array(v.union(v.null(), vRangeResult)),
-    entries: v.array(vEntry),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    ranges: (null | Infer<typeof vRangeResult>)[];
-    entries: Entry[];
-  }> => {
-    const chunks = await Promise.all(
-      args.chunkIds.map((chunkId) => ctx.db.get(chunkId)),
-    );
-    return buildRanges(ctx, chunks, args.chunkContext);
-  },
-});
-
-export const getChunkIdsByEmbeddingIds = internalQuery({
-  args: {
-    embeddingIds: v.array(vVectorId),
-  },
-  returns: v.array(v.union(v.null(), v.id("chunks"))),
-  handler: async (ctx, args) => {
-    return Promise.all(
-      args.embeddingIds.map(async (embeddingId) => {
-        const chunk = await ctx.db
-          .query("chunks")
-          .withIndex("embeddingId", (q) =>
-            q.eq("state.embeddingId", embeddingId),
-          )
-          .order("desc")
-          .first();
-        return chunk?._id ?? null;
-      }),
-    );
-  },
-});
 
 export const list = query({
   args: v.object({

@@ -8,7 +8,6 @@ import { modules } from "./setup.test.js";
 import { insertChunks } from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
 import type { Value } from "convex/values";
-import { assert } from "convex-helpers";
 
 type ConvexTest = TestConvex<typeof schema>;
 
@@ -560,76 +559,39 @@ describe("search", () => {
       }
     });
 
-    test("getChunkIdsByEmbeddingIds maps embedding IDs to chunk IDs", async () => {
+    test("text-only search returns results via dimension arg", async () => {
       const t = convexTest(schema, modules);
       const namespaceId = await setupTestNamespace(t);
       const entryId = await setupTestEntry(t, namespaceId);
 
-      await t.run(async (ctx) => {
-        await insertChunks(ctx, {
-          entryId,
-          startOrder: 0,
-          chunks: createTestChunks(3),
-        });
-      });
-
-      const chunkDocs = await t.run(async (ctx) => {
-        return ctx.db
-          .query("chunks")
-          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
-          .collect();
-      });
-      assert(chunkDocs[0].state.kind === "ready");
-      assert(chunkDocs[2].state.kind === "ready");
-
-      const chunkIds = await t.query(
-        internal.chunks.getChunkIdsByEmbeddingIds,
-        {
-          embeddingIds: [
-            chunkDocs[0].state.embeddingId,
-            chunkDocs[2].state.embeddingId,
-          ],
-        },
-      );
-
-      expect(chunkIds).toHaveLength(2);
-      expect(chunkIds[0]).toBe(chunkDocs[0]._id);
-      expect(chunkIds[1]).toBe(chunkDocs[2]._id);
-    });
-
-    test("getRangesOfChunkIds returns ranges by chunk ID", async () => {
-      const t = convexTest(schema, modules);
-      const namespaceId = await setupTestNamespace(t);
-      const entryId = await setupTestEntry(t, namespaceId);
+      const chunks = createSearchableChunks([
+        "Machine learning is a subset of artificial intelligence",
+        "Deep learning uses neural networks with many layers",
+        "Natural language processing handles text data",
+      ]);
 
       await t.run(async (ctx) => {
-        await insertChunks(ctx, {
-          entryId,
-          startOrder: 0,
-          chunks: createTestChunks(5),
-        });
+        await insertChunks(ctx, { entryId, startOrder: 0, chunks });
       });
 
-      const chunkDocs = await t.run(async (ctx) => {
-        return ctx.db
-          .query("chunks")
-          .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
-          .collect();
+      // Text-only: no embedding, provide dimension instead.
+      const result = await t.action(api.search.search, {
+        namespace: "test-namespace",
+        dimension: 128,
+        modelId: "test-model",
+        filters: [],
+        limit: 10,
+        textQuery: "neural networks",
       });
 
-      const { ranges, entries } = await t.query(
-        internal.chunks.getRangesOfChunkIds,
-        {
-          chunkIds: [chunkDocs[1]._id, chunkDocs[3]._id],
-          chunkContext: { before: 1, after: 1 },
-        },
-      );
+      expect(result.results.length).toBeGreaterThan(0);
+      expect(result.entries).toHaveLength(1);
 
-      expect(entries).toHaveLength(1);
-      expect(entries[0].entryId).toBe(entryId);
-      expect(ranges).toHaveLength(2);
-      expect(ranges[0]?.order).toBe(1);
-      expect(ranges[1]?.order).toBe(3);
+      // Text-only scores are position-based.
+      expect(result.results[0].score).toBe(1.0);
+      for (let i = 1; i < result.results.length; i++) {
+        expect(result.results[i].score).toBeLessThan(result.results[i - 1].score);
+      }
     });
 
     test("hybrid search returns results when textQuery is provided", async () => {

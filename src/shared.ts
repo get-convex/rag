@@ -35,6 +35,13 @@ export const vSearchResult = v.object({
 
 export type SearchResult = Infer<typeof vSearchResult>;
 
+export const vSearchType = v.union(
+  v.literal("vector"),
+  v.literal("text"),
+  v.literal("hybrid"),
+);
+export type SearchType = Infer<typeof vSearchType>;
+
 export const vStatus = v.union(
   v.literal("pending"),
   v.literal("ready"),

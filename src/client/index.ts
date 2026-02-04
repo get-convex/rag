@@ -34,6 +34,7 @@ import {
   vEntryId,
   vNamespaceId,
   vOnCompleteArgs,
+  vSearchType,
   type Chunk,
   type ChunkerAction,
   type CreateChunkArgs,
@@ -46,12 +47,13 @@ import {
   type OnCompleteNamespace,
   type SearchEntry,
   type SearchResult,
+  type SearchType,
   type Status,
 } from "../shared.js";
 import { defaultChunker } from "./defaultChunker.js";
 
 export { hybridRank } from "./hybridRank.js";
-export { defaultChunker, vEntryId, vNamespaceId };
+export { defaultChunker, vEntryId, vNamespaceId, vSearchType };
 export type {
   ChunkerAction,
   Entry,
@@ -61,6 +63,7 @@ export type {
   OnCompleteNamespace,
   SearchEntry,
   SearchResult,
+  SearchType,
   Status,
 };
 
@@ -388,35 +391,45 @@ export class RAG<
       limit = DEFAULT_SEARCH_LIMIT,
       chunkContext = { before: 0, after: 0 },
       vectorScoreThreshold,
-      textSearch: enableTextSearch,
+      searchType = "vector",
       textWeight,
       vectorWeight,
     } = args;
-    let embedding: number[];
-    let usage: EmbeddingModelUsage = { tokens: 0 };
-    if (Array.isArray(args.query)) {
-      if (enableTextSearch) {
-        console.warn(
-          "textSearch requires a string query. Text search will be skipped for embedding array queries.",
-        );
-      }
-      embedding = args.query;
-    } else {
-      const embedResult = await embed({
-        model: this.options.textEmbeddingModel,
-        value: args.query,
-      });
-      embedding = embedResult.embedding;
-      usage = embedResult.usage;
+
+    const needsEmbedding = searchType !== "text";
+    const needsTextQuery = searchType !== "vector";
+
+    if (needsTextQuery && Array.isArray(args.query)) {
+      console.warn(
+        `searchType "${searchType}" requires a string query. Falling back to vector-only search for embedding array queries.`,
+      );
     }
+
+    let embedding: number[] | undefined;
+    let usage: EmbeddingModelUsage = { tokens: 0 };
+    if (needsEmbedding) {
+      if (Array.isArray(args.query)) {
+        embedding = args.query;
+      } else {
+        const embedResult = await embed({
+          model: this.options.textEmbeddingModel,
+          value: args.query,
+        });
+        embedding = embedResult.embedding;
+        usage = embedResult.usage;
+      }
+    }
+
     const textQuery =
-      enableTextSearch && typeof args.query === "string"
+      needsTextQuery && typeof args.query === "string"
         ? args.query
         : undefined;
+
     const { results, entries } = await ctx.runAction(
       this.component.search.search,
       {
         embedding,
+        dimension: this.options.embeddingDimension,
         namespace,
         modelId: getModelId(this.options.textEmbeddingModel),
         filters,
@@ -1187,25 +1200,30 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    */
   vectorScoreThreshold?: number;
   /**
-   * Enable hybrid search by combining vector search with full-text search.
-   * When true and the query is a string, text search results are merged
-   * with vector search results using Reciprocal Rank Fusion.
+   * The search mode to use.
+   * - "vector": Vector similarity search only (default). Returns cosine
+   *   similarity scores.
+   * - "text": Full-text search only. No embedding is computed. Returns
+   *   position-based scores.
+   * - "hybrid": Combines vector and full-text search using Reciprocal Rank
+   *   Fusion. Returns position-based scores (1.0 for top result, decreasing
+   *   linearly).
    *
-   * Note: when enabled, result scores become position-based (1.0 for the
-   * top result, decreasing linearly) rather than cosine similarity scores.
-   *
-   * Default: false
+   * Text and hybrid modes require the query to be a string (not an embedding
+   * array).
    */
-  textSearch?: boolean;
+  searchType?: SearchType;
   /**
    * Weight for text search results in hybrid ranking (RRF).
    * Higher values give more influence to text search matches.
+   * Only used when searchType is "hybrid".
    * Default: 1
    */
   textWeight?: number;
   /**
    * Weight for vector search results in hybrid ranking (RRF).
    * Higher values give more influence to vector search matches.
+   * Only used when searchType is "hybrid".
    * Default: 1
    */
   vectorWeight?: number;
