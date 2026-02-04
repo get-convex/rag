@@ -320,15 +320,15 @@ export async function buildRanges(
   entries: Entry[];
 }> {
   // Note: This preserves order of entries as they first appeared.
-  const entries = (
+  const entryDocs = (
     await Promise.all(
       Array.from(
         new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
       ).map((id) => ctx.db.get(id)),
     )
-  )
-    .filter((d) => d !== null)
-    .map(publicEntry);
+  ).filter((d): d is Doc<"entries"> => d !== null);
+  const entries = entryDocs.map(publicEntry);
+  const entryDocById = new Map(entryDocs.map((d) => [d._id, d]));
 
   const entryOrders = chunks
     .filter((c) => c !== null)
@@ -364,7 +364,7 @@ export async function buildRanges(
       continue;
     }
     const entryId = chunk.entryId;
-    const entry = await ctx.db.get(entryId);
+    const entry = entryDocById.get(entryId);
     assert(entry, `Entry ${entryId} not found`);
     const otherOrders = entryOrders[entryId] ?? [chunk.order];
     const ourOrderIndex = otherOrders.indexOf(chunk.order);

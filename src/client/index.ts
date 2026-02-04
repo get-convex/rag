@@ -396,13 +396,17 @@ export class RAG<
       vectorWeight,
     } = args;
 
-    const needsEmbedding = searchType !== "text";
-    const needsTextQuery = searchType !== "vector";
+    let needsEmbedding = searchType !== "text";
+    let needsTextQuery = searchType !== "vector";
 
     if (needsTextQuery && Array.isArray(args.query)) {
+      if (searchType === "text") {
+        throw new Error('searchType "text" requires a string query.');
+      }
       console.warn(
         `searchType "${searchType}" requires a string query. Falling back to vector-only search for embedding array queries.`,
       );
+      needsTextQuery = false;
     }
 
     let embedding: number[] | undefined;
