@@ -118,7 +118,7 @@ export class RAG<
       textEmbeddingModel: EmbeddingModel;
       filterNames?: FilterNames<FitlerSchemas>;
     },
-  ) {}
+  ) { }
 
   /**
    * Add an entry to the store. It will chunk the text with the `defaultChunker`
@@ -136,25 +136,25 @@ export class RAG<
       EntryArgs<FitlerSchemas, EntryMetadata> &
       (
         | {
-            /**
-             * You can provide your own chunks to finely control the splitting.
-             * These can also include your own provided embeddings, so you can
-             * control what content is embedded, which can differ from the content
-             * in the chunks.
-             */
-            chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
-            /** @deprecated You cannot specify both chunks and text currently. */
-            text?: undefined;
-          }
+          /**
+           * You can provide your own chunks to finely control the splitting.
+           * These can also include your own provided embeddings, so you can
+           * control what content is embedded, which can differ from the content
+           * in the chunks.
+           */
+          chunks: Iterable<InputChunk> | AsyncIterable<InputChunk>;
+          /** @deprecated You cannot specify both chunks and text currently. */
+          text?: undefined;
+        }
         | {
-            /**
-             * If you don't provide chunks, we will split the text into chunks
-             * using the default chunker and embed them with the default model.
-             */
-            text: string;
-            /** @deprecated You cannot specify both chunks and text currently. */
-            chunks?: undefined;
-          }
+          /**
+           * If you don't provide chunks, we will split the text into chunks
+           * using the default chunker and embed them with the default model.
+           */
+          text: string;
+          /** @deprecated You cannot specify both chunks and text currently. */
+          chunks?: undefined;
+        }
       ),
   ): Promise<{
     entryId: EntryId;
@@ -396,7 +396,7 @@ export class RAG<
       vectorWeight,
     } = args;
 
-    let needsEmbedding = searchType !== "text";
+    const needsEmbedding = searchType !== "text";
     let needsTextQuery = searchType !== "vector";
 
     if (needsTextQuery && Array.isArray(args.query)) {
@@ -887,14 +887,14 @@ export class RAG<
         if (namespace.modelId !== modelId) {
           console.error(
             `You are using a different embedding model ${modelId} for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.modelId}`,
+            `generating chunks than the one provided when it was started: ${namespace.modelId}`,
           );
           return;
         }
         if (namespace.dimension !== this.options.embeddingDimension) {
           console.error(
             `You are using a different embedding dimension ${this.options.embeddingDimension} for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.dimension}`,
+            `generating chunks than the one provided when it was started: ${namespace.dimension}`,
           );
           return;
         }
@@ -906,7 +906,7 @@ export class RAG<
         ) {
           console.error(
             `You are using a different filters (${this.options.filterNames?.join(", ")}) for asynchronously ` +
-              `generating chunks than the one provided when it was started: ${namespace.filterNames.join(", ")}`,
+            `generating chunks than the one provided when it was started: ${namespace.filterNames.join(", ")}`,
           );
           return;
         }
@@ -1040,9 +1040,9 @@ async function createChunkArgsBatch(
       arg.embedding
         ? null
         : {
-            text: arg.content.text,
-            index,
-          },
+          text: arg.content.text,
+          index,
+        },
     )
     .filter((b) => b !== null);
   const totalUsage: EmbeddingModelUsage = { tokens: 0 };
@@ -1081,40 +1081,40 @@ type LangChainChunk = {
 export type InputChunk =
   | string
   | ((MastraChunk | LangChainChunk) & {
-      /**
-       * Text to use for full-text search. Defaults to the chunk's text content.
-       * Provide a custom value to control what text is searchable.
-       */
-      keywords?: string;
-      // In the future we can add per-chunk metadata if it's useful.
-      // importance?: Importance;
-      // filters?: EntryFilterValues<FitlerSchemas>[];
-    });
+    /**
+     * Text to use for full-text search. Defaults to the chunk's text content.
+     * Provide a custom value to control what text is searchable.
+     */
+    keywords?: string;
+    // In the future we can add per-chunk metadata if it's useful.
+    // importance?: Importance;
+    // filters?: EntryFilterValues<FitlerSchemas>[];
+  });
 
 type FilterNames<FiltersSchemas extends Record<string, Value>> =
   (keyof FiltersSchemas & string)[];
 
 type NamespaceSelection =
   | {
-      /**
-       * A namespace is an isolated search space - no search can access entities
-       * in other namespaces. Often this is used to segment user documents from
-       * each other, but can be an arbitrary delineation. All filters apply
-       * within a namespace.
-       */
-      namespace: string;
-    }
+    /**
+     * A namespace is an isolated search space - no search can access entities
+     * in other namespaces. Often this is used to segment user documents from
+     * each other, but can be an arbitrary delineation. All filters apply
+     * within a namespace.
+     */
+    namespace: string;
+  }
   | {
-      /**
-       * The namespaceId, which is returned when creating a namespace
-       * or looking it up.
-       * There can be multiple namespaceIds for the same namespace, e.g.
-       * one for each modelId, embedding dimension, and filterNames.
-       * Each of them have a separate "status" and only one is ever "ready" for
-       * any given "namespace" (e.g. a userId).
-       */
-      namespaceId: NamespaceId;
-    };
+    /**
+     * The namespaceId, which is returned when creating a namespace
+     * or looking it up.
+     * There can be multiple namespaceIds for the same namespace, e.g.
+     * one for each modelId, embedding dimension, and filterNames.
+     * Each of them have a separate "status" and only one is ever "ready" for
+     * any given "namespace" (e.g. a userId).
+     */
+    namespaceId: NamespaceId;
+  };
 
 type EntryArgs<
   FitlerSchemas extends Record<string, Value>,
