@@ -3,14 +3,14 @@ import { useConvex } from "convex/react";
 import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { EntryFilter, SearchResult, SearchType as RagSearchType } from "@convex-dev/rag";
+import type { EntryFilter, SearchResult, SearchType } from "@convex-dev/rag";
 import type { Filters, PublicFile } from "../convex/example";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { UploadSection } from "./components/UploadSection";
 import { FileList } from "./components/FileList";
 import { SearchInterface } from "./components/SearchInterface";
 
-type SearchType = "general" | "category" | "file";
+type SearchScope = "general" | "category" | "file";
 type QueryMode = "search" | "question";
 
 interface UISearchResult {
@@ -30,7 +30,7 @@ interface UIQuestionResult {
 }
 
 function Example() {
-  const [searchType, setSearchType] = useState<SearchType>("general");
+  const [searchScope, setSearchScope] = useState<SearchScope>("general");
   const [searchGlobal, setSearchGlobal] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
@@ -52,7 +52,7 @@ function Example() {
   const [chunksBefore, setChunksBefore] = useState(1);
   const [chunksAfter, setChunksAfter] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
-  const [ragSearchType, setRagSearchType] = useState<RagSearchType>("vector");
+  const [searchType, setSearchType] = useState<SearchType>("vector");
 
   // Convex functions
   const convex = useConvex();
@@ -61,9 +61,9 @@ function Example() {
     api.example.listChunks,
     selectedDocument?.entryId
       ? {
-        entryId: selectedDocument.entryId,
-        order: "asc",
-      }
+          entryId: selectedDocument.entryId,
+          order: "asc",
+        }
       : "skip",
     { initialNumItems: 10 },
   );
@@ -72,12 +72,12 @@ function Example() {
     async (mode: QueryMode) => {
       if (!searchQuery.trim()) return;
 
-      if (searchType === "file" && !selectedDocument) {
+      if (searchScope === "file" && !selectedDocument) {
         alert("Please select a file to search");
         return;
       }
 
-      if (searchType === "category" && !selectedCategory.trim()) {
+      if (searchScope === "category" && !selectedCategory.trim()) {
         alert("Please select a category for category search");
         return;
       }
@@ -92,12 +92,12 @@ function Example() {
         if (mode === "question") {
           let filter: EntryFilter<Filters> | undefined;
 
-          if (searchType === "category") {
+          if (searchScope === "category") {
             filter = {
               name: "category" as const,
               value: selectedCategory,
             };
-          } else if (searchType === "file" && selectedDocument) {
+          } else if (searchScope === "file" && selectedDocument) {
             filter = {
               name: "filename" as const,
               value: selectedDocument.filename,
@@ -105,11 +105,11 @@ function Example() {
           }
 
           const globalNamespace =
-            searchType === "general"
+            searchScope === "general"
               ? searchGlobal
-              : searchType === "category"
+              : searchScope === "category"
                 ? categorySearchGlobal
-                : searchType === "file" && selectedDocument
+                : searchScope === "file" && selectedDocument
                   ? selectedDocument.global
                   : searchGlobal;
 
@@ -119,7 +119,7 @@ function Example() {
             filter,
             limit,
             chunkContext,
-            searchType: ragSearchType !== "vector" ? ragSearchType : undefined,
+            searchType,
           });
 
           const questionSources = questionResults?.files || [];
@@ -145,14 +145,14 @@ function Example() {
         } else {
           // Handle search mode (existing logic)
           let results;
-          switch (searchType) {
+          switch (searchScope) {
             case "general":
               results = await convex.action(api.example.search, {
                 query: searchQuery,
                 globalNamespace: searchGlobal,
                 limit,
                 chunkContext,
-                searchType: ragSearchType !== "vector" ? ragSearchType : undefined,
+                searchType,
               });
               break;
             case "category":
@@ -162,7 +162,7 @@ function Example() {
                 category: selectedCategory,
                 limit,
                 chunkContext,
-                searchType: ragSearchType !== "vector" ? ragSearchType : undefined,
+                searchType,
               });
               break;
             case "file":
@@ -172,11 +172,11 @@ function Example() {
                 filename: selectedDocument!.filename || "",
                 limit,
                 chunkContext,
-                searchType: ragSearchType !== "vector" ? ragSearchType : undefined,
+                searchType,
               });
               break;
             default:
-              throw new Error(`Unknown search type: ${searchType}`);
+              throw new Error(`Unknown search scope: ${searchScope}`);
           }
           const sources = results?.files || [];
           setSearchResults({
@@ -198,7 +198,7 @@ function Example() {
     },
     [
       searchQuery,
-      searchType,
+      searchScope,
       searchGlobal,
       selectedDocument,
       selectedCategory,
@@ -207,24 +207,24 @@ function Example() {
       limit,
       chunksBefore,
       chunksAfter,
-      ragSearchType,
+      searchType,
     ],
   );
 
   const handleFileSelect = (file: PublicFile | null) => {
     setSelectedDocument(file);
     if (file) {
-      setSearchType("file");
+      setSearchScope("file");
     }
   };
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
-    setSearchType("category");
+    setSearchScope("category");
   };
 
-  const handleSearchTypeChange = (type: "general", global: boolean) => {
-    setSearchType(type);
+  const handleSearchTypeChange = (type: SearchScope, global: boolean) => {
+    setSearchScope(type);
     setSearchGlobal(global);
     setSelectedDocument(null);
   };
@@ -232,7 +232,7 @@ function Example() {
   useEffect(() => {
     setSearchResults(null);
     setQuestionResult(null);
-  }, [searchType]);
+  }, [searchScope]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex">
@@ -255,8 +255,8 @@ function Example() {
           setSearchQuery={setSearchQuery}
           onSearch={handleSearch}
           isSearching={isSearching}
-          searchType={searchType}
-          setSearchType={setSearchType}
+          searchScope={searchScope}
+          setSearchScope={setSearchScope}
           searchGlobal={searchGlobal}
           setSearchGlobal={setSearchGlobal}
           categorySearchGlobal={categorySearchGlobal}
@@ -271,8 +271,8 @@ function Example() {
           chunksAfter={chunksAfter}
           setChunksAfter={setChunksAfter}
           categories={categories}
-          ragSearchType={ragSearchType}
-          setRagSearchType={setRagSearchType}
+          searchType={searchType}
+          setSearchType={setSearchType}
         />
 
         {/* Results Area */}
@@ -300,7 +300,7 @@ function Example() {
           )}
 
           {/* Document Chunks for File queries */}
-          {searchType === "file" &&
+          {searchScope === "file" &&
             selectedDocument &&
             documentChunks.status !== "LoadingFirstPage" &&
             !searchResults && (
@@ -505,14 +505,16 @@ function Example() {
                     <button
                       type="button"
                       onClick={() => setShowFullText(!showFullText)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${showFullText
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                        showFullText
                           ? "bg-gradient-to-r from-emerald-500 to-teal-500"
                           : "bg-gray-300"
-                        }`}
+                      }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${showFullText ? "translate-x-6" : "translate-x-1"
-                          }`}
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
+                          showFullText ? "translate-x-6" : "translate-x-1"
+                        }`}
                       />
                     </button>
                     <span className="text-sm text-gray-700 font-medium">
@@ -601,10 +603,11 @@ function Example() {
                               return (
                                 <div
                                   key={contentIndex}
-                                  className={`p-4 rounded-xl border transition-all duration-200 ${isHighlighted
+                                  className={`p-4 rounded-xl border transition-all duration-200 ${
+                                    isHighlighted
                                       ? "border-yellow-300 bg-gradient-to-r from-yellow-50 to-amber-50 shadow-md"
                                       : "border-gray-200 bg-gray-50/80"
-                                    }`}
+                                  }`}
                                 >
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">

@@ -444,7 +444,6 @@ export const getRangesOfChunks = internalQuery({
   },
 });
 
-
 export const list = query({
   args: v.object({
     entryId: v.id("entries"),

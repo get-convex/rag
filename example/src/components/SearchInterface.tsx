@@ -1,7 +1,7 @@
-import type { SearchType as RagSearchType } from "@convex-dev/rag";
+import type { SearchType } from "@convex-dev/rag";
 import { useState } from "react";
 
-type SearchType = "general" | "category" | "file";
+type SearchScope = "general" | "category" | "file";
 type QueryMode = "search" | "question";
 
 interface SearchInterfaceProps {
@@ -9,8 +9,8 @@ interface SearchInterfaceProps {
   setSearchQuery: (query: string) => void;
   onSearch: (mode: QueryMode) => void;
   isSearching: boolean;
-  searchType: SearchType;
-  setSearchType: (type: SearchType) => void;
+  searchScope: SearchScope;
+  setSearchScope: (type: SearchScope) => void;
   searchGlobal: boolean;
   setSearchGlobal: (global: boolean) => void;
   categorySearchGlobal: boolean;
@@ -25,8 +25,8 @@ interface SearchInterfaceProps {
   chunksAfter: number;
   setChunksAfter: (chunks: number) => void;
   categories: string[];
-  ragSearchType: RagSearchType;
-  setRagSearchType: (type: RagSearchType) => void;
+  searchType: SearchType;
+  setSearchType: (type: SearchType) => void;
 }
 
 export function SearchInterface({
@@ -34,8 +34,8 @@ export function SearchInterface({
   setSearchQuery,
   onSearch,
   isSearching,
-  searchType,
-  setSearchType,
+  searchScope,
+  setSearchScope,
   searchGlobal,
   setSearchGlobal,
   categorySearchGlobal,
@@ -50,8 +50,8 @@ export function SearchInterface({
   chunksAfter,
   setChunksAfter,
   categories,
-  ragSearchType,
-  setRagSearchType,
+  searchType,
+  setSearchType,
 }: SearchInterfaceProps) {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
@@ -89,9 +89,9 @@ export function SearchInterface({
           {(["general", "category", "file"] as const).map((type) => (
             <button
               key={type}
-              onClick={() => setSearchType(type)}
+              onClick={() => setSearchScope(type)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                searchType === type
+                searchScope === type
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
                   : "bg-white/80 text-gray-700 hover:bg-white shadow-sm hover:shadow-md"
               }`}
@@ -108,7 +108,7 @@ export function SearchInterface({
         {/* Document Info and toggles */}
         <div className="flex items-center space-x-4">
           {/* Document Info for File-specific queries */}
-          {searchType === "file" && selectedDocument && (
+          {searchScope === "file" && selectedDocument && (
             <div className="flex items-center space-x-4">
               <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                 <div className="text-sm font-semibold text-blue-800">
@@ -119,7 +119,7 @@ export function SearchInterface({
           )}
 
           {/* Global/User Toggle */}
-          {(searchType === "general" || searchType === "category") && (
+          {(searchScope === "general" || searchScope === "category") && (
             <div className="flex items-center space-x-3 bg-white/80 px-4 py-2 rounded-xl border border-gray-200">
               <span className="text-sm text-gray-600 font-medium">
                 User Files
@@ -127,15 +127,15 @@ export function SearchInterface({
               <button
                 type="button"
                 onClick={() => {
-                  if (searchType === "general") {
+                  if (searchScope === "general") {
                     setSearchGlobal(!searchGlobal);
-                  } else if (searchType === "category") {
+                  } else if (searchScope === "category") {
                     setCategorySearchGlobal(!categorySearchGlobal);
                   }
                 }}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                   (
-                    searchType === "general"
+                    searchScope === "general"
                       ? searchGlobal
                       : categorySearchGlobal
                   )
@@ -146,7 +146,7 @@ export function SearchInterface({
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
                     (
-                      searchType === "general"
+                      searchScope === "general"
                         ? searchGlobal
                         : categorySearchGlobal
                     )
@@ -164,7 +164,7 @@ export function SearchInterface({
       </div>
 
       {/* Category Selector for Category Search */}
-      {searchType === "category" && (
+      {searchScope === "category" && (
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Category
@@ -276,9 +276,9 @@ export function SearchInterface({
                 {(["vector", "text", "hybrid"] as const).map((mode) => (
                   <button
                     key={mode}
-                    onClick={() => setRagSearchType(mode)}
+                    onClick={() => setSearchType(mode)}
                     className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
-                      ragSearchType === mode
+                      searchType === mode
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}

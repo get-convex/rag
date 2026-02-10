@@ -444,10 +444,7 @@ describe("search", () => {
   });
 
   describe("hybrid search", () => {
-    function createSearchableChunks(
-      texts: string[],
-      baseEmbedding = 0.1,
-    ) {
+    function createSearchableChunks(texts: string[], baseEmbedding = 0.1) {
       return texts.map((text, i) => ({
         content: { text, metadata: { index: i } },
         embedding: [...Array(127).fill(0.01), baseEmbedding + i * 0.01],
@@ -518,12 +515,9 @@ describe("search", () => {
 
     test("textSearch applies numbered filters", async () => {
       const t = convexTest(schema, modules);
-      const namespaceId = await setupTestNamespace(
-        t,
-        "filtered-ns",
-        128,
-        ["category"],
-      );
+      const namespaceId = await setupTestNamespace(t, "filtered-ns", 128, [
+        "category",
+      ]);
 
       const cat1Entry = await setupTestEntry(t, namespaceId, "cat1", 0, [
         { name: "category", value: "docs" },
@@ -590,7 +584,9 @@ describe("search", () => {
       // Text-only scores are position-based.
       expect(result.results[0].score).toBe(1.0);
       for (let i = 1; i < result.results.length; i++) {
-        expect(result.results[i].score).toBeLessThan(result.results[i - 1].score);
+        expect(result.results[i].score).toBeLessThan(
+          result.results[i - 1].score,
+        );
       }
     });
 
@@ -624,7 +620,9 @@ describe("search", () => {
       // Hybrid scores are position-based (1.0 for top, decreasing linearly).
       expect(result.results[0].score).toBe(1.0);
       for (let i = 1; i < result.results.length; i++) {
-        expect(result.results[i].score).toBeLessThan(result.results[i - 1].score);
+        expect(result.results[i].score).toBeLessThan(
+          result.results[i - 1].score,
+        );
       }
     });
 

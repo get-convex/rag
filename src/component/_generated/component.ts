@@ -415,6 +415,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           limit: number;
           modelId: string;
           namespace: string;
+          searchType?: "vector" | "text" | "hybrid";
           textQuery?: string;
           textWeight?: number;
           vectorScoreThreshold?: number;

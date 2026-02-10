@@ -11,6 +11,7 @@ import { internal } from "./_generated/api.js";
 import {
   vEntry,
   vSearchResult,
+  vSearchType,
   type SearchResult,
   type EntryId,
 } from "../shared.js";
@@ -32,6 +33,7 @@ export const search = action({
     chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() }),
     ),
+    searchType: v.optional(vSearchType),
     textQuery: v.optional(v.string()),
     textWeight: v.optional(v.number()),
     vectorWeight: v.optional(v.number()),
@@ -92,9 +94,7 @@ export const search = action({
         limit,
       });
       const threshold = args.vectorScoreThreshold ?? -1;
-      const aboveThreshold = vectorResults.filter(
-        (r) => r._score >= threshold,
-      );
+      const aboveThreshold = vectorResults.filter((r) => r._score >= threshold);
       // TODO: break this up if there are too many results
       const { ranges, entries } = await ctx.runQuery(
         internal.chunks.getRangesOfChunks,
@@ -127,7 +127,9 @@ export const search = action({
     }
 
     if (!hasTextQuery) {
-      return { results: [], entries: [] };
+      throw new Error(
+        "Search requires at least one of embedding or textQuery.",
+      );
     }
 
     const { ranges, entries, resultCount } = await ctx.runQuery(
@@ -147,9 +149,7 @@ export const search = action({
     // Position-based scores (1.0 for first, decreasing linearly).
     return {
       results: ranges
-        .map((r, i) =>
-          publicSearchResult(r, (resultCount - i) / resultCount),
-        )
+        .map((r, i) => publicSearchResult(r, (resultCount - i) / resultCount))
         .filter((r) => r !== null),
       entries: entries as Infer<typeof vEntry>[],
     };
@@ -260,17 +260,22 @@ export const textAndRanges = internalQuery({
     chunkContext: v.object({ before: v.number(), after: v.number() }),
   },
   returns: v.object({
-    ranges: v.array(v.union(v.null(), v.object({
-      entryId: v.id("entries"),
-      order: v.number(),
-      startOrder: v.number(),
-      content: v.array(
+    ranges: v.array(
+      v.union(
+        v.null(),
         v.object({
-          text: v.string(),
-          metadata: v.optional(v.record(v.string(), v.any())),
+          entryId: v.id("entries"),
+          order: v.number(),
+          startOrder: v.number(),
+          content: v.array(
+            v.object({
+              text: v.string(),
+              metadata: v.optional(v.record(v.string(), v.any())),
+            }),
+          ),
         }),
       ),
-    }))),
+    ),
     entries: v.array(vEntry),
     resultCount: v.number(),
   }),
