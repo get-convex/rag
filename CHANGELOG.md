@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+- Adds hybrid text/vector search (credit:richardsolomou)
+
 ## 0.7.0
 
 - AI SDK v6 support
