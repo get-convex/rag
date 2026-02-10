@@ -409,12 +409,17 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           chunkContext?: { after: number; before: number };
-          embedding: Array<number>;
+          dimension?: number;
+          embedding?: Array<number>;
           filters: Array<{ name: string; value: any }>;
           limit: number;
           modelId: string;
           namespace: string;
+          searchType?: "vector" | "text" | "hybrid";
+          textQuery?: string;
+          textWeight?: number;
           vectorScoreThreshold?: number;
+          vectorWeight?: number;
         },
         {
           entries: Array<{

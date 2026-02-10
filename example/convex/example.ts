@@ -9,6 +9,7 @@ import {
   RAG,
   SearchEntry,
   vEntryId,
+  vSearchType,
 } from "@convex-dev/rag";
 import { assert } from "convex-helpers";
 import {
@@ -91,6 +92,7 @@ export const search = action({
     chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() }),
     ),
+    searchType: v.optional(vSearchType),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -100,6 +102,7 @@ export const search = action({
       query: args.query,
       limit: args.limit ?? 10,
       chunkContext: args.chunkContext,
+      searchType: args.searchType,
     });
     return { ...results, files: await toFiles(ctx, results.entries) };
   },
@@ -114,6 +117,7 @@ export const searchFile = action({
     chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() }),
     ),
+    searchType: v.optional(vSearchType),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -126,6 +130,7 @@ export const searchFile = action({
       chunkContext: args.chunkContext ?? { before: 1, after: 1 },
       filters: [{ name: "filename", value: args.filename }],
       limit: args.limit ?? 10,
+      searchType: args.searchType,
     });
     return { ...results, files: await toFiles(ctx, results.entries) };
   },
@@ -140,6 +145,7 @@ export const searchCategory = action({
     chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() }),
     ),
+    searchType: v.optional(vSearchType),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -152,6 +158,7 @@ export const searchCategory = action({
       limit: args.limit ?? 10,
       filters: [{ name: "category", value: args.category }],
       chunkContext: args.chunkContext,
+      searchType: args.searchType,
     });
     return { ...results, files: await toFiles(ctx, results.entries) };
   },
@@ -174,6 +181,7 @@ export const askQuestion = action({
     chunkContext: v.optional(
       v.object({ before: v.number(), after: v.number() }),
     ),
+    searchType: v.optional(vSearchType),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -184,6 +192,7 @@ export const askQuestion = action({
         filters: args.filter ? [args.filter] : [],
         limit: args.limit ?? 10,
         chunkContext: args.chunkContext ?? { before: 1, after: 1 },
+        searchType: args.searchType,
       },
       prompt: args.prompt,
       model: openai.chat("gpt-4o-mini"),

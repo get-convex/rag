@@ -34,6 +34,7 @@ import {
   vEntryId,
   vNamespaceId,
   vOnCompleteArgs,
+  vSearchType,
   type Chunk,
   type ChunkerAction,
   type CreateChunkArgs,
@@ -46,12 +47,13 @@ import {
   type OnCompleteNamespace,
   type SearchEntry,
   type SearchResult,
+  type SearchType,
   type Status,
 } from "../shared.js";
 import { defaultChunker } from "./defaultChunker.js";
 
 export { hybridRank } from "./hybridRank.js";
-export { defaultChunker, vEntryId, vNamespaceId };
+export { defaultChunker, vEntryId, vNamespaceId, vSearchType };
 export type {
   ChunkerAction,
   Entry,
@@ -61,6 +63,7 @@ export type {
   OnCompleteNamespace,
   SearchEntry,
   SearchResult,
+  SearchType,
   Status,
 };
 
@@ -388,29 +391,56 @@ export class RAG<
       limit = DEFAULT_SEARCH_LIMIT,
       chunkContext = { before: 0, after: 0 },
       vectorScoreThreshold,
+      searchType = "vector",
+      textWeight,
+      vectorWeight,
     } = args;
-    let embedding: number[];
-    let usage: EmbeddingModelUsage = { tokens: 0 };
-    if (Array.isArray(args.query)) {
-      embedding = args.query;
-    } else {
-      const embedResult = await embed({
-        model: this.options.textEmbeddingModel,
-        value: args.query,
-      });
-      embedding = embedResult.embedding;
-      usage = embedResult.usage;
+
+    const needsEmbedding = searchType !== "text";
+    let needsTextQuery = searchType !== "vector";
+
+    if (needsTextQuery && Array.isArray(args.query)) {
+      if (searchType === "text") {
+        throw new Error('searchType "text" requires a string query.');
+      }
+      console.warn(
+        `searchType "${searchType}" requires a string query. Falling back to vector-only search for embedding array queries.`,
+      );
+      needsTextQuery = false;
     }
+
+    let embedding: number[] | undefined;
+    let usage: EmbeddingModelUsage = { tokens: 0 };
+    if (needsEmbedding) {
+      if (Array.isArray(args.query)) {
+        embedding = args.query;
+      } else {
+        const embedResult = await embed({
+          model: this.options.textEmbeddingModel,
+          value: args.query,
+        });
+        embedding = embedResult.embedding;
+        usage = embedResult.usage;
+      }
+    }
+
+    const textQuery =
+      needsTextQuery && typeof args.query === "string" ? args.query : undefined;
+
     const { results, entries } = await ctx.runAction(
       this.component.search.search,
       {
         embedding,
+        dimension: this.options.embeddingDimension,
         namespace,
         modelId: getModelId(this.options.textEmbeddingModel),
         filters,
         limit,
         vectorScoreThreshold,
         chunkContext,
+        textQuery,
+        textWeight,
+        vectorWeight,
       },
     );
     const entriesWithTexts = entries.map((e) => {
@@ -984,20 +1014,20 @@ async function createChunkArgsBatch(
     embedding?: number[];
   })[] = chunks.map((chunk) => {
     if (typeof chunk === "string") {
-      return { content: { text: chunk } };
+      return { content: { text: chunk }, searchableText: chunk };
     } else if ("text" in chunk) {
       const { text, metadata, keywords: searchableText } = chunk;
       return {
         content: { text, metadata },
         embedding: chunk.embedding,
-        searchableText,
+        searchableText: searchableText ?? text,
       };
     } else if ("pageContent" in chunk) {
       const { pageContent: text, metadata, keywords: searchableText } = chunk;
       return {
         content: { text, metadata },
         embedding: chunk.embedding,
-        searchableText,
+        searchableText: searchableText ?? text,
       };
     } else {
       throw new Error("Invalid chunk: " + JSON.stringify(chunk));
@@ -1049,8 +1079,10 @@ type LangChainChunk = {
 export type InputChunk =
   | string
   | ((MastraChunk | LangChainChunk) & {
-      // Space-delimited keywords to text search on.
-      // TODO: implement text search
+      /**
+       * Text to use for full-text search. Defaults to the chunk's text content.
+       * Provide a custom value to control what text is searchable.
+       */
       keywords?: string;
       // In the future we can add per-chunk metadata if it's useful.
       // importance?: Importance;
@@ -1169,6 +1201,34 @@ type SearchOptions<FitlerSchemas extends Record<string, Value>> = {
    * The minimum score to return a result.
    */
   vectorScoreThreshold?: number;
+  /**
+   * The search mode to use.
+   * - "vector": Vector similarity search only (default). Returns cosine
+   *   similarity scores.
+   * - "text": Full-text search only. No embedding is computed. Returns
+   *   position-based scores.
+   * - "hybrid": Combines vector and full-text search using Reciprocal Rank
+   *   Fusion. Returns position-based scores (1.0 for top result, decreasing
+   *   linearly).
+   *
+   * Text and hybrid modes require the query to be a string (not an embedding
+   * array).
+   */
+  searchType?: SearchType;
+  /**
+   * Weight for text search results in hybrid ranking (RRF).
+   * Higher values give more influence to text search matches.
+   * Only used when searchType is "hybrid".
+   * Default: 1
+   */
+  textWeight?: number;
+  /**
+   * Weight for vector search results in hybrid ranking (RRF).
+   * Higher values give more influence to vector search matches.
+   * Only used when searchType is "hybrid".
+   * Default: 1
+   */
+  vectorWeight?: number;
 };
 
 function getModelCategory(model: string | { provider: string }) {

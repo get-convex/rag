@@ -3,14 +3,14 @@ import { useConvex } from "convex/react";
 import { usePaginatedQuery } from "convex-helpers/react";
 import { api } from "../convex/_generated/api";
 import { useCallback, useState, useEffect } from "react";
-import type { EntryFilter, SearchResult } from "@convex-dev/rag";
+import type { EntryFilter, SearchResult, SearchType } from "@convex-dev/rag";
 import type { Filters, PublicFile } from "../convex/example";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { UploadSection } from "./components/UploadSection";
 import { FileList } from "./components/FileList";
 import { SearchInterface } from "./components/SearchInterface";
 
-type SearchType = "general" | "category" | "file";
+type SearchScope = "general" | "category" | "file";
 type QueryMode = "search" | "question";
 
 interface UISearchResult {
@@ -30,7 +30,7 @@ interface UIQuestionResult {
 }
 
 function Example() {
-  const [searchType, setSearchType] = useState<SearchType>("general");
+  const [searchScope, setSearchScope] = useState<SearchScope>("general");
   const [searchGlobal, setSearchGlobal] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<PublicFile | null>(
@@ -52,6 +52,7 @@ function Example() {
   const [chunksBefore, setChunksBefore] = useState(1);
   const [chunksAfter, setChunksAfter] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
+  const [searchType, setSearchType] = useState<SearchType>("vector");
 
   // Convex functions
   const convex = useConvex();
@@ -71,12 +72,12 @@ function Example() {
     async (mode: QueryMode) => {
       if (!searchQuery.trim()) return;
 
-      if (searchType === "file" && !selectedDocument) {
+      if (searchScope === "file" && !selectedDocument) {
         alert("Please select a file to search");
         return;
       }
 
-      if (searchType === "category" && !selectedCategory.trim()) {
+      if (searchScope === "category" && !selectedCategory.trim()) {
         alert("Please select a category for category search");
         return;
       }
@@ -91,12 +92,12 @@ function Example() {
         if (mode === "question") {
           let filter: EntryFilter<Filters> | undefined;
 
-          if (searchType === "category") {
+          if (searchScope === "category") {
             filter = {
               name: "category" as const,
               value: selectedCategory,
             };
-          } else if (searchType === "file" && selectedDocument) {
+          } else if (searchScope === "file" && selectedDocument) {
             filter = {
               name: "filename" as const,
               value: selectedDocument.filename,
@@ -104,11 +105,11 @@ function Example() {
           }
 
           const globalNamespace =
-            searchType === "general"
+            searchScope === "general"
               ? searchGlobal
-              : searchType === "category"
+              : searchScope === "category"
                 ? categorySearchGlobal
-                : searchType === "file" && selectedDocument
+                : searchScope === "file" && selectedDocument
                   ? selectedDocument.global
                   : searchGlobal;
 
@@ -118,6 +119,7 @@ function Example() {
             filter,
             limit,
             chunkContext,
+            searchType,
           });
 
           const questionSources = questionResults?.files || [];
@@ -143,13 +145,14 @@ function Example() {
         } else {
           // Handle search mode (existing logic)
           let results;
-          switch (searchType) {
+          switch (searchScope) {
             case "general":
               results = await convex.action(api.example.search, {
                 query: searchQuery,
                 globalNamespace: searchGlobal,
                 limit,
                 chunkContext,
+                searchType,
               });
               break;
             case "category":
@@ -159,6 +162,7 @@ function Example() {
                 category: selectedCategory,
                 limit,
                 chunkContext,
+                searchType,
               });
               break;
             case "file":
@@ -168,10 +172,11 @@ function Example() {
                 filename: selectedDocument!.filename || "",
                 limit,
                 chunkContext,
+                searchType,
               });
               break;
             default:
-              throw new Error(`Unknown search type: ${searchType}`);
+              throw new Error(`Unknown search scope: ${searchScope}`);
           }
           const sources = results?.files || [];
           setSearchResults({
@@ -193,7 +198,7 @@ function Example() {
     },
     [
       searchQuery,
-      searchType,
+      searchScope,
       searchGlobal,
       selectedDocument,
       selectedCategory,
@@ -202,23 +207,24 @@ function Example() {
       limit,
       chunksBefore,
       chunksAfter,
+      searchType,
     ],
   );
 
   const handleFileSelect = (file: PublicFile | null) => {
     setSelectedDocument(file);
     if (file) {
-      setSearchType("file");
+      setSearchScope("file");
     }
   };
 
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
-    setSearchType("category");
+    setSearchScope("category");
   };
 
-  const handleSearchTypeChange = (type: "general", global: boolean) => {
-    setSearchType(type);
+  const handleSearchTypeChange = (type: SearchScope, global: boolean) => {
+    setSearchScope(type);
     setSearchGlobal(global);
     setSelectedDocument(null);
   };
@@ -226,7 +232,7 @@ function Example() {
   useEffect(() => {
     setSearchResults(null);
     setQuestionResult(null);
-  }, [searchType]);
+  }, [searchScope]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex">
@@ -249,8 +255,8 @@ function Example() {
           setSearchQuery={setSearchQuery}
           onSearch={handleSearch}
           isSearching={isSearching}
-          searchType={searchType}
-          setSearchType={setSearchType}
+          searchScope={searchScope}
+          setSearchScope={setSearchScope}
           searchGlobal={searchGlobal}
           setSearchGlobal={setSearchGlobal}
           categorySearchGlobal={categorySearchGlobal}
@@ -265,6 +271,8 @@ function Example() {
           chunksAfter={chunksAfter}
           setChunksAfter={setChunksAfter}
           categories={categories}
+          searchType={searchType}
+          setSearchType={setSearchType}
         />
 
         {/* Results Area */}
@@ -292,7 +300,7 @@ function Example() {
           )}
 
           {/* Document Chunks for File queries */}
-          {searchType === "file" &&
+          {searchScope === "file" &&
             selectedDocument &&
             documentChunks.status !== "LoadingFirstPage" &&
             !searchResults && (
