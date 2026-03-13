@@ -368,13 +368,15 @@ export const deleteNamespaceSync = action({
             cursor,
           },
         })) as PaginationResult<Infer<typeof vEntry>>;
+        for (const entry of entries.page) {
+          await ctx.runAction(api.entries.deleteSync, {
+            entryId: entry.entryId as unknown as Id<"entries">,
+          });
+        }
         if (entries.isDone) {
           break;
         }
         cursor = entries.continueCursor;
-        await ctx.runAction(api.entries.deleteSync, {
-          entryId: entries.page[0].entryId as unknown as Id<"entries">,
-        });
       }
     }
     await ctx.runMutation(api.namespaces.deleteNamespace, {
