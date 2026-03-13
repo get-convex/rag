@@ -26,6 +26,7 @@ import type { Infer, ObjectType } from "convex/values";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { assert } from "convex-helpers";
 import { api } from "./_generated/api.js";
+import { deleteSyncHandler } from "./entries.js";
 
 function namespaceIsCompatible(
   existing: Doc<"namespaces">,
@@ -369,9 +370,7 @@ export const deleteNamespaceSync = action({
           },
         })) as PaginationResult<Infer<typeof vEntry>>;
         for (const entry of entries.page) {
-          await ctx.runAction(api.entries.deleteSync, {
-            entryId: entry.entryId as unknown as Id<"entries">,
-          });
+          await deleteSyncHandler(ctx, entry.entryId as unknown as Id<"entries">);
         }
         if (entries.isDone) {
           break;

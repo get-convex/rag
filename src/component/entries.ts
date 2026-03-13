@@ -23,6 +23,7 @@ import {
   internalQuery,
   mutation,
   query,
+  type ActionCtx,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server.js";
@@ -560,22 +561,29 @@ async function deleteAsyncHandler(
   }
 }
 
+export async function deleteSyncHandler(
+  ctx: ActionCtx,
+  entryId: Id<"entries">,
+) {
+  let startOrder = 0;
+  while (true) {
+    const status = await ctx.runMutation(internal.chunks.deleteChunksPage, {
+      entryId,
+      startOrder,
+    });
+    if (status.isDone) {
+      await ctx.runMutation(internal.entries._del, { entryId });
+      break;
+    }
+    startOrder = status.nextStartOrder;
+  }
+}
+
 export const deleteSync = action({
   args: { entryId: v.id("entries") },
   returns: v.null(),
   handler: async (ctx, { entryId }) => {
-    let startOrder = 0;
-    while (true) {
-      const status = await ctx.runMutation(internal.chunks.deleteChunksPage, {
-        entryId,
-        startOrder,
-      });
-      if (status.isDone) {
-        await ctx.runMutation(internal.entries._del, { entryId });
-        break;
-      }
-      startOrder = status.nextStartOrder;
-    }
+    await deleteSyncHandler(ctx, entryId);
   },
 });
 
@@ -656,9 +664,7 @@ export const deleteByKeySync = action({
         { namespaceId: args.namespaceId, key: args.key },
       );
       for await (const entry of entries) {
-        await ctx.runAction(api.entries.deleteSync, {
-          entryId: entry._id,
-        });
+        await deleteSyncHandler(ctx, entry._id);
       }
       if (entries.length <= 100) {
         break;
