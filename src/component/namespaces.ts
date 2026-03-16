@@ -1,3 +1,18 @@
+import { assert } from "convex-helpers";
+import { paginator } from "convex-helpers/server/pagination";
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
+import type { Infer } from "convex/values";
+import {
+  statuses,
+  vActiveStatus,
+  vEntry,
+  vNamespace,
+  vPaginationResult,
+  vStatus,
+  type OnCompleteNamespace,
+} from "../shared.js";
+import { api } from "./_generated/api.js";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import {
   action,
@@ -5,60 +20,15 @@ import {
   mutation,
   query,
   type MutationCtx,
-  type QueryCtx,
 } from "./_generated/server.js";
-import { schema, v } from "./schema.js";
+import { deleteEntrySync } from "./entries.js";
 import {
-  vNamespace,
-  vPaginationResult,
-  vActiveStatus,
-  type Namespace,
-  type NamespaceId,
-  type OnCompleteNamespace,
-  vStatus,
-  statuses,
-  filterNamesContain,
-  vEntry,
-} from "../shared.js";
-import { paginationOptsValidator, PaginationResult } from "convex/server";
-import { paginator } from "convex-helpers/server/pagination";
-import type { Infer, ObjectType } from "convex/values";
-import { mergedStream, stream } from "convex-helpers/server/stream";
-import { assert } from "convex-helpers";
-import { api } from "./_generated/api.js";
-import { deleteSyncHandler } from "./entries.js";
-
-function namespaceIsCompatible(
-  existing: Doc<"namespaces">,
-  args: {
-    modelId: string;
-    dimension: number;
-    filterNames: string[];
-  },
-) {
-  // Check basic compatibility
-  if (
-    existing.modelId !== args.modelId ||
-    existing.dimension !== args.dimension
-  ) {
-    return false;
-  }
-
-  // For filter names, the namespace must support all requested filters
-  // but can support additional filters (superset is OK)
-  if (!filterNamesContain(existing.filterNames, args.filterNames)) {
-    return false;
-  }
-
-  return true;
-}
-
-export const vNamespaceLookupArgs = {
-  namespace: v.string(),
-  modelId: v.string(),
-  dimension: v.number(),
-  filterNames: v.array(v.string()),
-};
+  getCompatibleNamespaceHandler,
+  namespaceIsCompatible,
+  publicNamespace,
+  vNamespaceLookupArgs,
+} from "./helpers.js";
+import { schema, v } from "./schema.js";
 
 export const get = query({
   args: vNamespaceLookupArgs,
@@ -77,24 +47,6 @@ export const getCompatibleNamespace = internalQuery({
   returns: v.union(v.null(), v.doc("namespaces")),
   handler: getCompatibleNamespaceHandler,
 });
-
-export async function getCompatibleNamespaceHandler(
-  ctx: QueryCtx,
-  args: ObjectType<typeof vNamespaceLookupArgs>,
-) {
-  const iter = ctx.db
-    .query("namespaces")
-    .withIndex("status_namespace_version", (q) =>
-      q.eq("status.kind", "ready").eq("namespace", args.namespace),
-    )
-    .order("desc");
-  for await (const existing of iter) {
-    if (namespaceIsCompatible(existing, args)) {
-      return existing;
-    }
-  }
-  return null;
-}
 
 export const lookup = query({
   args: {
@@ -313,16 +265,6 @@ export const listNamespaceVersions = query({
   },
 });
 
-export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
-  const { _id, _creationTime, status, ...rest } = namespace;
-  return {
-    namespaceId: _id as unknown as NamespaceId,
-    createdAt: _creationTime,
-    ...rest,
-    status: status.kind,
-  };
-}
-
 export const deleteNamespace = mutation({
   args: { namespaceId: v.id("namespaces") },
   returns: v.object({
@@ -370,7 +312,7 @@ export const deleteNamespaceSync = action({
           },
         })) as PaginationResult<Infer<typeof vEntry>>;
         for (const entry of entries.page) {
-          await deleteSyncHandler(ctx, entry.entryId as unknown as Id<"entries">);
+          await deleteEntrySync(ctx, entry.entryId as unknown as Id<"entries">);
         }
         if (entries.isDone) {
           break;
