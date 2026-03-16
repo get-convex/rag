@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2
+
+- Fixes deleteNamespaceSync deletion of all nested entries.
+
 ## 0.7.1
 
 - Adds hybrid text/vector search (credit:richardsolomou)
