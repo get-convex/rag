@@ -119,7 +119,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.54.0",
     "vite": "8.0.0",
-    "vitest": "4.0.18"
+    "vitest": "4.1.0"
   },
   "types": "./dist/client/index.d.ts",
   "module": "./dist/client/index.js"
