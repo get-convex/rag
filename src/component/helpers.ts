@@ -1,34 +1,15 @@
-import type { Doc, Id } from "./_generated/dataModel.js";
+import type { ObjectType, Value } from "convex/values";
 import {
-  action,
-  internalQuery,
-  mutation,
-  query,
-  type MutationCtx,
-  type QueryCtx,
-} from "./_generated/server.js";
-import { schema, StatusWithOnComplete, v } from "./schema.js";
-import {
-  vNamespace,
-  vPaginationResult,
-  vActiveStatus,
+  Entry,
+  EntryFilter,
+  EntryId,
+  filterNamesContain,
   type Namespace,
   type NamespaceId,
-  type OnCompleteNamespace,
-  vStatus,
-  statuses,
-  filterNamesContain,
-  vEntry,
-  EntryFilter,
-  Entry,
-  EntryId,
 } from "../shared.js";
-import { paginationOptsValidator, PaginationResult } from "convex/server";
-import { paginator } from "convex-helpers/server/pagination";
-import type { Infer, ObjectType, Value } from "convex/values";
-import { mergedStream, stream } from "convex-helpers/server/stream";
-import { assert } from "convex-helpers";
-import { api } from "./_generated/api.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
+import { type QueryCtx } from "./_generated/server.js";
+import { StatusWithOnComplete, v } from "./schema.js";
 
 export function publicNamespace(namespace: Doc<"namespaces">): Namespace {
   const { _id, _creationTime, status, ...rest } = namespace;
