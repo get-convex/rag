@@ -153,7 +153,7 @@ async function promoteToReadyHandler(
   ctx: MutationCtx,
   args: { namespaceId: Id<"namespaces"> },
 ) {
-  const namespace = await ctx.db.get(args.namespaceId);
+  const namespace = await ctx.db.get("namespaces", args.namespaceId);
   assert(namespace, `Namespace ${args.namespaceId} not found`);
   if (namespace.status.kind === "ready") {
     console.debug(
@@ -177,13 +177,13 @@ async function promoteToReadyHandler(
     // First mark the previous namespace as replaced,
     // so there are never two "ready" namespaces.
     previousNamespace.status = { kind: "replaced", replacedAt: Date.now() };
-    await ctx.db.replace(previousNamespace._id, previousNamespace);
+    await ctx.db.replace("namespaces", previousNamespace._id, previousNamespace);
   }
   // Only then mark the current namespace as ready,
   // so there are never two "ready" namespaces.
   const previousStatus = namespace.status;
   namespace.status = { kind: "ready" };
-  await ctx.db.replace(args.namespaceId, namespace);
+  await ctx.db.replace("namespaces", args.namespaceId, namespace);
   // Then run the onComplete function where it can observe itself as "ready".
   if (previousStatus.kind === "pending" && previousStatus.onComplete) {
     await runOnComplete(
@@ -208,7 +208,7 @@ async function promoteToReadyHandler(
     previousPendingNamespaces.map(async (namespace) => {
       const previousStatus = namespace.status;
       namespace.status = { kind: "replaced", replacedAt: Date.now() };
-      await ctx.db.replace(namespace._id, namespace);
+      await ctx.db.replace("namespaces", namespace._id, namespace);
       if (previousStatus.kind === "pending" && previousStatus.onComplete) {
         await runOnComplete(ctx, previousStatus.onComplete, namespace, null);
       }
@@ -277,7 +277,7 @@ async function deleteHandler(
   ctx: MutationCtx,
   args: { namespaceId: Id<"namespaces"> },
 ) {
-  const namespace = await ctx.db.get(args.namespaceId);
+  const namespace = await ctx.db.get("namespaces", args.namespaceId);
   assert(namespace, `Namespace ${args.namespaceId} not found`);
   const anyEntry = await ctx.db
     .query("entries")
@@ -292,7 +292,7 @@ async function deleteHandler(
         `Entry: ${anyEntry.key} id ${anyEntry._id} (${anyEntry.status.kind})`,
     );
   }
-  await ctx.db.delete(args.namespaceId);
+  await ctx.db.delete("namespaces", args.namespaceId);
   return { deletedNamespace: publicNamespace(namespace) };
 }
 

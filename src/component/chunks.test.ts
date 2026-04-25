@@ -141,10 +141,10 @@ describe("chunks", () => {
     expect(overwrittenChunk2).toBeDefined();
 
     const content1 = await t.run(async (ctx) =>
-      ctx.db.get(overwrittenChunk1!.contentId),
+      ctx.db.get("content", overwrittenChunk1!.contentId),
     );
     const content2 = await t.run(async (ctx) =>
-      ctx.db.get(overwrittenChunk2!.contentId),
+      ctx.db.get("content", overwrittenChunk2!.contentId),
     );
 
     expect(content1!.text).toBe("Overwritten chunk 1 content");
@@ -279,10 +279,10 @@ describe("chunks", () => {
 
     // Verify chunk content
     const doc1Content0 = await t.run(async (ctx) =>
-      ctx.db.get(doc1ChunksList[0].contentId),
+      ctx.db.get("content", doc1ChunksList[0].contentId),
     );
     const doc2Content0 = await t.run(async (ctx) =>
-      ctx.db.get(doc2ChunksList[0].contentId),
+      ctx.db.get("content", doc2ChunksList[0].contentId),
     );
 
     expect(doc1Content0!.text).toBe("Test chunk content 1");
@@ -319,7 +319,7 @@ describe("chunks", () => {
 
     // Verify content
     const content = await t.run(async (ctx) =>
-      ctx.db.get(singleChunk!.contentId),
+      ctx.db.get("content", singleChunk!.contentId),
     );
     expect(content!.text).toBe("Test chunk content 3");
   });

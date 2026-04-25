@@ -55,6 +55,7 @@ describe("embeddings", () => {
 
     // Verify the vector was inserted correctly
     const insertedVector = await t.run(async (ctx) => {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- vectorId is a VectorTableId (union of vectors_128..vectors_4096)
       return ctx.db.get(vectorId);
     });
 
@@ -98,6 +99,7 @@ describe("embeddings", () => {
     });
 
     const insertedVector = await t.run(async (ctx) => {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- vectorId is a VectorTableId (union of vectors_128..vectors_4096)
       return ctx.db.get(vectorId);
     });
 
@@ -110,6 +112,7 @@ describe("embeddings", () => {
     });
 
     const vectorWithoutImportanceData = await t.run(async (ctx) => {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- vectorWithoutImportance is a VectorTableId (union of vectors_128..vectors_4096)
       return ctx.db.get(vectorWithoutImportance);
     });
 
@@ -193,7 +196,9 @@ describe("embeddings", () => {
     });
 
     // Verify filters are in correct fields
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- vectorId0 is a VectorTableId (union of vectors_128..vectors_4096)
     const vector0 = await t.run(async (ctx) => ctx.db.get(vectorId0));
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- vectorId2 is a VectorTableId (union of vectors_128..vectors_4096)
     const vector2 = await t.run(async (ctx) => ctx.db.get(vectorId2));
 
     expect(vector0!.filter0).toEqual([namespaceId, "entries"]);
@@ -247,7 +252,9 @@ describe("embeddings", () => {
       });
     });
 
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- vector1Id is a VectorTableId (union of vectors_128..vectors_4096)
     const vector1 = await t.run(async (ctx) => ctx.db.get(vector1Id));
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- vector2Id is a VectorTableId (union of vectors_128..vectors_4096)
     const vector2 = await t.run(async (ctx) => ctx.db.get(vector2Id));
 
     // Both have the same filter value but different namespace prefixes
@@ -311,11 +318,13 @@ describe("embeddings", () => {
 
     // All results should be from the correct namespace
     for (const result of results1) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- result._id is a VectorTableId (union of vectors_128..vectors_4096)
       const vector = await t.run(async (ctx) => ctx.db.get(result._id));
       expect(vector!.namespaceId).toBe(namespace1Id);
     }
 
     for (const result of results2) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- result._id is a VectorTableId (union of vectors_128..vectors_4096)
       const vector = await t.run(async (ctx) => ctx.db.get(result._id));
       expect(vector!.namespaceId).toBe(namespace2Id);
     }
@@ -425,6 +434,7 @@ describe("embeddings", () => {
     // Verify the results contain the expected filters
     const vectorIds = orResults.map((r) => r._id);
     const vectors = await t.run(async (ctx) => {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- id is a VectorTableId (union of vectors_128..vectors_4096)
       return Promise.all(vectorIds.map((id) => ctx.db.get(id)));
     });
 
@@ -475,6 +485,7 @@ describe("embeddings", () => {
 
     // The first result should be more similar to embedding1 (0.1) than embedding2 (0.2)
     // since searchEmbedding (0.15) is closer to 0.1
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- results[0]._id is a VectorTableId (union of vectors_128..vectors_4096)
     const firstVector = await t.run(async (ctx) => ctx.db.get(results[0]._id));
     expect(firstVector).toBeDefined();
   });

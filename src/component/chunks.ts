@@ -52,14 +52,14 @@ export async function insertChunks(
   ctx: MutationCtx,
   { entryId, startOrder, chunks }: InsertChunksArgs,
 ) {
-  const entry = await ctx.db.get(entryId);
+  const entry = await ctx.db.get("entries", entryId);
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
   await ensureLatestEntryVersion(ctx, entry);
 
   // Get the namespace for filter conversion
-  const namespace = await ctx.db.get(entry.namespaceId);
+  const namespace = await ctx.db.get("namespaces", entry.namespaceId);
   assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
   const previousEntry = await getPreviousEntry(ctx, entry);
@@ -83,10 +83,11 @@ export async function insertChunks(
   await Promise.all(
     existingChunks.map(async (c) => {
       if (c.state.kind === "ready") {
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
         await ctx.db.delete(c.state.embeddingId);
       }
-      await ctx.db.delete(c.contentId);
-      await ctx.db.delete(c._id);
+      await ctx.db.delete("content", c.contentId);
+      await ctx.db.delete("chunks", c._id);
     }),
   );
   const numberedFilter = numberedFilterFromNamedFilters(
@@ -165,7 +166,7 @@ export const replaceChunksPage = mutation({
   returns: v.object({ status: vStatus, nextStartOrder: v.number() }),
   handler: async (ctx, args) => {
     const { entryId, startOrder } = args;
-    const entryOrNull = await ctx.db.get(entryId);
+    const entryOrNull = await ctx.db.get("entries", entryId);
     if (!entryOrNull) {
       throw new Error(`Entry ${entryId} not found`);
     }
@@ -176,7 +177,7 @@ export const replaceChunksPage = mutation({
     }
 
     // Get the namespace for filter conversion
-    const namespace = await ctx.db.get(entry.namespaceId);
+    const namespace = await ctx.db.get("namespaces", entry.namespaceId);
     assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
     const previousEntry = await getPreviousEntry(ctx, entry);
@@ -221,7 +222,7 @@ export const replaceChunksPage = mutation({
         entry.importance,
         namedFilters,
       );
-      await ctx.db.patch(chunk._id, { state: { kind: "ready", embeddingId } });
+      await ctx.db.patch("chunks", chunk._id, { state: { kind: "ready", embeddingId } });
     }
     let dataUsedSoFar = 0;
     let indexToDelete = startOrder;
@@ -232,12 +233,14 @@ export const replaceChunksPage = mutation({
       await Promise.all(
         chunksToDeleteEmbeddings.map(async (chunk) => {
           assert(chunk.state.kind === "ready");
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
           const vector = await ctx.db.get(chunk.state.embeddingId);
           assert(vector, `Vector ${chunk.state.embeddingId} not found`);
           // get and delete both count as bandwidth reads
           dataUsedSoFar += estimateEmbeddingSize(vector) * 2;
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
           await ctx.db.delete(chunk.state.embeddingId);
-          await ctx.db.patch(chunk._id, {
+          await ctx.db.patch("chunks", chunk._id, {
             state: {
               kind: "replaced",
               embeddingId: chunk.state.embeddingId,
@@ -324,7 +327,7 @@ export async function buildRanges(
     await Promise.all(
       Array.from(
         new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
-      ).map((id) => ctx.db.get(id)),
+      ).map((id) => ctx.db.get("entries", id)),
     )
   ).filter((d): d is Doc<"entries"> => d !== null);
   const entries = entryDocs.map(publicEntry);
@@ -400,7 +403,7 @@ export async function buildRanges(
     }
     const content = await Promise.all(
       contentIds.map(async (contentId) => {
-        const content = await ctx.db.get(contentId);
+        const content = await ctx.db.get("content", contentId);
         assert(content, `Content ${contentId} not found`);
         return { text: content.text, metadata: content.metadata };
       }),
@@ -462,7 +465,7 @@ export const list = query({
       ...chunks,
       page: await Promise.all(
         chunks.page.map(async (chunk) => {
-          const content = await ctx.db.get(chunk.contentId);
+          const content = await ctx.db.get("content", chunk.contentId);
           assert(content, `Content ${chunk.contentId} not found`);
           return publicChunk(chunk, content);
         }),
@@ -516,17 +519,19 @@ export async function deleteChunksPageHandler(
   for await (const chunk of chunkStream) {
     // one for the stream read, one for deleting
     dataUsedSoFar += estimateChunkSize(chunk) * 2;
-    await ctx.db.delete(chunk._id);
+    await ctx.db.delete("chunks", chunk._id);
     if (chunk.state.kind === "ready") {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
       const embedding = await ctx.db.get(chunk.state.embeddingId);
       if (embedding) {
         // get and delete both count as bandwidth reads
         dataUsedSoFar += estimateEmbeddingSize(embedding) * 2;
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
         await ctx.db.delete(chunk.state.embeddingId);
       }
     }
     dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
-    await ctx.db.delete(chunk.contentId);
+    await ctx.db.delete("content", chunk.contentId);
     if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
       return { isDone: false, nextStartOrder: chunk.order };
     }
@@ -567,7 +572,7 @@ function estimateChunkSize(chunk: Doc<"chunks">) {
 async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
   let dataUsedSoFar = 0;
   // TODO: if/when deletions don't count as bandwidth, we can remove this.
-  const content = await ctx.db.get(contentId);
+  const content = await ctx.db.get("content", contentId);
   if (content) {
     dataUsedSoFar += content.text.length;
     dataUsedSoFar += JSON.stringify(
