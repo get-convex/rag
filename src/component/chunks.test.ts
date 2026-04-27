@@ -60,7 +60,8 @@ describe("chunks", () => {
     await setupTestNamespace(t);
 
     // Try to insert chunks for a non-existent entry
-    const nonExistentDocId = "j57c3xc4x6j3c4x6j3c4x6j3c4x6" as Id<"entries">;
+    const nonExistentDocId =
+      "0123456789012345678901234entries" as Id<"entries">;
     const chunks = createTestChunks(2);
 
     await expect(
