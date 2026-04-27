@@ -22,13 +22,18 @@ import {
   type QueryCtx,
 } from "./_generated/server.js";
 import { insertEmbedding } from "./embeddings/index.js";
-import { vVectorId, type VectorTableName } from "./embeddings/tables.js";
-import { schema, v } from "./schema.js";
-import { getPreviousEntry, publicEntry } from "./helpers.js";
+import {
+  getVectorTableName,
+  validateVectorDimension,
+  vVectorId,
+  type VectorTableName,
+} from "./embeddings/tables.js";
 import {
   filterFieldsFromNumbers,
   numberedFilterFromNamedFilters,
 } from "./filters.js";
+import { getPreviousEntry, publicEntry } from "./helpers.js";
+import { schema, v } from "./schema.js";
 
 const KB = 1_024;
 const MB = 1_024 * KB;
@@ -79,12 +84,14 @@ export async function insertChunks(
       `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`,
     );
   }
+  const vectorTableName = getVectorTableName(
+    validateVectorDimension(namespace.dimension),
+  );
   // TODO: avoid writing if they're the same
   await Promise.all(
     existingChunks.map(async (c) => {
       if (c.state.kind === "ready") {
-        // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
-        await ctx.db.delete(c.state.embeddingId);
+        await ctx.db.delete(vectorTableName, c.state.embeddingId);
       }
       await ctx.db.delete("content", c.contentId);
       await ctx.db.delete("chunks", c._id);
@@ -222,24 +229,31 @@ export const replaceChunksPage = mutation({
         entry.importance,
         namedFilters,
       );
-      await ctx.db.patch("chunks", chunk._id, { state: { kind: "ready", embeddingId } });
+      await ctx.db.patch("chunks", chunk._id, {
+        state: { kind: "ready", embeddingId },
+      });
     }
     let dataUsedSoFar = 0;
     let indexToDelete = startOrder;
     let chunksToDeleteEmbeddings: Doc<"chunks">[] = [];
     let chunkToAdd: (Doc<"chunks"> & { state: { kind: "pending" } }) | null =
       null;
+
+    const vectorTableName = getVectorTableName(
+      validateVectorDimension(namespace.dimension),
+    );
     async function handleBatch() {
       await Promise.all(
         chunksToDeleteEmbeddings.map(async (chunk) => {
           assert(chunk.state.kind === "ready");
-          // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
-          const vector = await ctx.db.get(chunk.state.embeddingId);
+          const vector = await ctx.db.get(
+            vectorTableName,
+            chunk.state.embeddingId,
+          );
           assert(vector, `Vector ${chunk.state.embeddingId} not found`);
           // get and delete both count as bandwidth reads
           dataUsedSoFar += getConvexSize(vector) * 2;
-          // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
-          await ctx.db.delete(chunk.state.embeddingId);
+          await ctx.db.delete(vectorTableName, chunk.state.embeddingId);
           await ctx.db.patch("chunks", chunk._id, {
             state: {
               kind: "replaced",
@@ -515,19 +529,28 @@ export async function deleteChunksPageHandler(
     .withIndex("entryId_order", (q) =>
       q.eq("entryId", entryId).gte("order", startOrder),
     );
+  let vectorTableName: VectorTableName | undefined;
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {
+    if (!vectorTableName) {
+      const namespace = await ctx.db.get("namespaces", chunk.namespaceId);
+      assert(namespace, "namespace not found");
+      vectorTableName = getVectorTableName(
+        validateVectorDimension(namespace.dimension),
+      );
+    }
     // one for the stream read, one for deleting
     dataUsedSoFar += getConvexSize(chunk) * 2;
     await ctx.db.delete("chunks", chunk._id);
     if (chunk.state.kind === "ready") {
-      // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
-      const embedding = await ctx.db.get(chunk.state.embeddingId);
+      const embedding = await ctx.db.get(
+        vectorTableName,
+        chunk.state.embeddingId,
+      );
       if (embedding) {
         // get and delete both count as bandwidth reads
         dataUsedSoFar += getConvexSize(embedding) * 2;
-        // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
-        await ctx.db.delete(chunk.state.embeddingId);
+        await ctx.db.delete(vectorTableName, chunk.state.embeddingId);
       }
     }
     dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
