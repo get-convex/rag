@@ -2,7 +2,7 @@ import { assert } from "convex-helpers";
 import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
-import { convexToJson, type Infer } from "convex/values";
+import { getConvexSize, type Infer } from "convex/values";
 import {
   statuses,
   vChunk,
@@ -22,13 +22,18 @@ import {
   type QueryCtx,
 } from "./_generated/server.js";
 import { insertEmbedding } from "./embeddings/index.js";
-import { vVectorId, type VectorTableName } from "./embeddings/tables.js";
-import { schema, v } from "./schema.js";
-import { getPreviousEntry, publicEntry } from "./helpers.js";
+import {
+  getVectorTableName,
+  validateVectorDimension,
+  vVectorId,
+  type VectorTableName,
+} from "./embeddings/tables.js";
 import {
   filterFieldsFromNumbers,
   numberedFilterFromNamedFilters,
 } from "./filters.js";
+import { getPreviousEntry, publicEntry } from "./helpers.js";
+import { schema, v } from "./schema.js";
 
 const KB = 1_024;
 const MB = 1_024 * KB;
@@ -52,14 +57,14 @@ export async function insertChunks(
   ctx: MutationCtx,
   { entryId, startOrder, chunks }: InsertChunksArgs,
 ) {
-  const entry = await ctx.db.get(entryId);
+  const entry = await ctx.db.get("entries", entryId);
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
   await ensureLatestEntryVersion(ctx, entry);
 
   // Get the namespace for filter conversion
-  const namespace = await ctx.db.get(entry.namespaceId);
+  const namespace = await ctx.db.get("namespaces", entry.namespaceId);
   assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
   const previousEntry = await getPreviousEntry(ctx, entry);
@@ -79,14 +84,17 @@ export async function insertChunks(
       `Deleting ${existingChunks.length} existing chunks for entry ${entryId} at version ${entry.version}`,
     );
   }
+  const vectorTableName = getVectorTableName(
+    validateVectorDimension(namespace.dimension),
+  );
   // TODO: avoid writing if they're the same
   await Promise.all(
     existingChunks.map(async (c) => {
       if (c.state.kind === "ready") {
-        await ctx.db.delete(c.state.embeddingId);
+        await ctx.db.delete(vectorTableName, c.state.embeddingId);
       }
-      await ctx.db.delete(c.contentId);
-      await ctx.db.delete(c._id);
+      await ctx.db.delete("content", c.contentId);
+      await ctx.db.delete("chunks", c._id);
     }),
   );
   const numberedFilter = numberedFilterFromNamedFilters(
@@ -165,7 +173,7 @@ export const replaceChunksPage = mutation({
   returns: v.object({ status: vStatus, nextStartOrder: v.number() }),
   handler: async (ctx, args) => {
     const { entryId, startOrder } = args;
-    const entryOrNull = await ctx.db.get(entryId);
+    const entryOrNull = await ctx.db.get("entries", entryId);
     if (!entryOrNull) {
       throw new Error(`Entry ${entryId} not found`);
     }
@@ -176,7 +184,7 @@ export const replaceChunksPage = mutation({
     }
 
     // Get the namespace for filter conversion
-    const namespace = await ctx.db.get(entry.namespaceId);
+    const namespace = await ctx.db.get("namespaces", entry.namespaceId);
     assert(namespace, `Namespace ${entry.namespaceId} not found`);
 
     const previousEntry = await getPreviousEntry(ctx, entry);
@@ -221,23 +229,32 @@ export const replaceChunksPage = mutation({
         entry.importance,
         namedFilters,
       );
-      await ctx.db.patch(chunk._id, { state: { kind: "ready", embeddingId } });
+      await ctx.db.patch("chunks", chunk._id, {
+        state: { kind: "ready", embeddingId },
+      });
     }
     let dataUsedSoFar = 0;
     let indexToDelete = startOrder;
     let chunksToDeleteEmbeddings: Doc<"chunks">[] = [];
     let chunkToAdd: (Doc<"chunks"> & { state: { kind: "pending" } }) | null =
       null;
+
+    const vectorTableName = getVectorTableName(
+      validateVectorDimension(namespace.dimension),
+    );
     async function handleBatch() {
       await Promise.all(
         chunksToDeleteEmbeddings.map(async (chunk) => {
           assert(chunk.state.kind === "ready");
-          const vector = await ctx.db.get(chunk.state.embeddingId);
+          const vector = await ctx.db.get(
+            vectorTableName,
+            chunk.state.embeddingId,
+          );
           assert(vector, `Vector ${chunk.state.embeddingId} not found`);
           // get and delete both count as bandwidth reads
-          dataUsedSoFar += estimateEmbeddingSize(vector) * 2;
-          await ctx.db.delete(chunk.state.embeddingId);
-          await ctx.db.patch(chunk._id, {
+          dataUsedSoFar += getConvexSize(vector) * 2;
+          await ctx.db.delete(vectorTableName, chunk.state.embeddingId);
+          await ctx.db.patch("chunks", chunk._id, {
             state: {
               kind: "replaced",
               embeddingId: chunk.state.embeddingId,
@@ -255,7 +272,7 @@ export const replaceChunksPage = mutation({
     }
     for await (const chunk of chunkStream) {
       // one for the stream read, one for patching / replacing
-      dataUsedSoFar += estimateChunkSize(chunk) * 2;
+      dataUsedSoFar += getConvexSize(chunk) * 2;
       if (chunk.state.kind !== "pending") {
         dataUsedSoFar += 17 * KB; // embedding conservative estimate
       }
@@ -324,7 +341,7 @@ export async function buildRanges(
     await Promise.all(
       Array.from(
         new Set(chunks.filter((c) => c !== null).map((c) => c.entryId)),
-      ).map((id) => ctx.db.get(id)),
+      ).map((id) => ctx.db.get("entries", id)),
     )
   ).filter((d): d is Doc<"entries"> => d !== null);
   const entries = entryDocs.map(publicEntry);
@@ -400,7 +417,7 @@ export async function buildRanges(
     }
     const content = await Promise.all(
       contentIds.map(async (contentId) => {
-        const content = await ctx.db.get(contentId);
+        const content = await ctx.db.get("content", contentId);
         assert(content, `Content ${contentId} not found`);
         return { text: content.text, metadata: content.metadata };
       }),
@@ -462,7 +479,7 @@ export const list = query({
       ...chunks,
       page: await Promise.all(
         chunks.page.map(async (chunk) => {
-          const content = await ctx.db.get(chunk.contentId);
+          const content = await ctx.db.get("content", chunk.contentId);
           assert(content, `Content ${chunk.contentId} not found`);
           return publicChunk(chunk, content);
         }),
@@ -512,21 +529,32 @@ export async function deleteChunksPageHandler(
     .withIndex("entryId_order", (q) =>
       q.eq("entryId", entryId).gte("order", startOrder),
     );
+  let vectorTableName: VectorTableName | undefined;
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {
+    if (!vectorTableName) {
+      const namespace = await ctx.db.get("namespaces", chunk.namespaceId);
+      assert(namespace, "namespace not found");
+      vectorTableName = getVectorTableName(
+        validateVectorDimension(namespace.dimension),
+      );
+    }
     // one for the stream read, one for deleting
-    dataUsedSoFar += estimateChunkSize(chunk) * 2;
-    await ctx.db.delete(chunk._id);
+    dataUsedSoFar += getConvexSize(chunk) * 2;
+    await ctx.db.delete("chunks", chunk._id);
     if (chunk.state.kind === "ready") {
-      const embedding = await ctx.db.get(chunk.state.embeddingId);
+      const embedding = await ctx.db.get(
+        vectorTableName,
+        chunk.state.embeddingId,
+      );
       if (embedding) {
         // get and delete both count as bandwidth reads
-        dataUsedSoFar += estimateEmbeddingSize(embedding) * 2;
-        await ctx.db.delete(chunk.state.embeddingId);
+        dataUsedSoFar += getConvexSize(embedding) * 2;
+        await ctx.db.delete(vectorTableName, chunk.state.embeddingId);
       }
     }
     dataUsedSoFar += await estimateContentSize(ctx, chunk.contentId);
-    await ctx.db.delete(chunk.contentId);
+    await ctx.db.delete("content", chunk.contentId);
     if (dataUsedSoFar > BANDWIDTH_PER_TRANSACTION_HARD_LIMIT) {
       return { isDone: false, nextStartOrder: chunk.order };
     }
@@ -534,45 +562,8 @@ export async function deleteChunksPageHandler(
   return { isDone: true, nextStartOrder: -1 };
 }
 
-function estimateEmbeddingSize(embedding: Doc<VectorTableName>) {
-  let dataUsedSoFar =
-    embedding.vector.length * 8 +
-    embedding.namespaceId.length +
-    embedding._id.length +
-    8;
-  for (const filter of [
-    embedding.filter0,
-    embedding.filter1,
-    embedding.filter2,
-    embedding.filter3,
-  ]) {
-    if (filter) {
-      dataUsedSoFar += JSON.stringify(convexToJson(filter[1])).length;
-    }
-  }
-  return dataUsedSoFar;
-}
-
-function estimateChunkSize(chunk: Doc<"chunks">) {
-  let dataUsedSoFar = 100; // constant metadata - roughly
-  if (chunk.state.kind === "pending") {
-    dataUsedSoFar += chunk.state.embedding.length * 8;
-    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
-  } else if (chunk.state.kind === "replaced") {
-    dataUsedSoFar += chunk.state.vector.length * 8;
-    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
-  }
-  return dataUsedSoFar;
-}
 async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
-  let dataUsedSoFar = 0;
   // TODO: if/when deletions don't count as bandwidth, we can remove this.
-  const content = await ctx.db.get(contentId);
-  if (content) {
-    dataUsedSoFar += content.text.length;
-    dataUsedSoFar += JSON.stringify(
-      convexToJson(content.metadata ?? {}),
-    ).length;
-  }
-  return dataUsedSoFar;
+  const content = await ctx.db.get("content", contentId);
+  return getConvexSize(content);
 }

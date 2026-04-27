@@ -8,6 +8,7 @@ import { insertEmbedding, searchEmbeddings } from "./index.js";
 import { vectorWithImportanceDimension } from "./importance.js";
 import { action } from "../_generated/server.js";
 import { anyApi, type ApiFromModules } from "convex/server";
+import { getVectorTableName, VectorDimension } from "./tables.js";
 
 export const search = action({
   args: {
@@ -27,6 +28,9 @@ const testApi: ApiFromModules<{
   };
 }>["fns"] = anyApi["embeddings"]["index.test"] as any;
 
+const dimension: VectorDimension = 128;
+const vectorTableName = getVectorTableName(dimension);
+
 describe("embeddings", () => {
   test("insertEmbedding with no filters or importance works", async () => {
     const t = convexTest(schema, modules);
@@ -37,14 +41,14 @@ describe("embeddings", () => {
         namespace: "test-namespace",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
     });
 
-    // Create a simple 128-dimension embedding
-    const embedding = Array(128).fill(0.1);
+    // Create a simple embedding
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert embedding without filters or importance
     const vectorId = await t.run(async (ctx) => {
@@ -55,13 +59,13 @@ describe("embeddings", () => {
 
     // Verify the vector was inserted correctly
     const insertedVector = await t.run(async (ctx) => {
-      return ctx.db.get(vectorId);
+      return ctx.db.get(vectorTableName, vectorId);
     });
 
     expect(insertedVector).toBeDefined();
     expect(insertedVector!.namespaceId).toBe(namespaceId);
     expect(insertedVector!.vector).toHaveLength(
-      vectorWithImportanceDimension(128),
+      vectorWithImportanceDimension(dimension),
     );
     expect(insertedVector!.filter0).toBeUndefined();
     expect(insertedVector!.filter1).toBeUndefined();
@@ -77,13 +81,13 @@ describe("embeddings", () => {
         namespace: "test-namespace-importance",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
     const importance = 0.5;
 
     // Insert embedding with importance
@@ -98,11 +102,11 @@ describe("embeddings", () => {
     });
 
     const insertedVector = await t.run(async (ctx) => {
-      return ctx.db.get(vectorId);
+      return ctx.db.get(vectorTableName, vectorId);
     });
 
     expect(insertedVector).toBeDefined();
-    expect(insertedVector!.vector).toHaveLength(129);
+    expect(insertedVector!.vector).toHaveLength(dimension + 1);
 
     // The importance should affect the vector - it should not be the same as without importance
     const vectorWithoutImportance = await t.run(async (ctx) => {
@@ -110,7 +114,7 @@ describe("embeddings", () => {
     });
 
     const vectorWithoutImportanceData = await t.run(async (ctx) => {
-      return ctx.db.get(vectorWithoutImportance);
+      return ctx.db.get(vectorTableName, vectorWithoutImportance);
     });
 
     // Vectors should be different due to importance scaling
@@ -120,7 +124,7 @@ describe("embeddings", () => {
 
     // The last element should be the weight: sqrt(1 - importance^2)
     const expectedWeight = Math.sqrt(1 - importance ** 2);
-    expect(insertedVector!.vector[128]).toBeCloseTo(expectedWeight, 5);
+    expect(insertedVector!.vector[dimension]).toBeCloseTo(expectedWeight, 5);
   });
 
   test("search for vectors sorted by importance when identical otherwise", async () => {
@@ -131,13 +135,13 @@ describe("embeddings", () => {
         namespace: "importance-sort-test",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert same embedding with different importance levels
     await t.run(async (ctx) => {
@@ -170,13 +174,13 @@ describe("embeddings", () => {
         namespace: "filter-test",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: ["category", "priority", "status", "author"],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert embedding with filter on position 0
     const vectorId0 = await t.run(async (ctx) => {
@@ -193,8 +197,12 @@ describe("embeddings", () => {
     });
 
     // Verify filters are in correct fields
-    const vector0 = await t.run(async (ctx) => ctx.db.get(vectorId0));
-    const vector2 = await t.run(async (ctx) => ctx.db.get(vectorId2));
+    const vector0 = await t.run(async (ctx) =>
+      ctx.db.get(vectorTableName, vectorId0),
+    );
+    const vector2 = await t.run(async (ctx) =>
+      ctx.db.get(vectorTableName, vectorId2),
+    );
 
     expect(vector0!.filter0).toEqual([namespaceId, "entries"]);
     expect(vector0!.filter1).toBeUndefined();
@@ -215,7 +223,7 @@ describe("embeddings", () => {
         namespace: "namespace1",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: ["type"],
         status: { kind: "ready" },
       });
@@ -226,13 +234,13 @@ describe("embeddings", () => {
         namespace: "namespace2",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: ["type"],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert same filter value in different namespaces
     const vector1Id = await t.run(async (ctx) => {
@@ -247,8 +255,12 @@ describe("embeddings", () => {
       });
     });
 
-    const vector1 = await t.run(async (ctx) => ctx.db.get(vector1Id));
-    const vector2 = await t.run(async (ctx) => ctx.db.get(vector2Id));
+    const vector1 = await t.run(async (ctx) =>
+      ctx.db.get(vectorTableName, vector1Id),
+    );
+    const vector2 = await t.run(async (ctx) =>
+      ctx.db.get(vectorTableName, vector2Id),
+    );
 
     // Both have the same filter value but different namespace prefixes
     expect(vector1!.filter0).toEqual([namespace1Id, "article"]);
@@ -264,7 +276,7 @@ describe("embeddings", () => {
         namespace: "namespace1",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
@@ -275,13 +287,13 @@ describe("embeddings", () => {
         namespace: "namespace2",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert vectors in both namespaces
     await t.run(async (ctx) => {
@@ -311,12 +323,16 @@ describe("embeddings", () => {
 
     // All results should be from the correct namespace
     for (const result of results1) {
-      const vector = await t.run(async (ctx) => ctx.db.get(result._id));
+      const vector = await t.run(async (ctx) =>
+        ctx.db.get(vectorTableName, result._id),
+      );
       expect(vector!.namespaceId).toBe(namespace1Id);
     }
 
     for (const result of results2) {
-      const vector = await t.run(async (ctx) => ctx.db.get(result._id));
+      const vector = await t.run(async (ctx) =>
+        ctx.db.get(vectorTableName, result._id),
+      );
       expect(vector!.namespaceId).toBe(namespace2Id);
     }
   });
@@ -329,13 +345,13 @@ describe("embeddings", () => {
         namespace: "filtered-search",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: ["category", "status"],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert vectors with different filter combinations
     await t.run(async (ctx) => {
@@ -384,13 +400,13 @@ describe("embeddings", () => {
         namespace: "multi-filter-or",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: ["category", "priority"],
         status: { kind: "ready" },
       });
     });
 
-    const embedding = Array(128).fill(0.1);
+    const embedding = Array(dimension).fill(0.1);
 
     // Insert vectors with different filter values
     await t.run(async (ctx) => {
@@ -425,7 +441,9 @@ describe("embeddings", () => {
     // Verify the results contain the expected filters
     const vectorIds = orResults.map((r) => r._id);
     const vectors = await t.run(async (ctx) => {
-      return Promise.all(vectorIds.map((id) => ctx.db.get(id)));
+      return Promise.all(
+        vectorIds.map((id) => ctx.db.get(vectorTableName, id)),
+      );
     });
 
     const hasArticles = vectors.some((v) => v!.filter0?.[1] === "articles");
@@ -443,17 +461,17 @@ describe("embeddings", () => {
         namespace: "search-test",
         version: 1,
         modelId: "test-model",
-        dimension: 128,
+        dimension,
         filterNames: [],
         status: { kind: "ready" },
       });
     });
 
-    const embedding1 = Array(128).fill(0.1);
+    const embedding1 = Array(dimension).fill(0.1);
     embedding1[0] = 1;
-    const embedding2 = Array(128).fill(0.1);
+    const embedding2 = Array(dimension).fill(0.1);
     embedding2[0] = 0;
-    const searchEmbedding = Array(128).fill(0.1);
+    const searchEmbedding = Array(dimension).fill(0.1);
     searchEmbedding[0] = 0.8; // Closer to embedding1
 
     // Insert two different embeddings
@@ -475,7 +493,9 @@ describe("embeddings", () => {
 
     // The first result should be more similar to embedding1 (0.1) than embedding2 (0.2)
     // since searchEmbedding (0.15) is closer to 0.1
-    const firstVector = await t.run(async (ctx) => ctx.db.get(results[0]._id));
+    const firstVector = await t.run(async (ctx) =>
+      ctx.db.get(vectorTableName, results[0]._id),
+    );
     expect(firstVector).toBeDefined();
   });
 });

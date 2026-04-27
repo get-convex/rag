@@ -317,7 +317,7 @@ export const textAndRanges = internalQuery({
 
     // 4. Build ranges from merged chunk IDs.
     const chunks = await Promise.all(
-      mergedChunkIds.map((id) => ctx.db.get(id)),
+      mergedChunkIds.map((id) => ctx.db.get("chunks", id)),
     );
     const { ranges, entries } = await buildRanges(
       ctx,
