@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/* eslint-disable @convex-dev/no-filter-in-query */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type TestConvex } from "convex-test";
