@@ -2,7 +2,7 @@ import { assert } from "convex-helpers";
 import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
-import { convexToJson, type Infer } from "convex/values";
+import { getConvexSize, type Infer } from "convex/values";
 import {
   statuses,
   vChunk,
@@ -237,7 +237,7 @@ export const replaceChunksPage = mutation({
           const vector = await ctx.db.get(chunk.state.embeddingId);
           assert(vector, `Vector ${chunk.state.embeddingId} not found`);
           // get and delete both count as bandwidth reads
-          dataUsedSoFar += estimateEmbeddingSize(vector) * 2;
+          dataUsedSoFar += getConvexSize(vector) * 2;
           // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
           await ctx.db.delete(chunk.state.embeddingId);
           await ctx.db.patch("chunks", chunk._id, {
@@ -258,7 +258,7 @@ export const replaceChunksPage = mutation({
     }
     for await (const chunk of chunkStream) {
       // one for the stream read, one for patching / replacing
-      dataUsedSoFar += estimateChunkSize(chunk) * 2;
+      dataUsedSoFar += getConvexSize(chunk) * 2;
       if (chunk.state.kind !== "pending") {
         dataUsedSoFar += 17 * KB; // embedding conservative estimate
       }
@@ -518,14 +518,14 @@ export async function deleteChunksPageHandler(
   let dataUsedSoFar = 0;
   for await (const chunk of chunkStream) {
     // one for the stream read, one for deleting
-    dataUsedSoFar += estimateChunkSize(chunk) * 2;
+    dataUsedSoFar += getConvexSize(chunk) * 2;
     await ctx.db.delete("chunks", chunk._id);
     if (chunk.state.kind === "ready") {
       // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
       const embedding = await ctx.db.get(chunk.state.embeddingId);
       if (embedding) {
         // get and delete both count as bandwidth reads
-        dataUsedSoFar += estimateEmbeddingSize(embedding) * 2;
+        dataUsedSoFar += getConvexSize(embedding) * 2;
         // eslint-disable-next-line @convex-dev/explicit-table-ids -- embeddingId is a VectorTableId (union of vectors_128..vectors_4096)
         await ctx.db.delete(chunk.state.embeddingId);
       }
@@ -539,45 +539,8 @@ export async function deleteChunksPageHandler(
   return { isDone: true, nextStartOrder: -1 };
 }
 
-function estimateEmbeddingSize(embedding: Doc<VectorTableName>) {
-  let dataUsedSoFar =
-    embedding.vector.length * 8 +
-    embedding.namespaceId.length +
-    embedding._id.length +
-    8;
-  for (const filter of [
-    embedding.filter0,
-    embedding.filter1,
-    embedding.filter2,
-    embedding.filter3,
-  ]) {
-    if (filter) {
-      dataUsedSoFar += JSON.stringify(convexToJson(filter[1])).length;
-    }
-  }
-  return dataUsedSoFar;
-}
-
-function estimateChunkSize(chunk: Doc<"chunks">) {
-  let dataUsedSoFar = 100; // constant metadata - roughly
-  if (chunk.state.kind === "pending") {
-    dataUsedSoFar += chunk.state.embedding.length * 8;
-    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
-  } else if (chunk.state.kind === "replaced") {
-    dataUsedSoFar += chunk.state.vector.length * 8;
-    dataUsedSoFar += chunk.state.pendingSearchableText?.length ?? 0;
-  }
-  return dataUsedSoFar;
-}
 async function estimateContentSize(ctx: QueryCtx, contentId: Id<"content">) {
-  let dataUsedSoFar = 0;
   // TODO: if/when deletions don't count as bandwidth, we can remove this.
   const content = await ctx.db.get("content", contentId);
-  if (content) {
-    dataUsedSoFar += content.text.length;
-    dataUsedSoFar += JSON.stringify(
-      convexToJson(content.metadata ?? {}),
-    ).length;
-  }
-  return dataUsedSoFar;
+  return getConvexSize(content);
 }
