@@ -96,7 +96,7 @@
     "ai": "6.0.77",
     "autoprefixer": "10.4.24",
     "chokidar-cli": "3.0.0",
-    "convex": "1.35.1",
+    "convex": "1.38.0",
     "convex-helpers": "0.1.111",
     "convex-test": "0.0.49",
     "eslint": "9.39.2",
