@@ -230,7 +230,11 @@ export const replaceChunksPage = mutation({
         namedFilters,
       );
       await ctx.db.patch("chunks", chunk._id, {
-        state: { kind: "ready", embeddingId },
+        state: {
+          kind: "ready",
+          embeddingId,
+          searchableText: chunk.state.pendingSearchableText,
+        },
       });
     }
     let dataUsedSoFar = 0;
