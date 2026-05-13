@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/* eslint-disable @convex-dev/no-filter-in-query */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type TestConvex } from "convex-test";
@@ -90,7 +91,7 @@ describe("namespaces", () => {
 
     // Verify namespace is deleted
     const namespaceAfter = await t.run(async (ctx) => {
-      return ctx.db.get(namespaceId);
+      return ctx.db.get("namespaces", namespaceId);
     });
     expect(namespaceAfter).toBeNull();
   });

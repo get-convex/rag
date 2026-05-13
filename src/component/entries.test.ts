@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/* eslint-disable @convex-dev/no-filter-in-query */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { type TestConvex } from "convex-test";
@@ -56,7 +57,7 @@ describe("entries", () => {
 
     // Verify the entry was actually created
     const createdDoc = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
 
     expect(createdDoc).toBeDefined();
@@ -168,7 +169,7 @@ describe("entries", () => {
     });
     expect(firstResult.status).toBe("ready");
     const first = await t.run(async (ctx) => {
-      return ctx.db.get(firstResult.entryId);
+      return ctx.db.get("entries", firstResult.entryId);
     })!;
     expect(first?.version).toBe(0);
     expect(first?.status.kind).toBe("ready");
@@ -187,7 +188,7 @@ describe("entries", () => {
     expect(secondResult.created).toBe(true);
     expect(secondResult.entryId).not.toBe(firstResult.entryId);
     const second = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.entryId);
+      return ctx.db.get("entries", secondResult.entryId);
     })!;
     expect(second?.version).toBe(1);
     expect(second?.status.kind).toBe("pending");
@@ -195,7 +196,7 @@ describe("entries", () => {
 
     // Verify new version was created
     const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.entryId);
+      return ctx.db.get("entries", secondResult.entryId);
     });
 
     expect(newDoc!.version).toBe(1);
@@ -232,7 +233,7 @@ describe("entries", () => {
 
     // Verify new version was created with correct filter values
     const newDoc = await t.run(async (ctx) => {
-      return ctx.db.get(secondResult.entryId);
+      return ctx.db.get("entries", secondResult.entryId);
     });
 
     expect(newDoc!.version).toBe(1);
@@ -257,7 +258,7 @@ describe("entries", () => {
 
     // Verify the entry was created with pending status
     const createdDoc = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
 
     expect(createdDoc!.status.kind).toBe("pending");
@@ -344,7 +345,7 @@ describe("entries", () => {
 
     // Verify the first entry is now replaced
     const firstDoc = await t.run(async (ctx) => {
-      return ctx.db.get(firstResult.entryId);
+      return ctx.db.get("entries", firstResult.entryId);
     });
     expect(firstDoc!.status.kind).toBe("replaced");
   });
@@ -379,7 +380,7 @@ describe("entries", () => {
 
     // Verify entry and chunks exist before deletion
     const entryBefore = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
     expect(entryBefore).toBeDefined();
 
@@ -402,7 +403,7 @@ describe("entries", () => {
 
     // Verify entry is deleted
     const entryAfter = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
     expect(entryAfter).toBeNull();
 
@@ -446,7 +447,7 @@ describe("entries", () => {
 
     // Verify entry and chunks exist before deletion
     const entryBefore = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
     expect(entryBefore).toBeDefined();
 
@@ -465,7 +466,7 @@ describe("entries", () => {
 
     // Verify entry is deleted
     const entryAfter = await t.run(async (ctx) => {
-      return ctx.db.get(result.entryId);
+      return ctx.db.get("entries", result.entryId);
     });
     expect(entryAfter).toBeNull();
 

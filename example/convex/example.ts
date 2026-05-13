@@ -420,7 +420,7 @@ export const recordUploadMetadata = rag.defineOnComplete<DataModel>(
       .unique();
     if (existing) {
       console.debug("replacing file", existing._id, entry);
-      await ctx.db.replace(existing._id, metadata);
+      await ctx.db.replace("fileMetadata", existing._id, metadata);
     } else if (entry.status === "ready") {
       console.debug("inserting file", entry);
       await ctx.db.insert("fileMetadata", metadata);
@@ -446,7 +446,7 @@ async function _deleteFile(ctx: MutationCtx, entryId: EntryId) {
     .withIndex("entryId", (q) => q.eq("entryId", entryId))
     .unique();
   if (file) {
-    await ctx.db.delete(file._id);
+    await ctx.db.delete("fileMetadata", file._id);
     await ctx.storage.delete(file.storageId);
     await rag.deleteAsync(ctx, { entryId });
   }

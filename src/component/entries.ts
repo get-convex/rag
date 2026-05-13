@@ -69,7 +69,7 @@ export const addAsync = mutation({
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.entry;
-    const namespace = await ctx.db.get(namespaceId);
+    const namespace = await ctx.db.get("namespaces", namespaceId);
     assert(namespace, `Namespace ${namespaceId} not found`);
     // iterate through the latest versions of the entry
     const existing = await findExistingEntry(ctx, namespaceId, key);
@@ -134,7 +134,7 @@ export const addAsyncOnComplete = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const entryId = args.context;
-    const entry = await ctx.db.get(args.context);
+    const entry = await ctx.db.get("entries", args.context);
     if (!entry) {
       console.error(
         `Entry ${args.context} not found when trying to complete chunker for async add`,
@@ -145,7 +145,7 @@ export const addAsyncOnComplete = internalMutation({
       await promoteToReadyHandler(ctx, { entryId });
     } else {
       // await deleteAsyncHandler(ctx, { entryId, startOrder: 0 });
-      const namespace = await ctx.db.get(entry.namespaceId);
+      const namespace = await ctx.db.get("namespaces", entry.namespaceId);
       assert(namespace, `Namespace ${entry.namespaceId} not found`);
       if (entry.status.kind === "pending" && entry.status.onComplete) {
         await runOnComplete(
@@ -207,7 +207,7 @@ export const add = mutation({
   }),
   handler: async (ctx, args) => {
     const { namespaceId, key } = args.entry;
-    const namespace = await ctx.db.get(namespaceId);
+    const namespace = await ctx.db.get("namespaces", namespaceId);
     assert(namespace, `Namespace ${namespaceId} not found`);
     // iterate through the latest versions of the entry
     const existing = await findExistingEntry(ctx, namespaceId, key);
@@ -327,7 +327,7 @@ export const get = query({
   args: { entryId: v.id("entries") },
   returns: v.union(vEntry, v.null()),
   handler: async (ctx, args) => {
-    const entry = await ctx.db.get(args.entryId);
+    const entry = await ctx.db.get("entries", args.entryId);
     if (!entry) {
       return null;
     }
@@ -409,9 +409,9 @@ async function promoteToReadyHandler(
   ctx: MutationCtx,
   args: { entryId: Id<"entries"> },
 ) {
-  const entry = await ctx.db.get(args.entryId);
+  const entry = await ctx.db.get("entries", args.entryId);
   assert(entry, `Entry ${args.entryId} not found`);
-  const namespace = await ctx.db.get(entry.namespaceId);
+  const namespace = await ctx.db.get("namespaces", entry.namespaceId);
   assert(namespace, `Namespace for ${entry.namespaceId} not found`);
   if (entry.status.kind === "ready") {
     console.debug(`Entry ${args.entryId} is already ready, skipping...`);
@@ -427,13 +427,13 @@ async function promoteToReadyHandler(
   // so there are never two "ready" entries.
   if (previousEntry) {
     previousEntry.status = { kind: "replaced", replacedAt: Date.now() };
-    await ctx.db.replace(previousEntry._id, previousEntry);
+    await ctx.db.replace("entries", previousEntry._id, previousEntry);
   }
   const previousStatus = entry.status;
   entry.status = { kind: "ready" };
   // Only then mark the current entry as ready,
   // so there are never two "ready" entries.
-  await ctx.db.replace(args.entryId, entry);
+  await ctx.db.replace("entries", args.entryId, entry);
   // Then run the onComplete function where it can observe itself as "ready".
   if (previousStatus.kind === "pending" && previousStatus.onComplete) {
     await runOnComplete(
@@ -461,7 +461,7 @@ async function promoteToReadyHandler(
       previousPendingEntries.map(async (entry) => {
         const previousStatus = entry.status;
         entry.status = { kind: "replaced", replacedAt: Date.now() };
-        await ctx.db.replace(entry._id, entry);
+        await ctx.db.replace("entries", entry._id, entry);
         if (previousStatus.kind === "pending" && previousStatus.onComplete) {
           await runOnComplete(
             ctx,
@@ -493,13 +493,13 @@ async function deleteAsyncHandler(
   args: { entryId: Id<"entries">; startOrder: number },
 ) {
   const { entryId, startOrder } = args;
-  const entry = await ctx.db.get(entryId);
+  const entry = await ctx.db.get("entries", entryId);
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
   const status = await deleteChunksPageHandler(ctx, { entryId, startOrder });
   if (status.isDone) {
-    await ctx.db.delete(entryId);
+    await ctx.db.delete("entries", entryId);
   } else {
     await workpool.enqueueMutation(ctx, api.entries.deleteAsync, {
       entryId,
@@ -533,7 +533,7 @@ export const _del = internalMutation({
   args: { entryId: v.id("entries") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.entryId);
+    await ctx.db.delete("entries", args.entryId);
   },
 });
 
