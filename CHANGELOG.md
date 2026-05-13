@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.3
+
+- Support Workpool ^0.4.0 peer dependencies
+
 ## 0.7.2
 
 - Fixes deleteNamespaceSync deletion of all nested entries.
