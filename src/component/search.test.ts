@@ -8,6 +8,7 @@ import { modules } from "./setup.test.js";
 import { insertChunks } from "./chunks.js";
 import type { Id } from "./_generated/dataModel.js";
 import type { Value } from "convex/values";
+import { assert } from "convex-helpers";
 
 type ConvexTest = TestConvex<typeof schema>;
 
@@ -696,6 +697,80 @@ describe("search", () => {
       // With cosine similarity the first result can be 1.0 if exact match,
       // but the second should not follow the linear decrease pattern.
       expect(result.results[0].content[0].text).toBe("Target chunk");
+    });
+
+    test("re-indexing an entry preserves searchableText on the new ready chunks", async () => {
+      // Regression for #97: when a re-indexed entry's chunks transition from
+      // pending → ready, addChunk used to drop pendingSearchableText, leaving
+      // the new chunks invisible to text search.
+      const t = convexTest(schema, modules);
+      const namespaceId = await setupTestNamespace(t);
+
+      // v1: ready entry with searchable chunks.
+      const v1EntryId = await t.run(async (ctx) => {
+        return ctx.db.insert("entries", {
+          namespaceId,
+          key: "article-1",
+          version: 1,
+          status: { kind: "ready" },
+          contentHash: "hash-v1",
+          importance: 0.5,
+          filterValues: [],
+        });
+      });
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          entryId: v1EntryId,
+          startOrder: 0,
+          chunks: createSearchableChunks([
+            "Common issues with widgets and gadgets",
+          ]),
+        });
+      });
+
+      // v2: pending entry under the same key, then drive the replacement.
+      const v2EntryId = await t.run(async (ctx) => {
+        return ctx.db.insert("entries", {
+          namespaceId,
+          key: "article-1",
+          version: 2,
+          status: { kind: "pending" },
+          contentHash: "hash-v2",
+          importance: 0.5,
+          filterValues: [],
+        });
+      });
+      await t.run(async (ctx) => {
+        await insertChunks(ctx, {
+          entryId: v2EntryId,
+          startOrder: 0,
+          chunks: createSearchableChunks([
+            "Common issues with widgets and gadgets",
+          ]),
+        });
+      });
+      while (true) {
+        const result = await t.mutation(api.chunks.replaceChunksPage, {
+          entryId: v2EntryId,
+          startOrder: 0,
+        });
+        if (result.status !== "pending") break;
+      }
+
+      // The new chunks must be ready and carry searchableText forward so the
+      // search index can still find them.
+      const v2Chunks = await t.run(async (ctx) => {
+        return ctx.db
+          .query("chunks")
+          .withIndex("entryId_order", (q) => q.eq("entryId", v2EntryId))
+          .collect();
+      });
+      expect(v2Chunks).toHaveLength(1);
+      expect(v2Chunks[0].state.kind).toBe("ready");
+      assert(v2Chunks[0].state.kind === "ready");
+      expect(v2Chunks[0].state.searchableText).toBe(
+        "Common issues with widgets and gadgets",
+      );
     });
 
     test("textWeight and vectorWeight influence hybrid ranking", async () => {
