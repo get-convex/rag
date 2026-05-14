@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.4
+
+- Fix: preserve searchableText on re-indexed chunks
+
 ## 0.7.3
 
 - Support Workpool ^0.4.0 peer dependencies
