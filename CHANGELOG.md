@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.5
+
+- Change Workpool to be a direct dependency and support 0.4.7-alpha
+
 ## 0.7.4
 
 - Fix: preserve searchableText on re-indexed chunks
