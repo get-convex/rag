@@ -15,6 +15,6 @@ export function register(
   name: string = "rag",
 ) {
   t.registerComponent(name, schema, modules);
-  workpool.register(t, "workpool");
+  workpool.register(t, name + "/workpool");
 }
 export default { register, schema, modules };
