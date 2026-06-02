@@ -68,7 +68,7 @@
     }
   },
   "dependencies": {
-    "@convex-dev/workpool": "^0.4.3 || ^0.4.7-alpha",
+    "@convex-dev/workpool": "^0.4.4",
     "ai": "^6.0.0"
   },
   "peerDependencies": {
