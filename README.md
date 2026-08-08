@@ -25,6 +25,13 @@ Found a bug? Feature request?
 
 ## Installation
 
+```sh
+npm install @convex-dev/rag ai
+```
+
+The [AI SDK](https://ai-sdk.dev) (`ai@^7`) is a peer dependency, so your app and
+the component always share one copy.
+
 Create a `convex.config.ts` file in your app's `convex/` folder and install the
 component by calling `use`:
 

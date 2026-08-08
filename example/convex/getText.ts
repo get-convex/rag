@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { generateText, experimental_transcribe as transcribe } from "ai";
+import { generateText, transcribe } from "ai";
 import { assert } from "convex-helpers";
 import { Id } from "./_generated/dataModel";
 import { StorageActionWriter } from "convex/server";
@@ -30,12 +30,18 @@ export async function getText(
   ) {
     const imageResult = await generateText({
       model: describeImage,
-      system:
+      instructions:
         "You turn images into text. If it is a photo of a entry, transcribe it. If it is not a entry, describe it.",
       messages: [
         {
           role: "user",
-          content: [{ type: "image", image: new URL(url) }],
+          content: [
+            {
+              type: "file",
+              mediaType: mimeType,
+              data: { type: "url", url: new URL(url) },
+            },
+          ],
         },
       ],
     });
@@ -49,12 +55,17 @@ export async function getText(
   } else if (mimeType.toLowerCase().includes("pdf")) {
     const pdfResult = await generateText({
       model: describePdf,
-      system: "You transform PDF files into text.",
+      instructions: "You transform PDF files into text.",
       messages: [
         {
           role: "user",
           content: [
-            { type: "file", data: new URL(url), mediaType: mimeType, filename },
+            {
+              type: "file",
+              data: { type: "url", url: new URL(url) },
+              mediaType: mimeType,
+              filename,
+            },
             {
               type: "text",
               text: "Extract the text from the PDF and print it without explaining that you'll do so.",
@@ -71,7 +82,7 @@ export async function getText(
     if (mimeType.toLowerCase() !== "text/plain") {
       const result = await generateText({
         model: describeHtml,
-        system: "You transform content into markdown.",
+        instructions: "You transform content into markdown.",
         messages: [
           {
             role: "user",

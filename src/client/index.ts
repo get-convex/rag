@@ -478,7 +478,7 @@ export class RAG<
    *
    * This will search for entries in the namespace based on the prompt and use
    * the results as context to generate text, using the search options args.
-   * You can override the default "system" message to provide instructions on
+   * You can override the default "instructions" to provide guidance on
    * using the context and answering in the appropriate style.
    * You can provide "messages" in addition to the prompt to provide
    * extra context / conversation history.
@@ -576,10 +576,14 @@ export class RAG<
       .join("\n")
       .trim();
 
+    // `system` is the deprecated AI SDK v6 spelling of `instructions`.
+    const { instructions, system, ...restOpts } = aiSdkOpts;
     const result = (await generateText({
-      system:
+      ...restOpts,
+      instructions:
+        instructions ??
+        system ??
         "You use the context provided only to produce a response. Do not preface the response with acknowledgement of the context.",
-      ...aiSdkOpts,
       messages: [
         ...(args.messages ?? []),
         {
