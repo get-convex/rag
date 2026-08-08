@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0-alpha.0
 
 - **Breaking**: Requires AI SDK v7 (`ai@^7`), which is now a peer dependency
   instead of a direct dependency. Install it alongside `@convex-dev/rag`.
