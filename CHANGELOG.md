@@ -1,18 +1,18 @@
 # Changelog
 
-## 0.7.3
+## 0.6.5 / 0.7.3
 
 - Support Workpool ^0.4.0 peer dependencies
 
-## 0.7.2
+## 0.6.4 / 0.7.2
 
 - Fixes deleteNamespaceSync deletion of all nested entries.
 
-## 0.7.1
+## 0.6.3 / 0.7.1
 
 - Adds hybrid text/vector search (credit:richardsolomou)
 
-## 0.7.0
+## 0.6.2 / 0.7.0
 
 - AI SDK v6 support
 
