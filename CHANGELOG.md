@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0-alpha.0
+
+- **Breaking**: Requires AI SDK v7 (`ai@^7`), which is now a peer dependency
+  instead of a direct dependency. Install it alongside `@convex-dev/rag`.
+- `rag.generateText` now passes the default prompt preamble as `instructions`
+  (v7's replacement for `system`). Callers that pass the deprecated `system`
+  option still override the default.
+- AI SDK v7 rejects `system` messages inside `messages` by default. If you pass
+  conversation history containing system messages to `rag.generateText`, pass
+  `allowSystemInMessages: true` alongside it.
+- AI SDK v7 requires Node.js 22+.
+
 ## 0.7.5
 
 - Change Workpool to be a direct dependency and support 0.4.7-alpha

@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import { defineSchema } from "convex/server";
 import { components, initConvexTest } from "./setup.test.js";
 import { openai } from "@ai-sdk/openai";
+import { MockLanguageModelV4 } from "ai/test";
 
 // The schema for the tests
 const schema = defineSchema({});
@@ -110,11 +111,48 @@ export const search = action({
   },
 });
 
+const mockModel = new MockLanguageModelV4({
+  doGenerate: {
+    content: [{ type: "text" as const, text: "mock answer" }],
+    finishReason: { unified: "stop" as const, raw: "stop" },
+    usage: {
+      inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 1, text: 1, reasoning: 0 },
+    },
+    warnings: [],
+  },
+});
+
+export const generate = action({
+  args: {
+    embedding: v.array(v.number()),
+    namespace: v.string(),
+    prompt: v.string(),
+    instructions: v.optional(v.string()),
+    system: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { text } = await rag.generateText(ctx, {
+      search: {
+        namespace: args.namespace,
+        query: args.embedding,
+        searchType: "vector",
+      },
+      prompt: args.prompt,
+      model: mockModel,
+      ...(args.instructions ? { instructions: args.instructions } : {}),
+      ...(args.system ? { system: args.system } : {}),
+    });
+    return text;
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     findEntryByContentHash: typeof findEntryByContentHash;
     add: typeof add;
     search: typeof search;
+    generate: typeof generate;
   };
 }>["fns"] = anyApi["index.test"] as any;
 
@@ -510,6 +548,58 @@ Chunk 2 contents
 Chunk 3 contents
 Chunk 4 contents`,
       );
+    });
+  });
+
+  describe("generateText", () => {
+    async function generateAndGetInstructions(
+      args: { instructions?: string; system?: string } = {},
+    ) {
+      const t = initConvexTest(schema);
+      await t.mutation(testApi.add, {
+        key: "generate-test",
+        chunks: [
+          {
+            text: "Chunk 1 contents",
+            metadata: {},
+            embedding: dummyEmbeddings("Chunk 1 contents"),
+          },
+        ],
+        namespace: "generate-test",
+      });
+      mockModel.doGenerateCalls.length = 0;
+      const text = await t.action(testApi.generate, {
+        embedding: dummyEmbeddings("contents"),
+        namespace: "generate-test",
+        prompt: "What is in chunk 1?",
+        ...args,
+      });
+      expect(text).toBe("mock answer");
+      expect(mockModel.doGenerateCalls).toHaveLength(1);
+      const { prompt } = mockModel.doGenerateCalls[0];
+      // The last message is the prompt plus the retrieved context.
+      expect(JSON.stringify(prompt.at(-1))).toContain("Chunk 1 contents");
+      const systemMessages = prompt.filter((m) => m.role === "system");
+      expect(systemMessages).toHaveLength(1);
+      return systemMessages[0].content;
+    }
+
+    test("uses default instructions when none are provided", async () => {
+      expect(await generateAndGetInstructions()).toContain(
+        "You use the context provided only to produce a response.",
+      );
+    });
+
+    test("respects caller-provided instructions", async () => {
+      expect(
+        await generateAndGetInstructions({ instructions: "Answer in French." }),
+      ).toBe("Answer in French.");
+    });
+
+    test("respects the deprecated `system` option", async () => {
+      expect(
+        await generateAndGetInstructions({ system: "Answer in German." }),
+      ).toBe("Answer in German.");
     });
   });
 });
