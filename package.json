@@ -76,7 +76,7 @@
     "convex-helpers": "^0.1.94"
   },
   "devDependencies": {
-    "@ai-sdk/openai": "3.0.26",
+    "@ai-sdk/openai": "4.0.39",
     "@arethetypeswrong/cli": "0.18.2",
     "@convex-dev/eslint-plugin": "^2.0.0",
     "@convex-dev/workpool": "0.4.6",
