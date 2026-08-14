@@ -1,26 +1,26 @@
 # Changelog
 
-## 0.7.5
+## 0.6.7 / 0.7.5
 
 - Change Workpool to be a direct dependency and support 0.4.7-alpha
 
-## 0.7.4
+## 0.6.6 / 0.7.4
 
 - Fix: preserve searchableText on re-indexed chunks
 
-## 0.7.3
+## 0.6.5 / 0.7.3
 
 - Support Workpool ^0.4.0 peer dependencies
 
-## 0.7.2
+## 0.6.4 / 0.7.2
 
 - Fixes deleteNamespaceSync deletion of all nested entries.
 
-## 0.7.1
+## 0.6.3 / 0.7.1
 
 - Adds hybrid text/vector search (credit:richardsolomou)
 
-## 0.7.0
+## 0.6.2 / 0.7.0
 
 - AI SDK v6 support
 
