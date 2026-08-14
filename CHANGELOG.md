@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0
+## 0.6.2 / 0.7.0
 
 - AI SDK v6 support
 
