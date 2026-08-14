@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.8.0-alpha.0
+## 0.7.6 AI SDK v7 support
 
 - **Breaking**: Requires AI SDK v7 (`ai@^7`), which is now a peer dependency
-  instead of a direct dependency. Install it alongside `@convex-dev/rag`.
+  instead of a direct dependency. Install it alongside `@convex-dev/rag`. Sorry
+  about the semver violation. For `ai@^6`, use `@convex-dev/rag@^0.6.7` or
+  `@convex-dev/rag@ai-v6`.
 - `rag.generateText` now passes the default prompt preamble as `instructions`
   (v7's replacement for `system`). Callers that pass the deprecated `system`
   option still override the default.
@@ -12,27 +14,27 @@
   `allowSystemInMessages: true` alongside it.
 - AI SDK v7 requires Node.js 22+.
 
-## 0.7.5
+## 0.6.7 (also published as 0.7.5)
 
 - Change Workpool to be a direct dependency and support 0.4.7-alpha
 
-## 0.7.4
+## 0.6.6 (also published as 0.7.4)
 
 - Fix: preserve searchableText on re-indexed chunks
 
-## 0.7.3
+## 0.6.5 (also published as 0.7.3)
 
 - Support Workpool ^0.4.0 peer dependencies
 
-## 0.7.2
+## 0.6.4 (also published as 0.7.2)
 
 - Fixes deleteNamespaceSync deletion of all nested entries.
 
-## 0.7.1
+## 0.6.3 (also published as 0.7.1)
 
 - Adds hybrid text/vector search (credit:richardsolomou)
 
-## 0.7.0
+## 0.6.2 (also published as 0.7.0) AI SDK v6 support
 
 - AI SDK v6 support
 
