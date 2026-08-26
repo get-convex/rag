@@ -80,7 +80,7 @@
   "devDependencies": {
     "@ai-sdk/openai": "4.0.25",
     "@arethetypeswrong/cli": "0.18.2",
-    "@convex-dev/eslint-plugin": "^2.0.0",
+    "@convex-dev/eslint-plugin": "^4.0.0",
     "@convex-dev/workpool": "0.4.6",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/eslintrc": "3.3.3",
