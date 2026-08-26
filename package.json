@@ -1,8 +1,8 @@
 {
   "name": "@convex-dev/rag",
-  "description": "A rag component for Convex.",
+  "description": "Convex component for RAG: chunk and embed documents, then run semantic search to build LLM context.",
   "repository": "github:get-convex/rag",
-  "homepage": "https://github.com/get-convex/rag#readme",
+  "homepage": "https://www.convex.dev/components/rag",
   "bugs": {
     "email": "support@convex.dev",
     "url": "https://github.com/get-convex/rag/issues"
@@ -12,12 +12,14 @@
   "keywords": [
     "convex",
     "component",
-    "document",
-    "embeddings",
     "rag",
-    "search",
-    "semantic",
-    "vector"
+    "retrieval-augmented-generation",
+    "semantic-search",
+    "vector-search",
+    "embeddings",
+    "llm",
+    "ai",
+    "document-chunking"
   ],
   "type": "module",
   "scripts": {
