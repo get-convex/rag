@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.7
+
+- Updates package metadata, and bumps convex peer dependency to 1.46
+
 ## 0.7.6 AI SDK v7 support
 
 - **Breaking**: Requires AI SDK v7 (`ai@^7`), which is now a peer dependency
