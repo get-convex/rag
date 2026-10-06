@@ -74,8 +74,8 @@
   },
   "peerDependencies": {
     "ai": "^7.0.0",
-    "convex": "^1.24.8",
-    "convex-helpers": "^0.1.94"
+    "convex": "^1.46.0",
+    "convex-helpers": "^0.1.127"
   },
   "devDependencies": {
     "@ai-sdk/openai": "4.0.25",
@@ -98,8 +98,8 @@
     "ai": "7.0.43",
     "autoprefixer": "10.4.24",
     "chokidar-cli": "3.0.0",
-    "convex": "1.38.0",
-    "convex-helpers": "0.1.111",
+    "convex": "1.46.0",
+    "convex-helpers": "0.1.127",
     "convex-test": "0.0.49",
     "eslint": "9.39.2",
     "eslint-plugin-react": "7.37.5",
