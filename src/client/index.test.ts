@@ -1,39 +1,28 @@
 import { describe, expect, test } from "vitest";
 import { RAG } from "./index.js";
-import type { DataModelFromSchemaDefinition } from "convex/server";
-import {
-  anyApi,
-  queryGeneric,
-  mutationGeneric,
-  actionGeneric,
-} from "convex/server";
-import type {
-  ApiFromModules,
-  ActionBuilder,
-  MutationBuilder,
-  QueryBuilder,
-} from "convex/server";
 import { v } from "convex/values";
 import { defineSchema } from "convex/server";
-import { components, initConvexTest } from "./setup.test.js";
+import { defineTestApp } from "convex-test";
+import componentTest from "../test.js";
 import { openai } from "@ai-sdk/openai";
 import { MockLanguageModelV4 } from "ai/test";
 
 // The schema for the tests
 const schema = defineSchema({});
-type DataModel = DataModelFromSchemaDefinition<typeof schema>;
-// type DatabaseReader = GenericDatabaseReader<DataModel>;
-const query = queryGeneric as QueryBuilder<DataModel, "public">;
-const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
-const action = actionGeneric as ActionBuilder<DataModel, "public">;
+const app = defineTestApp({
+  schema,
+  components: {
+    rag: componentTest,
+  },
+});
 
-const rag = new RAG(components.rag, {
+const rag = new RAG(app.components.rag, {
   embeddingDimension: 1536,
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   filterNames: ["simpleString", "arrayOfStrings", "customObject"],
 });
 
-export const findEntryByContentHash = query({
+const findEntryByContentHash = app.query({
   args: { namespace: v.string(), key: v.string(), contentHash: v.string() },
   handler: async (ctx, args) => {
     return rag.findEntryByContentHash(ctx, {
@@ -44,7 +33,7 @@ export const findEntryByContentHash = query({
   },
 });
 
-export const add = mutation({
+const add = app.mutation({
   args: {
     key: v.string(),
     chunks: v.array(
@@ -82,7 +71,7 @@ export const add = mutation({
   },
 });
 
-export const search = action({
+const search = app.action({
   args: {
     embedding: v.array(v.number()),
     namespace: v.string(),
@@ -123,7 +112,7 @@ const mockModel = new MockLanguageModelV4({
   },
 });
 
-export const generate = action({
+const generate = app.action({
   args: {
     embedding: v.array(v.number()),
     namespace: v.string(),
@@ -147,14 +136,14 @@ export const generate = action({
   },
 });
 
-const testApi: ApiFromModules<{
+const { api, createTest } = app.defineModules({
   fns: {
-    findEntryByContentHash: typeof findEntryByContentHash;
-    add: typeof add;
-    search: typeof search;
-    generate: typeof generate;
-  };
-}>["fns"] = anyApi["index.test"] as any;
+    findEntryByContentHash,
+    add,
+    search,
+    generate,
+  },
+});
 
 function dummyEmbeddings(text: string) {
   return Array.from({ length: 1536 }, (_, i) =>
@@ -164,8 +153,8 @@ function dummyEmbeddings(text: string) {
 
 describe("RAG thick client", () => {
   test("should add a entry and be able to list it", async () => {
-    const t = initConvexTest(schema);
-    const { entryId, status, usage } = await t.mutation(testApi.add, {
+    const t = createTest();
+    const { entryId, status, usage } = await t.mutation(api.fns.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
@@ -191,8 +180,8 @@ describe("RAG thick client", () => {
   });
 
   test("should work from a test function", async () => {
-    const t = initConvexTest(schema);
-    await t.mutation(testApi.add, {
+    const t = createTest();
+    await t.mutation(api.fns.add, {
       key: "test",
       chunks: [
         { text: "A", metadata: {}, embedding: dummyEmbeddings("A") },
@@ -205,8 +194,8 @@ describe("RAG thick client", () => {
   });
 
   test("should be able to re-add an entry with the same key", async () => {
-    const t = initConvexTest(schema);
-    const { entryId, status, usage } = await t.mutation(testApi.add, {
+    const t = createTest();
+    const { entryId, status, usage } = await t.mutation(api.fns.add, {
       key: "test",
       chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
       namespace: "test",
@@ -218,7 +207,7 @@ describe("RAG thick client", () => {
       entryId: entryId2,
       status: status2,
       usage: usage2,
-    } = await t.mutation(testApi.add, {
+    } = await t.mutation(api.fns.add, {
       key: "test",
       chunks: [{ text: "A", metadata: {}, embedding: dummyEmbeddings("A") }],
       namespace: "test",
@@ -226,7 +215,7 @@ describe("RAG thick client", () => {
     expect(entryId2).toBeDefined();
     expect(status2).toBe("ready");
     expect(usage2).toEqual({ tokens: 0 });
-    const { page } = await t.query(components.rag.chunks.list, {
+    const { page } = await t.query(app.components.rag.chunks.list, {
       entryId: entryId2,
       paginationOpts: { numItems: 10, cursor: null },
       order: "asc",
@@ -239,10 +228,10 @@ describe("RAG thick client", () => {
 
   describe("text formatting validation", () => {
     test("should format single entry with sequential chunks correctly", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Add entry with sequential chunks
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "sequential-test",
         chunks: [
           {
@@ -266,7 +255,7 @@ describe("RAG thick client", () => {
       });
 
       // Search and verify text format
-      const { text, entries, usage } = await t.action(testApi.search, {
+      const { text, entries, usage } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("content"),
         namespace: "format-test",
         limit: 10,
@@ -287,10 +276,10 @@ describe("RAG thick client", () => {
     });
 
     test("should format single entry without title correctly", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Add entry without title
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "no-title-test",
         chunks: [
           {
@@ -302,7 +291,7 @@ describe("RAG thick client", () => {
         namespace: "format-test-notitle",
       });
 
-      const { text, entries, usage } = await t.action(testApi.search, {
+      const { text, entries, usage } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("content"),
         namespace: "format-test-notitle",
         limit: 10,
@@ -317,10 +306,10 @@ describe("RAG thick client", () => {
     });
 
     test("should format non-sequential chunks with ellipsis separator", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Add multiple entries to create potential non-sequential results
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "doc1",
         chunks: [
           {
@@ -355,7 +344,7 @@ describe("RAG thick client", () => {
       });
 
       // Search with chunk context to potentially get non-sequential results
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("A important chunk"),
         namespace: "ellipsis-test",
         limit: 2,
@@ -374,10 +363,10 @@ describe("RAG thick client", () => {
     });
 
     test("should format multiple entries with separators", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Add two separate entries
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "first-doc",
         chunks: [
           {
@@ -390,7 +379,7 @@ describe("RAG thick client", () => {
         title: "First Document",
       });
 
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "second-doc",
         chunks: [
           {
@@ -403,7 +392,7 @@ describe("RAG thick client", () => {
         title: "Second Document",
       });
 
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("document"),
         namespace: "multi-entry-test",
         limit: 10,
@@ -421,10 +410,10 @@ describe("RAG thick client", () => {
     });
 
     test("should format mixed entries (with and without titles)", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Add entry with title
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "titled-doc",
         chunks: [
           {
@@ -438,7 +427,7 @@ describe("RAG thick client", () => {
       });
 
       // Add entry without title
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "untitled-doc",
         chunks: [
           {
@@ -450,7 +439,7 @@ describe("RAG thick client", () => {
         namespace: "mixed-test",
       });
 
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("content"),
         namespace: "mixed-test",
         limit: 10,
@@ -473,10 +462,10 @@ describe("RAG thick client", () => {
     });
 
     test("should match exact README format specification", async () => {
-      const t = initConvexTest(schema);
+      const t = createTest();
 
       // Create the exact scenario from README example
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "title1-doc",
         chunks: [
           {
@@ -494,7 +483,7 @@ describe("RAG thick client", () => {
         title: "Title 1",
       });
 
-      await t.mutation(testApi.add, {
+      await t.mutation(api.fns.add, {
         key: "title2-doc",
         chunks: [
           {
@@ -512,7 +501,7 @@ describe("RAG thick client", () => {
         title: "Title 2",
       });
 
-      const { text, entries } = await t.action(testApi.search, {
+      const { text, entries } = await t.action(api.fns.search, {
         embedding: dummyEmbeddings("contents"),
         namespace: "readme-format-test",
         limit: 10,
@@ -555,8 +544,8 @@ Chunk 4 contents`,
     async function generateAndGetInstructions(
       args: { instructions?: string; system?: string } = {},
     ) {
-      const t = initConvexTest(schema);
-      await t.mutation(testApi.add, {
+      const t = createTest();
+      await t.mutation(api.fns.add, {
         key: "generate-test",
         chunks: [
           {
@@ -568,7 +557,7 @@ Chunk 4 contents`,
         namespace: "generate-test",
       });
       mockModel.doGenerateCalls.length = 0;
-      const text = await t.action(testApi.generate, {
+      const text = await t.action(api.fns.generate, {
         embedding: dummyEmbeddings("contents"),
         namespace: "generate-test",
         prompt: "What is in chunk 1?",
