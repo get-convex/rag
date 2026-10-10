@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0-alpha.1
+
+- copy of 0.7.8, to supercede alpha.0
+
 ## 0.7.8
 
 - Updates the /test entrypoint for compatibility with convex-test's new
