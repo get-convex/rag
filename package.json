@@ -72,8 +72,8 @@
     "ai": "^6.0.0"
   },
   "peerDependencies": {
-    "convex": "^1.24.8",
-    "convex-helpers": "^0.1.94"
+    "convex": "^1.46.0",
+    "convex-helpers": "^0.1.127"
   },
   "devDependencies": {
     "@ai-sdk/openai": "3.0.26",
