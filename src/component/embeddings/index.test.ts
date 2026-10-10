@@ -1,16 +1,15 @@
 /// <reference types="vite/client" />
 
 import { describe, expect, test } from "vitest";
-import { convexTest } from "convex-test";
+import { defineTestApp } from "convex-test";
 import schema, { v } from "../schema.js";
-import { modules } from "../setup.test.js";
 import { insertEmbedding, searchEmbeddings } from "./index.js";
 import { vectorWithImportanceDimension } from "./importance.js";
-import { action } from "../_generated/server.js";
-import { anyApi, type ApiFromModules } from "convex/server";
 import { getVectorTableName, VectorDimension } from "./tables.js";
 
-export const search = action({
+const app = defineTestApp({ schema });
+
+const search = app.action({
   args: {
     embedding: v.array(v.number()),
     namespaceId: v.id("namespaces"),
@@ -22,18 +21,18 @@ export const search = action({
   },
 });
 
-const testApi: ApiFromModules<{
+const { api, createTest } = app.defineModules({
   fns: {
-    search: typeof search;
-  };
-}>["fns"] = anyApi["embeddings"]["index.test"] as any;
+    search,
+  },
+});
 
 const dimension: VectorDimension = 128;
 const vectorTableName = getVectorTableName(dimension);
 
 describe("embeddings", () => {
   test("insertEmbedding with no filters or importance works", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     // Create a namespace first
     const namespaceId = await t.run(async (ctx) => {
@@ -74,7 +73,7 @@ describe("embeddings", () => {
   });
 
   test("insertEmbedding with importance modifies the vector", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -128,7 +127,7 @@ describe("embeddings", () => {
   });
 
   test("search for vectors sorted by importance when identical otherwise", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -151,7 +150,7 @@ describe("embeddings", () => {
     });
 
     // Search for the vectors
-    const results = await t.action(testApi.search, {
+    const results = await t.action(api.fns.search, {
       embedding,
       namespaceId,
       filters: [],
@@ -167,7 +166,7 @@ describe("embeddings", () => {
   });
 
   test("filters are added to the correct field", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -216,7 +215,7 @@ describe("embeddings", () => {
   });
 
   test("embeddings have namespace prefixed on filter fields", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespace1Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -269,7 +268,7 @@ describe("embeddings", () => {
   });
 
   test("search without filters returns only vectors in the target namespace", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespace1Id = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -303,7 +302,7 @@ describe("embeddings", () => {
     });
 
     // Search in namespace1 only
-    const results1 = await t.action(testApi.search, {
+    const results1 = await t.action(api.fns.search, {
       embedding,
       namespaceId: namespace1Id,
       filters: [],
@@ -311,7 +310,7 @@ describe("embeddings", () => {
     });
 
     // Search in namespace2 only
-    const results2 = await t.action(testApi.search, {
+    const results2 = await t.action(api.fns.search, {
       embedding,
       namespaceId: namespace2Id,
       filters: [],
@@ -338,7 +337,7 @@ describe("embeddings", () => {
   });
 
   test("search with filters returns only matching vectors in namespace", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -372,7 +371,7 @@ describe("embeddings", () => {
     });
 
     // Search for articles only
-    const articlesResults = await t.action(testApi.search, {
+    const articlesResults = await t.action(api.fns.search, {
       embedding,
       namespaceId,
       filters: [{ 0: "articles" }],
@@ -382,7 +381,7 @@ describe("embeddings", () => {
     expect(articlesResults).toHaveLength(2); // Two vectors with category "articles"
 
     // Search for published status only
-    const publishedResults = await t.action(testApi.search, {
+    const publishedResults = await t.action(api.fns.search, {
       embedding,
       namespaceId,
       filters: [{ 1: "published" }],
@@ -393,7 +392,7 @@ describe("embeddings", () => {
   });
 
   test("multiple filters perform OR operation", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -426,7 +425,7 @@ describe("embeddings", () => {
     });
 
     // Search with OR filters: articles OR high priority
-    const orResults = await t.action(testApi.search, {
+    const orResults = await t.action(api.fns.search, {
       embedding,
       namespaceId,
       filters: [
@@ -454,7 +453,7 @@ describe("embeddings", () => {
   });
 
   test("searchEmbeddings", async () => {
-    const t = convexTest(schema, modules);
+    const t = createTest();
 
     const namespaceId = await t.run(async (ctx) => {
       return ctx.db.insert("namespaces", {
@@ -481,7 +480,7 @@ describe("embeddings", () => {
     });
 
     // Search should return results ordered by similarity
-    const results = await t.action(testApi.search, {
+    const results = await t.action(api.fns.search, {
       embedding: searchEmbedding,
       namespaceId,
       filters: [],
