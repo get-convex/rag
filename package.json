@@ -7,7 +7,7 @@
     "email": "support@convex.dev",
     "url": "https://github.com/get-convex/rag/issues"
   },
-  "version": "0.7.8",
+  "version": "0.7.9-alpha.0",
   "license": "Apache-2.0",
   "keywords": [
     "convex",
@@ -115,7 +115,7 @@
     "react-dom": "19.2.4",
     "react-markdown": "10.1.0",
     "tailwindcss": "4.1.18",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "typescript-eslint": "8.54.0",
     "vite": "^7.3.3",
     "vitest": "5.0.0"
