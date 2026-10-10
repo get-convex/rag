@@ -1,8 +1,15 @@
 # Changelog
 
+## 0.7.8
+
+- Updates the /test entrypoint for compatibility with convex-test's new
+  `defineTestApp` capability.
+
 ## 0.7.7
 
 - Updates package metadata, and bumps convex peer dependency to 1.46
+- Updates convex-helpers peer dependency to account for fixes to the `paginator`
+  and `stream` utilities.
 
 ## 0.7.6 AI SDK v7 support
 
