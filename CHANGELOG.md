@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.8
+
+- Updates the /test entrypoint for compatibility with convex-test's new
+  `defineTestApp` capability.
+- Updates convex-helpers to incorporate fixes to paginator.
+- Updates convex peer dependency to 1.46
+
 ## 0.6.7 / 0.7.5
 
 - Change Workpool to be a direct dependency and support 0.4.7-alpha
