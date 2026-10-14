@@ -1,10 +1,6 @@
 /// <reference types="vite/client" />
 import type { TestConvex } from "convex-test";
-import {
-  componentsGeneric,
-  type GenericSchema,
-  type SchemaDefinition,
-} from "convex/server";
+import type { GenericSchema, SchemaDefinition } from "convex/server";
 import workpool from "@convex-dev/workpool/test";
 import type { ComponentApi } from "./component/_generated/component.js";
 import schema from "./component/schema.js";
@@ -21,8 +17,7 @@ export function register(
   t: TestConvex<SchemaDefinition<GenericSchema, boolean>>,
   name: string = "rag",
 ) {
-  t.registerComponent(name, schema, modules);
   workpool.register(t, name + "/workpool");
-  return componentsGeneric()[name] as unknown as ComponentApi;
+  return t.registerComponent(name, schema, modules) as unknown as ComponentApi;
 }
 export default { register, schema, modules };
