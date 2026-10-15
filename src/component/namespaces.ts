@@ -1,5 +1,4 @@
 import { assert } from "convex-helpers";
-import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator, PaginationResult } from "convex/server";
 import type { Infer } from "convex/values";
@@ -228,7 +227,7 @@ export const list = query({
   }),
   returns: vPaginationResult(vNamespace),
   handler: async (ctx, args) => {
-    const namespaces = await paginator(ctx.db, schema)
+    const namespaces = await ctx.db
       .query("namespaces")
       .withIndex("status_namespace_version", (q) =>
         q.eq("status.kind", args.status ?? "ready"),
