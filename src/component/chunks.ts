@@ -1,5 +1,4 @@
 import { assert } from "convex-helpers";
-import { paginator } from "convex-helpers/server/pagination";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { paginationOptsValidator } from "convex/server";
 import { getConvexSize, type Infer } from "convex/values";
@@ -474,7 +473,7 @@ export const list = query({
   returns: vPaginationResult(vChunk),
   handler: async (ctx, args) => {
     const { entryId, paginationOpts } = args;
-    const chunks = await paginator(ctx.db, schema)
+    const chunks = await ctx.db
       .query("chunks")
       .withIndex("entryId_order", (q) => q.eq("entryId", entryId))
       .order(args.order)
