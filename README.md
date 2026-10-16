@@ -21,7 +21,7 @@ with an Agent for Retrieval-Augmented Generation (RAG).
   disruption.
 
 Found a bug? Feature request?
-[File it here](https://github.com/get-convex/rag/issues).
+[File it here](https://github.com/convex/rag/issues).
 
 ## Installation
 
